@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+coverage/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+data/uploads/
+data/legal-corpus/
+

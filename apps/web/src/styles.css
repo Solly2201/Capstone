@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { margin: 0; min-width: 320px; font-family: "DM Sans", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid #c59657; outline-offset: 3px; }
+}
+
+@layer components {
+  .font-serif { font-family: "Source Serif 4", Georgia, serif; }
+  .eyebrow { @apply text-xs font-bold uppercase tracking-[0.16em] text-clay; }
+  .nav-link { @apply text-ink/70 transition hover:text-ink; }
+  .nav-link.active { @apply text-ink underline decoration-clay decoration-2 underline-offset-8; }
+  .field { @apply mt-2 block w-full rounded-lg border border-ink/20 bg-white px-3.5 py-3 text-sm font-normal outline-none transition placeholder:text-ink/40 focus:border-clay; }
+  .error-text { @apply mt-1.5 block text-xs font-normal text-red-800; }
+  .hero-grid { background: radial-gradient(circle at 78% 10%, rgba(121,90,69,.18), transparent 31%), linear-gradient(120deg, #f7f3ed 0%, #f7f3ed 52%, #eee4d9 52%, #eee4d9 100%); }
+}

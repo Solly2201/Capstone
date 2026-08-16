@@ -1,0 +1,22 @@
+{
+  "name": "citizen-assistance-technology",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Citizen Assistance Technology (CAP) monorepo",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @cap/web",
+    "dev:api": "npm run dev -w @cap/api",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
