@@ -1,40 +1,38 @@
-"""Module 1B Batch 2: confidence gate, citation validation, abstention.
+"""Deterministic legal-answer pipeline -- no generative LLM.
 
-Flow this module implements (retrieval and Risk/UPL happen outside it --
-see docs/ARCHITECTURE.md):
-
-    results (already retrieved by the caller via app.retrieval.search)
+Flow:
+    question
+        -> Risk/UPL check (app.safety.risk), deterministic rules
+        -> app.retrieval.search (BM25, retrieval-only)
         -> confidence gate
-        -> context assembly (app.generation.context)
-        -> LLMProvider.generate
-        -> citation/index validation
-        -> ChatResult
+        -> LegalAnswer built directly from the retrieved chunks
 
-No LLM call happens unless the confidence gate passes -- an
-unabstained answer is never generated from evidence CAP has already
-judged too weak to ground a response in.
+Standing project decision: the legal-answer path never uses a
+generative LLM to produce an answer, to eliminate hallucination risk
+(see docs/PROJECT_STATE.md). Every excerpt in a LegalAnswer is the
+verbatim retrieved chunk text with its real citation -- nothing here
+invents, paraphrases, or infers legal content. Multiple sources are
+returned as multiple separate excerpts rather than merged into one
+synthesized paragraph, so conflicting or overlapping evidence is
+preserved by construction, not by special-case "conflict" logic.
 """
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass, field
 
-from .context import build_messages
-from .provider import LLMProvider
+from ..retrieval.search import search as _search
+from ..safety.risk import EMERGENCY_CONTACTS, PERSONALIZED_ADVICE_MESSAGE, classify_risk
+from .context import distinct_sources
 
 ABSTENTION_MESSAGE = "No verified information found."
-
-_CITATION_REF = re.compile(r"\[(\d+)\]")
 
 # Provisional, documented floor -- NOT a validated relevance measure.
 # Empirical testing against the built index showed off-topic queries can
 # score higher than genuine low-coverage topic queries with this corpus's
 # unfiltered BM25 tokenization (e.g. "pizza toppings in mumbai" outscored
 # "bail"), so no defensible cutoff exists in the data. This floor only
-# catches degenerate near-zero matches; real grounding safety comes from
-# the zero-result check below and from post-generation citation
-# validation, not from this number. Override via LEGAL_CHAT_MIN_SCORE.
+# catches degenerate near-zero matches. Override via LEGAL_CHAT_MIN_SCORE.
 DEFAULT_MIN_SCORE = 3.0
 
 
@@ -49,11 +47,23 @@ def _min_score() -> float:
 
 
 @dataclass
-class ChatResult:
-    answer: str
-    citations: list[dict] = field(default_factory=list)
+class Excerpt:
+    chunk_id: str
+    text: str
+    citation: dict
+    coverage_note: str
+
+
+@dataclass
+class LegalAnswer:
+    excerpts: list[Excerpt] = field(default_factory=list)
+    # Set for abstention/redirect cases; None when excerpts carry the answer.
+    message: str | None = None
     abstained: bool = False
     reason: str | None = None
+    # "answered" | "abstained" | "redirect_emergency" | "redirect_adviser"
+    policy_decision: str = "answered"
+    sources: list[str] = field(default_factory=list)
 
 
 def _passes_confidence_gate(results: list[dict]) -> bool:
@@ -62,49 +72,51 @@ def _passes_confidence_gate(results: list[dict]) -> bool:
     return results[0]["score"] >= _min_score()
 
 
-def _extract_valid_citations(text: str, index_map: dict[int, dict]) -> list[dict]:
-    """Resolve every [n] reference in text to its real citation.
-
-    Never trusts the model's own restated citation text -- only the
-    index is read from the model's output; the actual source, act
-    number, official URL, etc. always come from index_map, which was
-    built server-side from real retrieved chunks. References to an
-    index outside index_map are silently dropped (the model referenced
-    something that was never actually given to it).
-    """
-    seen: list[int] = []
-    for match in _CITATION_REF.finditer(text):
-        n = int(match.group(1))
-        if n in index_map and n not in seen:
-            seen.append(n)
-    return [index_map[n] for n in seen]
-
-
-def answer_question(
-    question: str, results: list[dict], provider: LLMProvider
-) -> ChatResult:
-    """Run the full generation pipeline for one question.
+def build_legal_answer(results: list[dict]) -> LegalAnswer:
+    """Build a deterministic answer directly from already-retrieved results.
 
     `results` must already be retrieved (via app.retrieval.search) and
     Risk/UPL-cleared by the caller -- this function only handles the
-    confidence gate onward.
+    confidence gate and response assembly.
     """
     if not results:
-        return ChatResult(answer=ABSTENTION_MESSAGE, abstained=True, reason="no_matching_content")
+        return LegalAnswer(
+            message=ABSTENTION_MESSAGE, abstained=True, reason="no_matching_content", policy_decision="abstained"
+        )
 
     if not _passes_confidence_gate(results):
-        return ChatResult(answer=ABSTENTION_MESSAGE, abstained=True, reason="insufficient_evidence")
+        return LegalAnswer(
+            message=ABSTENTION_MESSAGE, abstained=True, reason="insufficient_evidence", policy_decision="abstained"
+        )
 
-    messages, index_map = build_messages(question, results)
-    raw_answer = provider.generate(messages)
+    excerpts = [
+        Excerpt(chunk_id=r["chunk_id"], text=r["text"], citation=r["citation"], coverage_note=r["coverage_note"])
+        for r in results
+    ]
+    return LegalAnswer(excerpts=excerpts, sources=sorted(distinct_sources(results)), policy_decision="answered")
 
-    citations = _extract_valid_citations(raw_answer, index_map)
-    if not citations:
-        # The model produced no citation that traces back to a passage it
-        # was actually given -- treat as ungrounded rather than pass an
-        # uncited claim through. This is the second (post-generation)
-        # layer of "never answer beyond retrieved evidence", independent
-        # of the pre-generation confidence gate above.
-        return ChatResult(answer=ABSTENTION_MESSAGE, abstained=True, reason="ungrounded_response")
 
-    return ChatResult(answer=raw_answer, citations=citations, abstained=False, reason=None)
+def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
+    """Full Module 1B entry point: Risk/UPL -> retrieval -> deterministic answer.
+
+    Risk/UPL runs first and, if triggered, returns immediately -- no
+    retrieval call happens for a message that hard-stops here.
+    """
+    category = classify_risk(question)
+    if category == "personalized_advice":
+        return LegalAnswer(
+            message=PERSONALIZED_ADVICE_MESSAGE,
+            abstained=True,
+            reason="risk_personalized_advice",
+            policy_decision="redirect_adviser",
+        )
+    if category is not None:
+        return LegalAnswer(
+            message=EMERGENCY_CONTACTS[category],
+            abstained=True,
+            reason=f"risk_{category}",
+            policy_decision="redirect_emergency",
+        )
+
+    results = _search(question, top_k=top_k)
+    return build_legal_answer(results)

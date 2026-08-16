@@ -7,6 +7,7 @@ import { ZodError } from "zod";
 import { env } from "./config/env.js";
 import { authRouter } from "./routes/auth.js";
 import { corpusRouter } from "./routes/corpus.js";
+import { legalRouter } from "./routes/legal.js";
 
 const logger = pino({ level: env.NODE_ENV === "production" ? "info" : "debug" });
 
@@ -21,6 +22,7 @@ export const createApp = () => {
   app.get("/health", (_request, response) => response.json({ status: "ok", service: "cap-api" }));
   app.use("/api/auth", authRouter);
   app.use("/api/corpus", corpusRouter);
+  app.use("/api/legal", legalRouter);
 
   app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
     if (error instanceof ZodError) return response.status(400).json({ message: "Invalid request data.", issues: error.flatten() });
