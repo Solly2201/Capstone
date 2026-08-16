@@ -29,6 +29,28 @@ SYSTEM_PROMPT = (
     "report) -- you can only provide information."
 )
 
+# Appended only when the retrieved passages come from more than one legal
+# source. CAP does not attempt to algorithmically decide which source is
+# "correct" when they differ (that would itself be a legal judgment) --
+# instead the model is instructed to keep each source's citation separate
+# and never silently merge or pick between them.
+MULTI_SOURCE_CLAUSE = (
+    " The numbered passages above come from more than one legal source. If "
+    "they define or address the same point differently, describe each "
+    "source's position separately with its own bracketed citation. Do not "
+    "merge them into one combined rule, and do not silently prefer one "
+    "source over another -- state plainly that the sources differ."
+)
+
+
+def distinct_sources(results: list[dict]) -> set[str]:
+    """The set of citation "source" display names present in results.
+
+    More than one entry here means the retrieved evidence spans multiple
+    legal sources -- the trigger for the conflicting-evidence prompt clause.
+    """
+    return {r["citation"]["source"] for r in results}
+
 
 def build_messages(
     question: str, results: list[dict]
@@ -53,8 +75,12 @@ def build_messages(
     context_block = "\n\n".join(context_lines) if context_lines else "(no context retrieved)"
     user_content = f"Context passages:\n\n{context_block}\n\nQuestion: {question}"
 
+    system_content = SYSTEM_PROMPT
+    if len(distinct_sources(results)) > 1:
+        system_content += MULTI_SOURCE_CLAUSE
+
     messages = [
-        ChatMessage(role="system", content=SYSTEM_PROMPT),
+        ChatMessage(role="system", content=system_content),
         ChatMessage(role="user", content=user_content),
     ]
     return messages, index_map
