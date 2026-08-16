@@ -11,3 +11,12 @@ __pycache__/
 data/uploads/
 data/legal-corpus/
 
+
+# AI service build artifacts -- regenerate with:
+#   python services/ai/scripts/ingest_corpus.py
+services/ai/data/index/
+services/ai/data/legal-corpus/*/chunks.jsonl
+services/ai/data/legal-corpus/*/source.json
+services/ai/.venv/
+services/ai/__pycache__/
+services/ai/**/__pycache__/

@@ -38,6 +38,7 @@ This increment establishes the monorepo, UI foundation, landing page, authentica
 3. Start MongoDB and Redis with `docker compose up -d mongo redis`.
 4. Run the API with `npm run dev:api` and the web app with `npm run dev:web`.
 5. Seed demo users with `npm run seed -w @cap/api`.
+6. For the legal corpus (Module 1A): from `services/ai/`, install `requirements.txt`, then run `python scripts/ingest_corpus.py` to build the searchable index from `services/ai/data/legal-corpus/`. Run the AI service with `uvicorn app.main:app --reload --port 8000`. To add or update a source, drop its raw text into `data/legal-corpus/<source_id>/raw.txt` and re-run the ingest script — see `docs/LEGAL_SOURCES.md` for what's currently ingested and what's still partial.
 
 ## Local demo accounts
 

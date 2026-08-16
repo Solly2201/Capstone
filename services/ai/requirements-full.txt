@@ -1,0 +1,6 @@
+-r requirements.txt
+# Optional dense-retrieval extras for Module 1A/1B. Ingestion and the
+# corpus browser work without these (BM25-only "lexical-only" mode);
+# install this file to get hybrid BM25+dense search.
+sentence-transformers==3.3.1
+faiss-cpu==1.9.0

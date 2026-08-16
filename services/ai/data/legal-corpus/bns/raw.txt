@@ -1,0 +1,59 @@
+THE BHARATIYA NYAYA SANHITA, 2023
+ACT NO. 45 OF 2023
+[As on the 6th October, 2025]
+An Act to consolidate and amend the provisions relating to offences and for matters connected therewith or incidental thereto.
+BE it enacted by Parliament in the Seventy-fourth Year of the Republic of India as follows:––
+
+CHAPTER I
+PRELIMINARY
+1. Short title, commencement and application.––(1) This Act may be called the Bharatiya Nyaya Sanhita, 2023.
+(2) It shall come into force on such date as the Central Government may, by notification in the Official Gazette, appoint, and different dates may be appointed for different provisions of this Sanhita.
+(3) Every person shall be liable to punishment under this Sanhita and not otherwise for every act or omission contrary to the provisions thereof, of which he shall be guilty within India.
+
+2. Definitions.––In this Sanhita, unless the context otherwise requires,––
+(3) "child" means any person below the age of eighteen years;
+(8) "document" means any matter expressed or described upon any substance by means of letters, figures or marks, or by more than one of those means, and includes electronic and digital record, intended to be used, or which may be used, as evidence of that matter.
+(9) "fraudulently" means doing anything with the intention to defraud but not otherwise;
+(11) "good faith".—Nothing is said to be done or believed in "good faith" which is done or believed without due care and attention;
+(19) "man" means male human being of any age;
+(35) "woman" means a female human being of any age.
+
+3. General explanations.—(1) Throughout this Sanhita every definition of an offence, every penal provision, and every Illustration of every such definition or penal provision, shall be understood subject to the exceptions contained in the Chapter entitled "General Exceptions", though those exceptions are not repeated in such definition, penal provision, or Illustration.
+
+CHAPTER III
+GENERAL EXCEPTIONS
+
+20. Act of a child under seven years of age.—Nothing is an offence which is done by a child under seven years of age.
+
+21. Act of a child above seven and under twelve years of age of immature understanding.—Nothing is an offence which is done by a child above seven years of age and under twelve years of age, who has not attained sufficient maturity of understanding to judge of the nature and consequences of his conduct on that occasion.
+
+22. Act of a person of unsound mind.—Nothing is an offence which is done by a person who, at the time of doing it, by reason of unsoundness of mind, is incapable of knowing the nature of the act, or that he is doing what is either wrong or contrary to law.
+
+Of right of private defence
+34. Things done in private defence.—Nothing is an offence which is done in the exercise of the right of private defence.
+
+35. Right of private defence of body and of property.—Every person has a right, subject to the restrictions contained in section 37, to defend— (a) his own body, and the body of any other person, against any offence affecting the human body; (b) the property, whether movable or immovable, of himself or of any other person, against any act which is an offence falling under the definition of theft, robbery, mischief or criminal trespass, or which is an attempt to commit theft, robbery, mischief or criminal trespass.
+
+37. Acts against which there is no right of private defence.—(1) There is no right of private defence,— (a) against an act which does not reasonably cause the apprehension of death or of grievous hurt, if done, or attempted to be done, by a public servant acting in good faith under colour of his office, though that act, may not be strictly justifiable by law; (c) in cases in which there is time to have recourse to the protection of the public authorities.
+(2) The right of private defence in no case extends to the inflicting of more harm than it is necessary to inflict for the purpose of defence.
+
+38. When right of private defence of body extends to causing death.—The right of private defence of the body extends, under the restrictions specified in section 37, to the voluntary causing of death or of any other harm to the assailant, if the offence which occasions the exercise of the right be of any of the descriptions hereinafter enumerated, namely:— (a) such an assault as may reasonably cause the apprehension that death will otherwise be the consequence of such assault; (b) such an assault as may reasonably cause the apprehension that grievous hurt will otherwise be the consequence of such assault; (c) an assault with the intention of committing rape.
+
+40. Commencement and continuance of right of private defence of body.—The right of private defence of the body commences as soon as a reasonable apprehension of danger to the body arises from an attempt or threat to commit the offence though the offence may not have been committed; and it continues as long as such apprehension of danger to the body continues.
+
+CHAPTER V
+OF OFFENCES AGAINST WOMAN AND CHILD
+Of sexual offences
+
+63. Rape.—A man is said to commit "rape" if he penetrates his penis, to any extent, into the vagina, mouth, urethra or anus of a woman or makes her to do so with him or any other person, or commits certain other described acts, under circumstances including: (i) against her will; (ii) without her consent; (vi) with or without her consent, when she is under eighteen years of age; (vii) when she is unable to communicate consent.
+Exception 2.—Sexual intercourse or sexual acts by a man with his own wife, the wife not being under eighteen years of age, is not rape.
+
+74. Assault or use of criminal force to woman with intent to outrage her modesty.—Whoever assaults or uses criminal force to any woman, intending to outrage or knowing it to be likely that he will thereby outrage her modesty, shall be punished with imprisonment of either description for a term which shall not be less than one year but which may extend to five years, and shall also be liable to fine.
+
+75. Sexual harassment.—(1) A man committing any of the following acts:— (i) physical contact and advances involving unwelcome and explicit sexual overtures; or (ii) a demand or request for sexual favours; or (iii) showing pornography against the will of a woman; or (iv) making sexually coloured remarks, shall be guilty of the offence of sexual harassment.
+(2) Any man who commits the offence specified in clause (i) or clause (ii) or clause (iii) of sub-section (1) shall be punished with rigorous imprisonment for a term which may extend to three years, or with fine, or with both.
+
+78. Stalking.—(1) Any man who— (i) follows a woman and contacts, or attempts to contact such woman to foster personal interaction repeatedly despite a clear indication of disinterest by such woman; or (ii) monitors the use by a woman of the internet, e-mail or any other form of electronic communication, commits the offence of stalking.
+(2) Whoever commits the offence of stalking shall be punished on first conviction with imprisonment of either description for a term which may extend to three years, and shall also be liable to fine; and be punished on a second or subsequent conviction, with imprisonment of either description for a term which may extend to five years, and shall also be liable to fine.
+
+NOTE ON CORPUS COMPLETENESS: This file is a trimmed extract of the official enacted BNS text (definitions, general exceptions/private defence, and select offences against women and children). It is not the complete 358-section Sanhita. Chapters II (Punishments), IV (Abetment/Conspiracy), VI (Offences Affecting the Human Body), and XVII (Offences Against Property, incl. theft/robbery/cheating) are not yet ingested and should be added in a follow-up pass for the "Common Offences" learning topic.

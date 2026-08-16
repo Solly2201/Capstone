@@ -1,0 +1,43 @@
+THE BHARATIYA SAKSHYA ADHINIYAM, 2023
+(ACT NO. 47 OF 2023)
+[As on the 6th October, 2025]
+An Act to consolidate and to provide for general rules and principles of evidence for fair trial.
+BE it enacted by Parliament in the Seventy-fourth Year of the Republic of India as follows:—
+PART I
+CHAPTER I
+PRELIMINARY
+1. Short title, application and commencement.–– (1) This Act may be called the Bharatiya Sakshya Adhiniyam, 2023.
+(2) It applies to all judicial proceedings in or before any Court, including Courts-martial, but not to affidavits presented to any Court or officer, nor to proceedings before an arbitrator.
+(3) It shall come into force on such date as the Central Government may, by notification in the Official Gazette, appoint.
+2. Definitions.— (1) In this Adhiniyam, unless the context otherwise requires,—
+(a) "Court" includes all Judges and Magistrates, and all persons, except arbitrators, legally authorised to take evidence;
+(b) "conclusive proof" means when one fact is declared by this Adhiniyam to be conclusive proof of another, the Court shall, on proof of the one fact, regard the other as proved, and shall not allow evidence to be given for the purpose of disproving it;
+(c) "disproved" in relation to a fact, means when, after considering the matters before it, the Court either believes that it does not exist, or considers its non-existence so probable that a prudent man ought, under the circumstances of the particular case, to act upon the supposition that it does not exist;
+(d) "document" means any matter expressed or described or otherwise recorded upon any substance by means of letters, figures or marks or any other means or by more than one of those means, intended to be used, or which may be used, for the purpose of recording that matter and includes electronic and digital records.
+(e) "evidence" means and includes— (i) all statements including statements given electronically which the Court permits or requires to be made before it by witnesses in relation to matters of fact under inquiry and such statements are called oral evidence; (ii) all documents including electronic or digital records produced for the inspection of the Court and such documents are called documentary evidence;
+(f) "fact" means and includes— (i) any thing, state of things, or relation of things, capable of being perceived by the senses; (ii) any mental condition of which any person is conscious.
+(g) "facts in issue" means and includes any fact from which, either by itself or in connection with other facts, the existence, non-existence, nature or extent of any right, liability or disability, asserted or denied in any suit or proceeding, necessarily follows.
+(h) "may presume".—Whenever it is provided by this Adhiniyam that the Court may presume a fact, it may either regard such fact as proved, unless and until it is disproved or may call for proof of it;
+(i) "not proved".—A fact is said to be not proved when it is neither proved nor disproved;
+(j) "proved".—A fact is said to be proved when, after considering the matters before it, the Court either believes it to exist, or considers its existence so probable that a prudent man ought, under the circumstances of the particular case, to act upon the supposition that it exists;
+(k) "relevant".—A fact is said to be relevant to another when it is connected with the other in any of the ways referred to in the provisions of this Adhiniyam relating to the relevancy of facts;
+(l) "shall presume".—Whenever it is directed by this Adhiniyam that the Court shall presume a fact, it shall regard such fact as proved, unless and until it is disproved.
+(2) Words and expressions used herein and not defined but defined in the Information Technology Act, 2000 (21 of 2000), the Bharatiya Nagarik Suraksha Sanhita, 2023 and the Bharatiya Nyaya Sanhita, 2023 shall have the same meanings as assigned to them in the said Act and Sanhitas.
+
+PART II
+CHAPTER II
+RELEVANCY OF FACTS
+3. Evidence may be given of facts in issue and relevant facts.— Evidence may be given in any suit or proceeding of the existence or non-existence of every fact in issue and of such other facts as are hereinafter declared to be relevant, and of no others.
+
+CHAPTER VIII
+ESTOPPEL
+121. Estoppel.—When one person has, by his declaration, act or omission, intentionally caused or permitted another person to believe a thing to be true and to act upon such belief, neither he nor his representative in interest shall be allowed, in any suit or proceeding between himself and such person or his representative, to deny the truth of that thing.
+
+CHAPTER IX
+OF WITNESSES
+124. Who may testify.—All persons shall be competent to testify unless the Court considers that they are prevented from understanding the questions put to them, or from giving rational answers to those questions, by tenure age, disease, whether of body or mind, or any other cause of the same kind.
+132. Professional communications.—(1) No advocate shall at any time be permitted, unless with his client's express consent, to disclose any communication made to him in the course and for the purpose of his employment as such advocate, by or on behalf of his client, or to state the contents or condition of any document with which he has become acquainted in the course and for the purpose of his professional employment, or to disclose any advice given by him to his client in the course and for the purpose of such employment.
+
+CHAPTER X
+OF EXAMINATION OF WITNESSES
+146. Leading questions.—Any question suggesting the answer which the person putting it wishes or expects to receive is called a leading question.

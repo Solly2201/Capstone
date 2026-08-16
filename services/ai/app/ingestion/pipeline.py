@@ -1,0 +1,106 @@
+"""Orchestrates one source through: load -> clean -> chunk -> version -> persist.
+
+Usage (also exposed via scripts/ingest_corpus.py):
+
+    from app.ingestion.pipeline import ingest_source, ingest_all
+    manifest = ingest_source("bnss")
+
+Drop a new/updated raw.txt (or source PDF, once extract.py's PDF path
+is wired up) into data/legal-corpus/<source_id>/ and re-run ingestion --
+nothing else needs to change. That's the "upload folder" the RAG
+pipeline feeds from.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from dataclasses import asdict
+from datetime import datetime, timezone
+
+from .chunk import CHUNKERS
+from .clean import clean_extracted_text
+from .models import Chunk, SourceMeta
+from .sources import APPROVED_SOURCES, get_source
+
+
+def _checksum(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _source_dir(source_id: str) -> str:
+    return os.path.dirname(get_source(source_id).raw_path)
+
+
+def ingest_source(source_id: str) -> dict:
+    source = get_source(source_id)
+    if not os.path.exists(source.raw_path):
+        raise FileNotFoundError(
+            f"No raw text for '{source_id}' at {source.raw_path}. "
+            f"Drop the extracted/raw text there (or a PDF, once PDF extraction "
+            f"is wired in) and re-run ingestion."
+        )
+
+    with open(source.raw_path, encoding="utf-8") as f:
+        raw = f.read()
+
+    cleaned = clean_extracted_text(raw)
+    chunker = CHUNKERS[source.chunk_style]
+    chunks = chunker(source_id, cleaned)
+
+    if not chunks:
+        raise ValueError(
+            f"Chunker produced zero chunks for '{source_id}'. The source text "
+            f"likely doesn't match the expected layout -- inspect raw.txt before "
+            f"trusting this source for citations."
+        )
+
+    out_dir = _source_dir(source_id)
+    os.makedirs(out_dir, exist_ok=True)
+
+    chunks_path = os.path.join(out_dir, "chunks.jsonl")
+    with open(chunks_path, "w", encoding="utf-8") as f:
+        for c in chunks:
+            f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
+
+    manifest = {
+        "source_id": source.source_id,
+        "display_name": source.display_name,
+        "act_no": source.act_no,
+        "official_url": source.official_url,
+        "publisher": source.publisher,
+        "as_on_date": source.as_on_date,
+        "coverage_note": source.coverage_note,
+        "unit_label": source.unit_label,
+        "checksum": _checksum(cleaned),
+        "chunk_count": len(chunks),
+        "imported_at": datetime.now(timezone.utc).isoformat(),
+    }
+    manifest_path = os.path.join(out_dir, "source.json")
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+    return manifest
+
+
+def ingest_all() -> list[dict]:
+    return [ingest_source(sid) for sid in APPROVED_SOURCES]
+
+
+def load_chunks(source_id: str) -> list[Chunk]:
+    path = os.path.join(_source_dir(source_id), "chunks.jsonl")
+    chunks = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                chunks.append(Chunk(**json.loads(line)))
+    return chunks
+
+
+def load_all_chunks() -> list[Chunk]:
+    out: list[Chunk] = []
+    for sid in APPROVED_SOURCES:
+        manifest_path = os.path.join(_source_dir(sid), "source.json")
+        if os.path.exists(manifest_path):
+            out.extend(load_chunks(sid))
+    return out
