@@ -19,21 +19,38 @@ from ..ingestion.sources import get_source
 
 _INDEX_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "index")
 
+# Process-lifetime caches. bm25.pkl and chunk_manifest.jsonl are only
+# written by ingest_corpus.py, which is a separate, deliberate step
+# (not something that happens implicitly during a request). Caching
+# them avoids reloading/unpickling on every search() call once the AI
+# service is used at chat frequency (Module 1B). Trade-off: a
+# long-running service process must be restarted after re-running
+# ingest_corpus.py for it to see the new index -- acceptable for this
+# project's local-dev/single-instance deployment model.
+_bm25_cache = None
+_chunk_manifest_cache: list[dict] | None = None
+
 
 def _load_bm25():
-    path = os.path.join(_INDEX_DIR, "bm25.pkl")
-    if not os.path.exists(path):
-        raise FileNotFoundError(
-            "No index built yet. Run `python scripts/ingest_corpus.py` first."
-        )
-    with open(path, "rb") as f:
-        return pickle.load(f)
+    global _bm25_cache
+    if _bm25_cache is None:
+        path = os.path.join(_INDEX_DIR, "bm25.pkl")
+        if not os.path.exists(path):
+            raise FileNotFoundError(
+                "No index built yet. Run `python scripts/ingest_corpus.py` first."
+            )
+        with open(path, "rb") as f:
+            _bm25_cache = pickle.load(f)
+    return _bm25_cache
 
 
 def _load_chunk_manifest() -> list[dict]:
-    path = os.path.join(_INDEX_DIR, "chunk_manifest.jsonl")
-    with open(path, encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
+    global _chunk_manifest_cache
+    if _chunk_manifest_cache is None:
+        path = os.path.join(_INDEX_DIR, "chunk_manifest.jsonl")
+        with open(path, encoding="utf-8") as f:
+            _chunk_manifest_cache = [json.loads(line) for line in f if line.strip()]
+    return _chunk_manifest_cache
 
 
 _chunk_cache: dict[str, Chunk] = {}
