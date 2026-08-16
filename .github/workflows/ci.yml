@@ -31,5 +31,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install -r services/ai/requirements.txt
+      - run: python -m pip install -r services/ai/requirements-dev.txt
       - run: python -c "from services.ai.app.main import app; assert app.title == 'CAP AI Service'"
+      - run: python -m pytest tests/ -q
+        working-directory: services/ai

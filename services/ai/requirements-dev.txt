@@ -1,0 +1,4 @@
+-r requirements.txt
+# Test-only dependencies for services/ai/tests/.
+pytest==8.3.4
+httpx==0.28.1
