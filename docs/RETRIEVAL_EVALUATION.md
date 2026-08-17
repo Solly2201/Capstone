@@ -403,6 +403,59 @@ evaluation-justified exception the original deferral decision always
 allowed for, and should stay that narrow unless evaluation names
 another specific gap.
 
+## Topic-relevance guard: closing the out-of-domain gap without another threshold raise
+
+The "hybrid floor was raised 0.40→0.42" limitation below flagged that
+two stress-test out-of-domain queries ("what is the income tax slab",
+"how do I get a driving licence") still scored ~0.45-0.49 -- inside
+the same range as a genuine low-confidence paraphrase (q20 at
+0.4531) -- so no single global dense-score threshold could separate
+them without also losing q20. Inspecting the actual top hits confirmed
+why: "income tax slab" retrieves Constitution Article 276 (state
+taxation power, which genuinely says "tax on income"), and "driving
+licence" retrieves IT Act Section 22 (digital signature certificate
+"licence" applications) -- both share real vocabulary with the query,
+just from a completely different real-world topic. A bounded score
+cannot distinguish "the right law, weakly matched" from "the wrong
+law, strongly matched on one shared word," because both land in the
+same numeric band.
+
+Tried and rejected before landing on the actual fix: a lexical
+term-overlap ratio between the query's content words and the top
+result's indexed text. Measured across the full 49-query eval set, it
+did not separate the two cases -- genuine paraphrase queries
+deliberately avoid literal term overlap (by design, that's what the
+`paraphrase` category tests) and scored as low as 0.0-0.4 overlap,
+the same range as the out-of-domain queries, so this signal would have
+rejected genuine paraphrases at any threshold that also caught the
+false positives. A BM25-top1/dense-top1 source-agreement signal was
+also measured and rejected the same way (genuine paraphrase queries
+disagreed on source just as often as the out-of-domain queries did).
+
+The fix that shipped instead: `app/safety/topic_relevance.py`, a
+curated deterministic phrase-pattern guard run before retrieval (see
+`docs/ARCHITECTURE.md`'s "Topic-relevance guard" and
+`docs/PROJECT_STATE.md`'s corresponding entry for the full design
+rationale and code pointer). It matches the query's topic directly
+(company registration, income tax, driving licence/vehicle
+registration, identity documents, everyday non-civic subjects) instead
+of trying to infer topic mismatch from a retrieval score, so it is
+unaffected by vocabulary overlap either way.
+
+Verified effect (`python eval/run_eval.py`, same 49-query set): hybrid
+recall@5/precision@5/MRR/nDCG@5/top-1-citation-correctness on the 45
+non-abstain queries are byte-identical to the pre-guard numbers below
+(0.8074/0.1733/0.6670/0.6734/0.5556) -- expected, since the guard only
+changes pre-retrieval gating for abstain-expected queries, never
+ranking for queries it doesn't match. Abstention accuracy: hybrid
+stayed at 0.9796 (it was already catching these cases via the score
+gate for two of the three original stress-test false positives);
+bm25-only mode improved 0.9184→0.9796, because bm25 has no bounded
+score to fall back on and previously answered all 4 out-of-domain
+control queries confidently from the wrong Act -- the guard runs
+before mode-specific search, so it protects every mode uniformly, not
+just hybrid.
+
 ## Remaining limitations
 
 - The confidence-gate thresholds (all three modes) are tuned against a
@@ -415,12 +468,18 @@ another specific gap.
 - The hybrid floor was raised 0.40->0.42 after stress-testing
   out-of-domain queries against the expanded corpus found real false
   positives (see `docs/PROJECT_STATE.md`'s "Retrieval/evaluation
-  hardening"). That raise is not a complete fix -- two of the three
-  stress-test false positives found (both ~0.45) still clear even the
-  raised floor, and closing that gap fully would cost a genuine query
-  (q20, at 0.4531) under a single global threshold. A smarter
-  out-of-domain signal, not another threshold nudge, is the likely
-  actual fix, and hasn't been built.
+  hardening"). That raise alone was not a complete fix -- two of the
+  three stress-test false positives found (both ~0.45) still cleared
+  the raised floor, and closing that gap fully would have cost a
+  genuine query (q20, at 0.4531) under a single global threshold. This
+  is now resolved by a smarter, non-score-based signal instead of
+  another threshold nudge -- see "Topic-relevance guard: closing the
+  out-of-domain gap without another threshold raise" above. It closes
+  the specific, curated set of subjects it recognizes; a genuinely
+  novel out-of-domain phrasing that doesn't match any curated pattern
+  and still scores above the dense-score floor remains a possible gap
+  (same accepted trade-off as `query_expand.py`'s abbreviation dict --
+  narrow and curated, extended only when evaluation names a new case).
 - Bail, compounding of offences, and burden of proof -- the three
   near-miss topics this document originally flagged here -- are no
   longer near-misses: BNSS's bail chapter, s.359, and BSA's

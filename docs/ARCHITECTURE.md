@@ -41,7 +41,7 @@ flowchart TD
 
 ## Guardrails
 
-1. The **Risk / UPL agent runs before legal retrieval**.
+1. The **Risk / UPL agent runs before legal retrieval**, followed by a deterministic topic-relevance guard (also before retrieval) that abstains on queries matching a curated set of known out-of-domain subjects rather than letting an off-topic query reach the confidence gate at all — see the "Legal-answer pipeline" diagram below.
 2. **The legal-answer path never uses a generative LLM** (standing decision — hallucination risk in a legal-information context is unacceptable; see `docs/PROJECT_STATE.md`). The legal agent returns a response only when official-source retrieval and its confidence gate pass configured thresholds; the response is always the verbatim retrieved text, never a generated or paraphrased claim.
 3. The system records source identifiers, sections/articles, source URLs, verification dates, confidence, and the policy decision behind every legal response.
 4. The civic and petition agents make recommendations, never external government submissions or emergency calls.
@@ -112,7 +112,9 @@ flowchart LR
   Q["Citizen question"] --> Risk["Risk/UPL rules\n(7 categories, deterministic)"]
   Risk -->|emergency/cyber category| Emg["Redirect: 112 / 1930 / 181 / cybercrime.gov.in"]
   Risk -->|personalised advice| Adv["Redirect: Tele-Law / Nyaya Bandhu / lawyer directory"]
-  Risk -->|informational| Search["app.retrieval.search\n(hybrid BM25+dense, RRF-fused)"]
+  Risk -->|informational| Topic["Topic-relevance guard\n(curated out-of-domain phrases, deterministic)"]
+  Topic -->|matches known unrelated topic| Abstain2["Abstain: not covered by this service"]
+  Topic -->|no match| Search["app.retrieval.search\n(hybrid BM25+dense, RRF-fused)"]
   Search --> Gate{"Confidence gate\nLEGAL_CHAT_MIN_SCORE, mode-aware"}
   Gate -->|below floor / no results| Abstain["Abstain: No verified information found"]
   Gate -->|passes| Resp["Deterministic response:\nexact retrieved excerpt(s) + real citations + disclaimer"]
@@ -120,5 +122,7 @@ flowchart LR
 
 Multiple or differing sources are never merged into one synthesized paragraph -- each retrieved chunk is returned as its own excerpt with its own citation, so conflicting or overlapping evidence is preserved by construction rather than needing separate reconciliation logic.
 
-`POST /legal/answer` (AI service) and its proxy `POST /api/legal/answer` (Node) implement this end to end. The endpoint is intentionally public (no login) for v1, so every response — including redirects and abstentions — carries the current disclaimer text/version. No retrieval call happens for a message Risk/UPL catches. See `services/ai/app/generation/pipeline.py` (`handle_legal_query`, `build_legal_answer`) for the exact call order and `services/ai/app/safety/` for the rule sets.
+**Topic-relevance guard (`app/safety/topic_relevance.py`):** runs after Risk/UPL and before retrieval, same placement and same deterministic-rules-only design. It exists because the confidence gate's bounded dense-score threshold cannot separate every out-of-domain query from a genuine low-confidence legal paraphrase — both can land in the same ~0.42-0.49 band on this corpus (see `docs/RETRIEVAL_EVALUATION.md`'s "Remaining limitations"). Rather than raising that single global threshold (which would cost genuine coverage), a small curated set of phrase patterns for well-known non-legal-information subjects (company/business registration, income tax, driving licence/vehicle registration, identity documents, everyday non-civic topics) is checked first; a match aborts before spending a retrieval call. Anything it doesn't recognize still falls through unchanged to the existing confidence gate — this guard is deliberately narrow (extend only when evaluation names a specific new gap, same rule as `app/retrieval/query_expand.py`'s abbreviation dict), not a general topic classifier.
+
+`POST /legal/answer` (AI service) and its proxy `POST /api/legal/answer` (Node) implement this end to end. The endpoint is intentionally public (no login) for v1, so every response — including redirects and abstentions — carries the current disclaimer text/version. No retrieval call happens for a message Risk/UPL or the topic-relevance guard catches. See `services/ai/app/generation/pipeline.py` (`handle_legal_query`, `build_legal_answer`) for the exact call order and `services/ai/app/safety/` for the rule sets.
 

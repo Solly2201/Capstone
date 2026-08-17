@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 
 from ..retrieval.search import search as _search
 from ..safety.risk import EMERGENCY_CONTACTS, PERSONALIZED_ADVICE_MESSAGE, classify_risk
+from ..safety.topic_relevance import OUT_OF_DOMAIN_MESSAGE, classify_topic
 from .context import distinct_sources
 
 ABSTENTION_MESSAGE = "No verified information found."
@@ -149,10 +150,16 @@ def build_legal_answer(results: list[dict]) -> LegalAnswer:
 
 
 def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
-    """Full Module 1B entry point: Risk/UPL -> retrieval -> deterministic answer.
+    """Full Module 1B entry point: Risk/UPL -> topic guard -> retrieval ->
+    deterministic answer.
 
     Risk/UPL runs first and, if triggered, returns immediately -- no
-    retrieval call happens for a message that hard-stops here.
+    retrieval call happens for a message that hard-stops here. The
+    topic-relevance guard runs next, same reasoning: a query matching a
+    known out-of-domain subject (see app.safety.topic_relevance) is
+    rejected before spending a retrieval call on it, since no score
+    from that retrieval could be trusted as a real confidence signal
+    for a topic this corpus was never meant to answer.
     """
     category = classify_risk(question)
     if category == "personalized_advice":
@@ -168,6 +175,15 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             abstained=True,
             reason=f"risk_{category}",
             policy_decision="redirect_emergency",
+        )
+
+    topic_category = classify_topic(question)
+    if topic_category is not None:
+        return LegalAnswer(
+            message=OUT_OF_DOMAIN_MESSAGE,
+            abstained=True,
+            reason=f"out_of_domain_{topic_category}",
+            policy_decision="abstained",
         )
 
     results = _search(question, top_k=top_k)
