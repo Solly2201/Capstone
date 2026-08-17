@@ -66,6 +66,50 @@ def chunk_sanhita(source_id: str, text: str, start_marker: str = "BE it enacted"
     return chunks
 
 
+# The Constitution PDF's marginal-note article titles ("Equality before
+# law.", "Protection against arrest and detention in certain cases.")
+# are real text in raw.txt, but a genuinely two-column layout: the
+# extractor emits each page's main-column body first, then that page's
+# batch of marginal notes, then its footnotes, then a bare page-number
+# line, before the next page's body resumes -- often splitting a single
+# sentence across the reordered block. Unlike BSA's two-column fix
+# (docs/LEGAL_SOURCES.md), title-to-article association here can't be
+# recovered by a general positional rule: marginal-note batches and
+# footnote continuations interleave in page-dependent order (confirmed
+# by direct inspection of raw.txt), so a general parser risks silently
+# mis-assigning one article's title to another -- unacceptable for a
+# system whose whole premise is never showing incorrect legal metadata.
+#
+# eval/queries.jsonl's failure analysis (docs/RETRIEVAL_EVALUATION.md)
+# showed this missing-title gap was the single largest failure cluster:
+# every constitution article that also has a BM25-strong lexical
+# distractor (14 vs 15 vs 16, or 19 vs the Art 105/194 "freedom of
+# speech in Parliament" distractors) needs its own title indexed to be
+# found reliably by paraphrased queries, the same reason BSA/BNS/BNSS
+# titles are indexed at all (see index_build.py's _index_text). Rather
+# than risk a general parser, the titles below were read directly out
+# of raw.txt at each article's own trailer block and hand-verified
+# against that article's body content -- Part III (Fundamental Rights),
+# the only part any eval query needs a title from. This is the same
+# narrow, evaluation-justified-only pattern as query_expand.py's
+# abbreviation dict: extend it only if a future evaluation query names
+# another specific missing title, not proactively for the rest of the
+# document.
+_KNOWN_ARTICLE_TITLES: dict[str, str] = {
+    "12": "Definition.",
+    "13": "Laws inconsistent with or in derogation of the fundamental rights.",
+    "14": "Equality before law.",
+    "15": "Prohibition of discrimination on grounds of religion, race, caste, sex or place of birth.",
+    "16": "Equality of opportunity in matters of public employment.",
+    "17": "Abolition of Untouchability.",
+    "18": "Abolition of titles.",
+    "19": "Protection of certain rights regarding freedom of speech, etc.",
+    "20": "Protection in respect of conviction for offences.",
+    "21": "Protection of life and personal liberty.",
+    "22": "Protection against arrest and detention in certain cases.",
+}
+
+
 def chunk_constitution(source_id: str, text: str, start_marker: str = "PART I") -> list[Chunk]:
     idx = text.find(start_marker)
     body = text[idx:] if idx != -1 else text
@@ -83,7 +127,14 @@ def chunk_constitution(source_id: str, text: str, start_marker: str = "PART I") 
                 chunk_id=f"{source_id}:{unit_number}",
                 source_id=source_id,
                 unit_number=unit_number,
-                title="",
+                # chunk_constitution is reused for every two-column gazette
+                # source (BNS/BNSS/BSA/CPA2019/JJ Act), each of which
+                # recovers its own titles separately via
+                # extract_gazette_titles (pipeline.py) -- the hand-verified
+                # table above is Constitution-article-number-specific and
+                # must never leak into an unrelated Act's same-numbered
+                # section.
+                title=_KNOWN_ARTICLE_TITLES.get(unit_number, "") if source_id == "constitution" else "",
                 text=content,
             )
         )

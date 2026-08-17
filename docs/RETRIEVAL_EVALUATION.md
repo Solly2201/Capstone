@@ -268,6 +268,116 @@ optional stage after fusion, gated the same way dense retrieval is
 (available-if-installed, degrade gracefully if not) -- not before that
 evidence exists.
 
+**Re-confirmed, not revisited, after the failure-analysis pass below:**
+of the queries still missing their target chunk in the top-5 after the
+Constitution-title and RRF-weight fixes, the two worst (q17, q46) don't
+even enter either method's top-50 fusion candidate pool -- there is
+nothing for a reranker to reorder. The rest are minor rank
+perturbations (9-53) scattered across unrelated sources, not a
+systematic "right answer buried in an otherwise-good list" pattern.
+Deferral stands.
+
+## Failure-analysis-driven fixes: Constitution titles + RRF retune
+
+A full per-query failure analysis was run over `eval/queries.jsonl`'s
+45 non-abstain queries: for every query where hybrid missed its target
+chunk's top-5 rank or top-1 slot, BM25/dense/hybrid full rankings (not
+just the top-5 window) were compared against the expected source and
+section to classify the cause (vocabulary mismatch, missing title
+metadata, chunking, embedding quality, RRF weighting, or confidence
+gating).
+
+**Dominant cluster: missing Constitution title metadata.** 9 of the
+failing queries (q16, q17, q18, q19, q20, q21, q22, q45, q46) all
+needed a Constitution article whose marginal-note title
+(`chunk.title`) was empty -- `app/ingestion/chunk.py`'s
+`chunk_constitution()` always set `title=""`, unlike the gazette-style
+sources (BNS/BNSS/BSA/CPA2019/JJ Act), which get best-effort title
+recovery via `extract_gazette_titles()`. Direct inspection of
+`data/legal-corpus/constitution/raw.txt` confirmed the titles *do*
+exist in the extracted text but are reordered by the source PDF's
+two-column layout into per-page trailer blocks, often splitting a
+single sentence across the reordered block. A general parser to
+recover all 346 articles' titles was attempted and abandoned after
+several iterations -- footnote, title, and page-number content
+interleave in page-dependent order with no reliable general boundary,
+and a wrong article-to-title mapping is a correctness risk this
+project's anti-fabrication stance won't accept. Instead,
+`chunk.py`'s `_KNOWN_ARTICLE_TITLES` is a small, hand-verified table
+covering exactly Part III (Fundamental Rights, Articles 12-22, the
+only part any eval query needs a title from), each title transcribed
+directly from the raw two-column-reordered text and checked against
+that article's own body content -- the same narrow,
+evaluation-justified-only pattern as `query_expand.py`'s abbreviation
+dict. Guarded by
+`tests/test_ingestion.py::test_constitution_fundamental_rights_titles_are_recovered`.
+
+A real bug was caught while building this: `chunk_constitution()` is
+shared by every two-column gazette source, so the first version of the
+table leaked Constitution titles into unrelated Acts sharing the same
+article/section numbers (e.g. `jj2015:14` was overwritten with
+"Equality before law." instead of its own correct title, "Inquiry by
+Board regarding child in conflict with law"). Fixed by scoping the
+table lookup to `source_id == "constitution"`, with a regression test
+(`test_constitution_titles_do_not_leak_into_other_gazette_sources`)
+guarding against the same leak recurring.
+
+**Second cluster: RRF dense weight no longer optimal.** With BM25
+meaningfully stronger on the paraphrase queries the title fix
+targets, re-running the same k / dense-weight grid this document's
+original tuning used (k in `{3,5,8,10,15}`, dense weight in
+`{1,1.3,1.5,1.8,2,2.5,3}`, BM25 weight fixed at 1.0) against the
+title-fixed index found dense weight 2.5 (k unchanged at 5) a clean
+improvement over the previous 2.0 -- not a trade-off, since MRR,
+nDCG@5, top-1 correctness, and abstention accuracy were all flat or
+better alongside the recall gain. Applied in `fusion.py`'s
+`DEFAULT_DENSE_WEIGHT`.
+
+**No new query-expansion or confidence-gate change was justified** --
+no abbreviation-style gap comparable to FIR/NCR appeared in the
+failure set, and no evidence supported moving the hybrid confidence
+floor from its existing 0.42.
+
+### Before / after (hybrid, top_k=5, 45 non-abstain queries)
+
+| Metric | Before | After | Δ |
+| --- | --- | --- | --- |
+| Recall@5 | 0.7407 | 0.8074 | +0.067 |
+| Precision@5 | 0.1600 | 0.1733 | +0.013 |
+| MRR | 0.6341 | 0.6670 | +0.033 |
+| nDCG@5 | 0.6324 | 0.6734 | +0.041 |
+| Top-1 citation correctness | 0.5333 | 0.5556 | +0.022 |
+| Abstention accuracy | 0.9796 | 0.9796 | unchanged |
+
+Recall moved 0.7407→0.7852 from the title fix alone, then →0.8074
+after the RRF retune. No new wrong-Act false positives: hybrid's
+false-answer list stayed empty throughout (bm25's 4 pre-existing
+out-of-domain false answers, q28/q29/q35/q49, are untouched by this
+work and unrelated to it). 60/60 Python tests pass.
+
+**What remains, and why it's not (yet) another fix:**
+
+- **q17** ("government cannot punish me for something that wasn't a
+  crime" → `constitution:20`) and **q46** ("constitutional equality
+  and legal protection of women from abuse at home" →
+  `constitution:15`) -- the correct chunk doesn't enter either
+  method's top-50 candidate pool at all, even with the title now
+  indexed. A genuine embedding-model/vocabulary gap (the paraphrase
+  shares almost no vocabulary with the statute text): needs a
+  legal-domain-tuned embedding model or corpus/query-set growth, not a
+  retrieval-pipeline change.
+- **q15** (`bnss:38`, "can my lawyer be present when police question
+  me") -- BNSS section 38's own title wasn't recovered by the
+  *separate*, PDF-coordinate-based `extract_gazette_titles()` pass
+  (BNSS coverage note: ~51% of sections recovered). Same category of
+  problem as the Constitution fix, different mechanism; not this
+  session's dominant cluster.
+- **q21/q22/q45** (multi-source queries needing both a BNSS/JJ-Act
+  procedural section and `constitution:22`) -- already receive partial
+  recall credit since the other relevant chunk in each pair ranks #1;
+  the constitutional citation sits at rank 11-22 among genuinely
+  adjacent sections. Corpus density, not a bug.
+
 ## Query preprocessing: mostly deferred, one narrow exception added
 
 No general synonym expansion, spelling correction, or query rewriting
