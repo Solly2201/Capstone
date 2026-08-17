@@ -36,6 +36,25 @@ of them (q15 is the only match). Do not add another entry here unless
 a future evaluation failure names one -- this is not a place to grow a
 general synonym dictionary (see docs/RETRIEVAL_EVALUATION.md's "Query
 preprocessing" sections for the standing reasoning).
+
+Two more entries were added after a much larger (129-query) citizen-
+language evaluation set (`eval/queries_human.jsonl`) found the same
+category of gap recurring in ordinary/colloquial phrasing specifically
+(see that evaluation's writeup in docs/RETRIEVAL_EVALUATION.md for the
+full before/after numbers) -- "can't afford a lawyer" and "shop won't
+refund/give money back" -- each checked the same way as the
+interrogation entry: confirmed unranked in the top-50 pool under the
+bare query, confirmed a small append fixes it, and scanned against both
+eval/queries.jsonl and eval/queries_human.jsonl to confirm the trigger
+pattern doesn't misfire elsewhere.
+
+The same evaluation also found a real bug in the abbreviation dict
+itself: `_WORD_BOUNDARY` compiled `\bFIR\b`/`\bNCR\b` case-sensitively,
+so a citizen typing "fir" or "fil fir" in lowercase (extremely common --
+few people type legal abbreviations in caps) never triggered the
+expansion at all. Fixed with `re.IGNORECASE`; low false-positive risk
+since "fir"/"ncr" as ordinary English words essentially never appear in
+a legal-assistance query.
 """
 from __future__ import annotations
 
@@ -46,12 +65,32 @@ _ABBREVIATIONS: dict[str, str] = {
     "NCR": "Non-Cognizable Report",
 }
 
-_WORD_BOUNDARY = {abbr: re.compile(rf"\b{re.escape(abbr)}\b") for abbr in _ABBREVIATIONS}
+_WORD_BOUNDARY = {abbr: re.compile(rf"\b{re.escape(abbr)}\b", re.IGNORECASE) for abbr in _ABBREVIATIONS}
 
 _CONCEPT_PHRASES: list[tuple[re.Pattern, str]] = [
     (
         re.compile(r"\bpolice\b[^.?!]*\bquestion|\bquestion\w*\b[^.?!]*\bpolice\b", re.IGNORECASE),
         "interrogation",
+    ),
+    (
+        # Justified by eval/queries_human.jsonl's h023 ("how do I get a lawyer
+        # if I can't afford one"): bare, unranked in the top-50 candidate pool
+        # for both BM25 and dense. Appending the actual statutory vocabulary
+        # (LSA s.13's own title is "Entitlement of legal services") moves
+        # lsa:13 to rank 2. Bidirectional like the interrogation pattern above,
+        # since citizens phrase this either "can't afford a lawyer" or "lawyer
+        # ... can't afford".
+        re.compile(r"\bafford\b[^.?!]*\b(lawyer|advocate)\b|\b(lawyer|advocate)\b[^.?!]*\bafford\b", re.IGNORECASE),
+        "legal aid legal services entitlement",
+    ),
+    (
+        # Justified by eval/queries_human.jsonl's h022/h058 (a shop or
+        # shopkeeper refusing a refund/money back): both unranked in the
+        # top-50 pool for either method under the bare query. "Consumer
+        # complaint" is the exact phrase used in CPA2019's own procedural
+        # section titles (s.35 "Manner in which complaint shall be made").
+        re.compile(r"\b(refund|money back)\b", re.IGNORECASE),
+        "consumer complaint",
     ),
 ]
 

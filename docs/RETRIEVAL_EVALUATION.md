@@ -589,6 +589,250 @@ shape that would make sense for this project:
 
 No training was started this session, per explicit instruction.
 
+## Citizen-language evaluation: a much larger, real gap found
+
+Every evaluation above used `eval/queries.jsonl` (49 queries), which is
+dominated by direct-lexical and lightly-paraphrased queries -- on that
+set hybrid looked strong (recall@5 0.8370) with only two known
+embedding-limited failures (q17, q46). This session built a second,
+larger evaluation set specifically to test whether that strength holds
+up against how citizens actually type -- `eval/queries_human.jsonl`,
+129 hand-verified queries (every `relevant_chunk_ids` checked against
+real chunk text via `get_section()`, none fabricated) spread across
+ten categories (direct terminology, ordinary citizen language,
+paraphrase, colloquial, misspelling, abbreviation, vague-but-answerable,
+multi-source, ambiguous, hard-negative, out-of-domain) and all 9
+ingested sources. `eval/run_eval.py` now takes a `--queries` flag
+(default unchanged) so either set can be run without duplicating the
+harness; `eval/diagnose.py` is a new read-only script for dumping a
+query's full (uncapped) BM25/dense/hybrid rank of its target chunk(s),
+used throughout this investigation instead of guessing from rankings
+truncated to top-5.
+
+**Result: recall@5 dropped to 0.5551 (from 0.8370) and abstention
+accuracy dropped to 0.7674 (from 0.9796)** on the citizen-language set,
+before any fix. Broken down by category (`recall@5`):
+
+| Category | n | recall@5 |
+| --- | --- | --- |
+| hard_negative | 13 | 0.923 |
+| direct_lexical | 15 | 0.933 |
+| abbreviation | 10 | 0.600 |
+| paraphrase | 15 | 0.600 |
+| ambiguous | 2 | 0.500 |
+| ordinary_citizen | 20 | 0.450 |
+| multi_source | 8 | 0.438 |
+| misspelling | 10 | 0.400 |
+| vague_answerable | 10 | 0.300 |
+| colloquial | 15 | 0.267 |
+
+This is the real finding: direct terminology and even deliberately
+close lexical decoys (`hard_negative`) are handled well -- hybrid isn't
+confused by near-miss sections. The failure is concentrated in
+categories that describe a *scenario* rather than name a *legal
+concept* ("my landlord's goons broke my door down" vs "house-trespass
+and house-breaking"). The original 49-query set's `paraphrase` category
+undersold this because its paraphrases were already fairly close to
+statutory register; ordinary citizen storytelling is a substantially
+harder case the smaller set never exercised at scale.
+
+### Root-cause split (per-query full-rank diagnosis)
+
+For every citizen-language query hybrid missed at top-5, `eval/
+diagnose.py` was used to get each target chunk's *uncapped* BM25 rank
+and dense rank (not just "in/out of top-5"), split into three groups:
+
+1. **Confidence-gate-only failures (10 of 30 original false-abstains):**
+   `search()` finds the target in its own top-5, but `handle_
+   legal_query()`'s hybrid confidence gate (`dense_score >= 0.42`)
+   still rejects it -- the citizen phrasing produces a genuinely lower
+   dense score than the paraphrase-heavy queries the threshold was
+   tuned against, even when the retrieved chunk is correct. A further
+   check found 3 of these 30 are not gate failures at all but the
+   Risk/UPL safety layer correctly redirecting "what can I get/do if
+   ..." personal-outcome-shaped phrasing (`risk_personalized_advice`)
+   -- expected, correct behavior, not a retrieval defect, and a design
+   note for future eval-set authors: phrasing a scenario as "what can I
+   do" risks exercising the safety layer instead of retrieval.
+2. **BM25-vocabulary-dominant failures (~9 of 20 pure retrieval misses):**
+   dense rank is moderate (6-56, near or inside the top-50 fusion pool)
+   but BM25 rank is in the hundreds to low-thousands (near-zero lexical
+   overlap), so the candidate is either outside the pool or too weakly
+   scored by BM25's 1x weight to reach top-5 even with dense's help.
+3. **Dense-embedding-dominant failures (~4 of 20):** BM25 rank is
+   excellent (as good as rank 1) but dense rank is catastrophic
+   (hundreds to 965), and because dense is weighted 3x in fusion, a
+   dense failure this severe crushes the fused score even when BM25
+   alone would have ranked the chunk first. This is a structural
+   consequence of a dense-weighted fusion formula: it assumes dense is
+   usually the stronger signal, which is false specifically on the
+   subset of citizen phrasing dense handles worst.
+
+A real bug was found and fixed while classifying these: `app/
+retrieval/query_expand.py`'s `_WORD_BOUNDARY` regex for FIR/NCR
+compiled case-sensitively (`\bFIR\b`, no `re.IGNORECASE`), so a citizen
+typing "fir" or "fil fir" in lowercase -- which is how almost everyone
+actually types it -- never triggered the expansion at all. Fixed with
+`re.IGNORECASE`.
+
+### Query expansion: evaluated as insufficient for this gap, two more narrow entries added anyway
+
+Two more `_CONCEPT_PHRASES` entries were added, each verified the same
+way as the existing "police question" entry (confirmed unranked
+before, confirmed the append fixes it, scanned both eval sets for
+false-fire risk before adding):
+
+- `afford` + `lawyer`/`advocate` (either order) -> "legal aid legal
+  services entitlement" -- moves `lsa:13` from unranked to rank 2.
+- `refund` / `money back` -> "consumer complaint" -- moves `cpa2019:35`
+  into the top-5 for both queries that use this phrasing.
+
+One eval-set correction was made alongside this: `h058`'s original
+target (`cpa2019:84`, manufacturer liability) was a real but less
+directly actionable legal basis for "shop won't give my money back";
+corrected to `cpa2019:35` (the complaint-filing procedure), the more
+defensible single ground truth, matching `h022`'s target reasoning for
+the same scenario type.
+
+**Effect (hybrid, citizen-language set, 118 non-abstain queries):**
+recall@5 0.5551 -> 0.5805, abstention accuracy 0.7674 -> 0.7907. Real,
+but small relative to the size of the gap. Re-verified the original
+49-query set is byte-identical after these changes (0.8370 recall@5
+unchanged) -- both expansion entries and the case-fix are additive and
+scoped, not general changes. 66/66 Python tests still pass.
+
+**Conclusion: query expansion is evaluated as insufficient to close
+this gap.** Two clean, generalizable, recurring-pattern fixes were
+found and added; the other ~20 retrieval misses are each a distinct,
+idiosyncratic scenario-to-statute mapping (kidnapping-for-ransom vs
+plain kidnapping, "roughed me up while taking stuff" vs robbery,
+"barge into my house without any paper" vs search-warrant provisions,
+etc.) -- adding a curated phrase for each would mean dozens of
+one-off entries, which is exactly the general-synonym-dictionary
+anti-pattern this project has deliberately avoided throughout. This is
+not a vocabulary-list problem; it's a representation problem.
+
+### RRF weight retuning: tried, not a clean win, not applied
+
+Before concluding this needs embedding-level work, the RRF dense
+weight was swept against the citizen-language set (same k=5, weight in
+`{1, 1.5, 2, 2.5, 3}`) to rule out a fusion-hyperparameter explanation:
+
+| dense weight | citizen recall@5 | original-set recall@5 |
+| --- | --- | --- |
+| 1.0 | 0.5424 | 0.7926 |
+| 1.5 | 0.5890 | 0.8148 |
+| 2.0 | 0.5932 | 0.8148 |
+| 2.5 | 0.5847 | 0.8148 |
+| 3.0 (current) | 0.5805 | 0.8370 |
+
+No weight in this grid improves both sets at once -- weight 2.0 is
+marginally better for citizen-language (+0.013) but measurably worse
+for the original set (-0.022), unlike every previous re-tune in this
+document, which was a clean win on every metric. This is real evidence
+the gap is not a fusion-weighting problem: the underlying dense
+*signal* is what's wrong for this query population, not how much it's
+weighted. `DEFAULT_DENSE_WEIGHT` is left at 3.0 -- not changed on a
+mixed trade-off.
+
+### A generalizable embedding artifact: boilerplate "short title" sections
+
+While diagnosing `h046`-equivalent multi-source failures (a case
+carried over from the original set's q46), a specific, reproducible
+embedding weakness was found: a source's own `:1` chunk ("Short title,
+extent and commencement" -- pure administrative boilerplate, no
+substantive legal content) scores anomalously high in dense similarity
+for *any* query broadly about that Act's subject, apparently because
+the chunk's text literally contains the Act's full name (e.g. `pwdva:1`
+contains the string "Protection of Women from Domestic Violence Act,
+2005"), which lexically/semantically resembles a topical query about
+that subject. Confirmed not PWDVA-specific -- checked across four other
+sources against a generic topical query for each:
+
+| chunk | dense rank | query |
+| --- | --- | --- |
+| `cpa2019:1` | 5 / 1801 | "what protections do consumers have" |
+| `jj2015:1` | 27 / 1801 | "what happens when a child breaks the law" |
+| `lsa:1` | 88 / 1801 | "how can I get free legal aid" |
+| `it_act:1` | 615 / 1801 | "punishment for cyber terrorism" |
+
+`cpa2019:1` and `jj2015:1` are inside or near the 50-candidate fusion
+pool despite carrying zero substantive answer content -- a real,
+corpus-wide dense-embedding false-positive pattern, not an isolated
+PWDVA quirk. This is a concrete, reusable hard-negative pattern for any
+future fine-tuning (see below): every source's own `:1` short-title
+chunk should be paired as a hard negative against topical queries about
+that Act.
+
+### Embedding fine-tuning: now better justified, still not started
+
+This session's evidence is materially stronger than the prior
+"2 isolated failures" baseline that kept fine-tuning deferred:
+~20-27 genuine citizen-language retrieval/confidence-gate failures
+across 118 non-abstain queries (not 2), a clear category-level pattern
+(scenario-description language specifically, not paraphrase broadly),
+query expansion demonstrated insufficient for most of it, RRF retuning
+demonstrated not a clean fix, and a reproducible, generalizable
+embedding artifact (boilerplate short-title false positives) found
+independent of any single query. This plausibly meets the trigger
+condition recorded in this document's prior "Embedding fine-tuning: not
+yet justified" section ("a *consistent* pattern of embedding-driven
+misses ... several queries per session, not 1-2 isolated cases").
+
+**No training was started or approved this session, per explicit
+instruction.** If the user approves proceeding, the recommended design:
+
+- **Objective:** `sentence_transformers.losses.MultipleNegativesRankingLoss`,
+  fine-tuning the existing `all-MiniLM-L6-v2` checkpoint (never training
+  from scratch). This loss takes `(anchor, positive, hard_negative)`
+  triplets, uses the explicit hard negative *and* every other positive
+  in the batch as an in-batch negative, and is the standard
+  Sentence-Transformers recipe for retrieval fine-tuning with a small
+  labeled set -- the right fit here given this project's total labeled
+  pairs (178 across both eval sets) is small relative to a
+  from-scratch-training corpus.
+- **Positive pairs:** every `(query, relevant_chunk_id)` pair from both
+  `eval/queries.jsonl` (49) and `eval/queries_human.jsonl` (129) --
+  178 total, all hand-verified against real chunk text, none
+  synthetically generated (this project's anti-fabrication discipline
+  applies to training data exactly as it applies to citations).
+  Multi-source queries contribute one pair per relevant chunk.
+- **Hard negatives**, one to three per anchor, drawn from concrete
+  patterns this session's diagnosis actually surfaced (not invented):
+  - **Same-Act, wrong-section decoys** confirmed this session:
+    `bsa:121` vs `bsa:122` (estoppel/estoppel-of-tenant), `bns:116` vs
+    `bns:117` (hurt cluster), `bnss:173` vs `bnss:174`
+    (cognizable/non-cognizable), `bns:97`/`bns:137`/`bns:140`
+    (kidnapping cluster), `cpa2019:34`/`47`/`58` (District/State/
+    National Commission), `it_act:66C` vs `66D` (identity theft vs
+    cheating by personation), `jj2015:4` vs `jj2015:19` (Board vs
+    Children's Court).
+  - **The boilerplate short-title pattern** found this session: every
+    source's own `:1` chunk as a hard negative against every positive
+    pair belonging to that same source -- a systematic, corpus-wide
+    pattern (confirmed across `pwdva`, `cpa2019`, `jj2015`, `lsa`,
+    `it_act`), not a one-off.
+  - **Semantically-similar-but-legally-wrong** decoys, e.g. the actual
+    top dense hits `q17` returned in this session's diagnosis
+    (`it_act:84C`, `cpa2019:72`, `bns:250` -- all generic "punishment
+    for X offence" sections the model confused with the specific
+    ex-post-facto concept it was asked about).
+- **Evaluation discipline (unchanged from this document's standing
+  rule):** any fine-tuned checkpoint must be evaluated against both
+  eval sets the same way hybrid was evaluated against BM25 -- real
+  before/after numbers, including a check that it doesn't regress the
+  49-query set's near-perfect direct-lexical/hard-negative performance
+  while chasing citizen-language recall -- before it replaces
+  `all-MiniLM-L6-v2` anywhere.
+- **Scale note:** 178 anchors is on the small side for this loss (typical
+  ranges start in the low thousands); growing `queries_human.jsonl`
+  toward the previously-documented 150-300+ trigger range (this session
+  deliberately stopped at 129 per the "don't spend the whole session
+  generating 300-500" instruction, once the initial set was clearly
+  enough to answer the human-language-bottleneck question) before
+  training would likely improve the fine-tune's own quality, not just
+  the evaluation's statistical confidence.
+
 ## Remaining limitations
 
 - The confidence-gate thresholds (all three modes) are tuned against a

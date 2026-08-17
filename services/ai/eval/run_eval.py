@@ -38,8 +38,8 @@ from app.retrieval.search import search  # noqa: E402
 QUERIES_PATH = os.path.join(os.path.dirname(__file__), "queries.jsonl")
 
 
-def load_queries() -> list[dict]:
-    with open(QUERIES_PATH, encoding="utf-8") as f:
+def load_queries(path: str = QUERIES_PATH) -> list[dict]:
+    with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 
@@ -180,9 +180,10 @@ def main() -> None:
     parser.add_argument("--mode", choices=["bm25", "dense", "hybrid"], help="Evaluate a single mode only")
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--json", help="Optional path to dump full per-query results as JSON")
+    parser.add_argument("--queries", default=QUERIES_PATH, help="Path to a queries.jsonl-format eval set")
     args = parser.parse_args()
 
-    queries = load_queries()
+    queries = load_queries(args.queries)
     modes = [args.mode] if args.mode else ["bm25", "dense", "hybrid"]
 
     summary_rows = []
