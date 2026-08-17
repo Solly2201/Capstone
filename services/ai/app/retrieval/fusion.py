@@ -37,12 +37,26 @@ recall@5 0.8074 vs 0.7852 at weight 2.0 -- a clean improvement with MRR,
 nDCG@5, top-1 correctness and abstention accuracy all flat or better,
 not a trade-off. Re-sweep again if the corpus or eval set changes
 enough to plausibly shift this balance.
+
+Re-swept again after BNS/BNSS/BSA/CPA2019/JJ Act were replaced with
+cleanly-extractable single-column "bare Act" India Code PDFs in place
+of the old two-column gazette layout (see docs/PROJECT_STATE.md's
+"New single-column PDFs" entry) -- new text (near-100% inline section
+titles vs. the old 40-57% best-effort recovery) shifted the dense
+embedding distribution enough that a same-weights re-run measurably
+regressed hybrid recall@5 (0.8074 -> 0.7926) despite every individual
+mode improving in isolation, because the old 2.5x dense weighting was
+tuned against embeddings that no longer exist. Re-running the same grid
+against the new index found dense weight 3.0 (k still unchanged at 5)
+a clean improvement over both the pre-swap baseline and the unweighted
+post-swap numbers on every metric measured (recall@5 0.8148, MRR
+0.6874, nDCG@5 0.7004, top-1 correctness 0.6000) -- not a trade-off.
 """
 from __future__ import annotations
 
 DEFAULT_RRF_K = 5
 DEFAULT_BM25_WEIGHT = 1.0
-DEFAULT_DENSE_WEIGHT = 2.5
+DEFAULT_DENSE_WEIGHT = 3.0
 
 
 def reciprocal_rank_fusion(

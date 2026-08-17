@@ -456,6 +456,139 @@ control queries confidently from the wrong Act -- the guard runs
 before mode-specific search, so it protects every mode uniformly, not
 just hybrid.
 
+## New single-column source PDFs (BNS/BNSS/BSA/CPA2019/JJ Act): re-established baseline
+
+The user replaced the source PDFs for these five sources with plain
+single-column India Code "bare Act" text (consolidated as on 6th
+October 2025) in place of the old two-column gazette layout -- see
+`docs/PROJECT_STATE.md` and `docs/LEGAL_SOURCES.md`'s "New
+single-column PDFs" for the extraction/chunking integration details.
+This measurably changed the indexed text for ~1,274 sections (cleaner
+extraction, near-100% titles instead of 40-57%, and in at least one
+case -- BNSS s.43 -- genuinely different current statutory wording, not
+just formatting), so the existing RRF weighting (tuned against the old
+embeddings) was re-checked rather than assumed to still be optimal.
+
+**Same weights, new corpus** (before any re-tuning): hybrid recall@5
+0.8074 -> 0.7926 (a real dip), while MRR, nDCG@5, and top-1 citation
+correctness all *improved* (0.6670->0.6748, 0.6734->0.6861,
+0.5556->0.5778). No new wrong-Act false positives; abstention accuracy
+unchanged. This mixed signal -- some metrics up, recall down -- pointed
+at a fusion-weighting mismatch rather than a corpus-quality problem,
+since precision-flavored metrics (which don't depend on RRF's relative
+weighting reaching every relevant chunk) improved while recall (which
+does) dropped.
+
+**Re-swept RRF** using the same method as prior sessions (k in
+`{3,5,8,10,15}`, dense weight in `{1,1.3,1.5,1.8,2,2.2,2.5,3}`, BM25
+weight fixed at 1.0) against the new index: dense weight 3.0 (k
+unchanged at 5) was a clean improvement over both the pre-swap baseline
+and the un-retuned post-swap numbers on every metric measured -- not a
+trade-off. Applied in `fusion.py`'s `DEFAULT_DENSE_WEIGHT`.
+
+**One evaluation-justified citizen-language expansion.** BNSS s.38 (now
+correctly titled "Right of arrested person to meet an advocate of his
+choice during interrogation", vs. ~51% title coverage before) still
+didn't surface in the top-50 fusion candidate pool for q15's citizen
+phrasing, "can my lawyer be present when police question me" -- direct
+inspection found its dense rank was 18 and bm25 rank 74, both too low
+to matter, because the query and the section title share almost no
+literal vocabulary ("lawyer"/"advocate", "police question"/
+"interrogation") despite describing the same right. Tested directly
+against `search()`: appending "interrogation" alone (the single term
+measured to matter -- "advocate" alone helped less) moves BNSS s.38
+from outside the top-20 to rank 1. Added as `query_expand.py`'s
+`_CONCEPT_PHRASES` (a phrase-pattern sibling to the existing
+abbreviation dict), scanned against every other query in
+`eval/queries.jsonl` to confirm the trigger phrase fires only on q15.
+
+**q17 and q46 checked again and confirmed NOT vocabulary-expansion
+problems.** Re-measured against the new index: `constitution:20`
+(q17's target) sits at dense rank 89, `constitution:15` (one of q46's
+two targets) at dense rank 50 -- both outside or at the very edge of
+the 50-candidate fusion pool a query-expansion term would need to pull
+them into. Unlike q15, there's no single missing term that plausibly
+closes an 89-rank gap without guessing at unverified terminology (q17's
+query paraphrases the legal concept "ex post facto law", a term that
+doesn't appear anywhere in the Constitution's own text, so appending it
+wouldn't help retrieval and would only be an unverified label). Per the
+explicit instruction not to force expansion without evaluation
+justification, nothing was added for either query -- they remain the
+same embedding-model/corpus-density limitation documented in "Failure-
+analysis-driven fixes" above, now re-confirmed against a materially
+different corpus and still present.
+
+### Before / after (hybrid, top_k=5, 45 non-abstain queries)
+
+| Metric | Before (old PDFs) | After (new PDFs + RRF re-tune + concept expansion) | Δ |
+| --- | --- | --- | --- |
+| Recall@5 | 0.8074 | 0.8370 | +0.030 |
+| Precision@5 | 0.1733 | 0.1822 | +0.009 |
+| MRR | 0.6670 | 0.7096 | +0.043 |
+| nDCG@5 | 0.6734 | 0.7227 | +0.049 |
+| Top-1 citation correctness | 0.5556 | 0.6222 | +0.067 |
+| Abstention accuracy | 0.9796 | 0.9796 | unchanged |
+
+No new wrong-Act false positives at any stage of this work. All 6
+previously-fixed regression queries (FIR, bail, burden of proof,
+child-in-conflict-with-law, consumer complaint, RTI abstention) and the
+out-of-domain topic guard were re-verified end to end and remain
+correct.
+
+**Note on scope:** the RRF re-tune and the topic-relevance guard (see
+`docs/PROJECT_STATE.md`) both change different things -- the guard
+changes only pre-retrieval *abstention gating*, never ranking, so it
+doesn't affect the recall/MRR/nDCG/top-1 numbers above at all; the RRF
+re-tune changes only *ranking* for non-abstain queries and doesn't
+touch abstention behavior. They were verified independently and don't
+interact.
+
+## Embedding fine-tuning: not yet justified
+
+Phase 5 of this session's work asked whether the remaining retrieval
+failures justify building a larger citizen-language dataset and
+fine-tuning the dense embedding model. Answer: not yet, on the current
+evidence. Only 2 of 45 non-abstain eval queries (q17, q46) fail for a
+genuine embedding-model reason after this session's fixes (down from a
+pre-session baseline that already had exactly these two as the sole
+unresolved cluster) -- a 49-query hand-curated set is not statistically
+robust enough to justify the cost of fine-tuning (data collection,
+training infrastructure, ongoing re-evaluation, and losing the
+"off-the-shelf, well-understood model" simplicity `all-MiniLM-L6-v2`
+currently offers) on the strength of 2 known failures.
+
+**Trigger condition to revisit:** if the eval set grows to roughly
+150-300+ hand-verified queries (matching the corpus's continued growth)
+and a *consistent* pattern of embedding-driven misses emerges --
+several queries per session, not 1-2 isolated cases -- fine-tuning
+becomes worth evaluating. If that trigger is met, the training-data
+shape that would make sense for this project:
+
+- **Contrastive pairs**, not classification labels: (citizen-phrased
+  query, correct chunk text) positive pairs, ideally with 1-3 hard
+  negatives per query (a topically-adjacent but wrong chunk, the same
+  shape of confusion this project's false-answer cases already show --
+  e.g. BNSS s.39 for a "bail" query).
+- **Source**: `eval/queries.jsonl` extended well past its current 49
+  entries, using the same hand-verification discipline (a human checks
+  `relevant_chunk_ids` against the real chunk text, never guessed) --
+  not synthetically generated, to avoid training on the same kind of
+  unverified paraphrase risk this project's anti-fabrication stance
+  rejects everywhere else.
+- **Rough size**: a few hundred to low thousands of pairs is the
+  typical range for fine-tuning a small sentence-transformer via
+  contrastive/triplet loss on a domain-specific corpus this size (~1,800
+  chunks); exact count should be set by how many genuine failure
+  patterns exist once the eval set is large enough to characterize
+  them, not picked in advance.
+- **Evaluation discipline**: any fine-tuned model must be evaluated the
+  same way hybrid was evaluated against BM25 (this document's own
+  methodology) before replacing `all-MiniLM-L6-v2` -- real
+  before/after numbers on the labeled eval set, not an assumption that
+  domain-tuning helps.
+
+No training was started this session, per explicit instruction.
+
 ## Remaining limitations
 
 - The confidence-gate thresholds (all three modes) are tuned against a

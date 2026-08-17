@@ -43,16 +43,17 @@ APPROVED_SOURCES: dict[str, SourceMeta] = {
         as_on_date="user-supplied PDF, official India Code text",
         raw_path=_raw("bns"),
         unit_label="Section",
-        chunk_style="constitution",
-        extraction_mode="gazette_body",
+        chunk_style="sanhita",
         chunk_start_marker="BE it enacted",
-        coverage_note="Full text as supplied. Section titles (marginal notes) are best-effort "
-                       "recovered (present for roughly 57% of sections; absent, never guessed, "
-                       "for the rest) due to this source's two-column gazette layout -- section "
-                       "numbers and body text are exact regardless (see docs/LEGAL_SOURCES.md's "
-                       "\"Two-column gazette PDFs\"). One section (337) is known mislabeled as "
-                       "a duplicate 338 due to a rare digit-extraction fault on that page; its "
-                       "body text is otherwise correct.",
+        coverage_note="Full text as supplied from a single-column 'bare Act' India Code PDF "
+                       "(replaced this session; the source is cleanly extractable, no two-column "
+                       "layout). Section titles are inline in the source text and recovered for "
+                       "356 of 358 sections (99.4%). Two sections (217, 255) are a known residual "
+                       "gap: the source PDF omits the line break between the previous section's "
+                       "final sentence and this section's opening number on that specific page, "
+                       "so their body text is currently appended to the preceding section's chunk "
+                       "rather than split out on its own -- a rare, isolated page-layout artifact, "
+                       "not a systematic problem (see docs/LEGAL_SOURCES.md).",
     ),
     "bnss": SourceMeta(
         source_id="bnss",
@@ -63,18 +64,15 @@ APPROVED_SOURCES: dict[str, SourceMeta] = {
         as_on_date="user-supplied PDF, official India Code text",
         raw_path=_raw("bnss"),
         unit_label="Section",
-        chunk_style="constitution",
-        extraction_mode="gazette_body",
+        chunk_style="sanhita",
         chunk_start_marker="BE it enacted",
-        coverage_note="Full text as supplied, including Chapter XIII investigation/FIR "
+        coverage_note="Full text as supplied from a single-column 'bare Act' India Code PDF "
+                       "(replaced this session), including Chapter XIII investigation/FIR "
                        "(ss.173-196) and Chapter XXXV bail and bonds (ss.478-496). Section "
-                       "titles (marginal notes) are best-effort recovered (present for roughly "
-                       "51% of sections; absent, never guessed, for the rest) due to this "
-                       "source's two-column gazette layout -- section numbers and body text "
-                       "are exact regardless (see docs/LEGAL_SOURCES.md's \"Two-column gazette "
-                       "PDFs\"). One section (337) is known mislabeled as a duplicate 338 due "
-                       "to a rare digit-extraction fault on that page; its body text is "
-                       "otherwise correct.",
+                       "titles are inline in the source text and recovered for all 531 sections "
+                       "(100%) -- the old two-column source's ~51% title coverage and known "
+                       "337/338 duplicate-numbering fault are both resolved by this replacement "
+                       "(see docs/LEGAL_SOURCES.md).",
     ),
     "bsa": SourceMeta(
         source_id="bsa",
@@ -85,14 +83,13 @@ APPROVED_SOURCES: dict[str, SourceMeta] = {
         as_on_date="user-supplied PDF, official India Code text",
         raw_path=_raw("bsa"),
         unit_label="Section",
-        chunk_style="constitution",
-        extraction_mode="gazette_body",
+        chunk_style="sanhita",
         chunk_start_marker="BE it enacted",
-        coverage_note="Full text as supplied. Section titles (marginal notes) are best-effort "
-                       "recovered (present for roughly 52% of sections; absent, never guessed, "
-                       "for the rest) due to this source's two-column gazette layout -- section "
-                       "numbers and body text are exact regardless (see docs/LEGAL_SOURCES.md's "
-                       "\"Two-column gazette PDFs\").",
+        coverage_note="Full text as supplied from a single-column 'bare Act' India Code PDF "
+                       "(replaced this session). Section titles are inline in the source text "
+                       "and recovered for all 170 sections (100%) -- the old two-column source's "
+                       "~52% title coverage is resolved by this replacement (see "
+                       "docs/LEGAL_SOURCES.md).",
     ),
     "it_act": SourceMeta(
         source_id="it_act",
@@ -147,17 +144,15 @@ APPROVED_SOURCES: dict[str, SourceMeta] = {
         as_on_date="user-supplied PDF, official India Code text",
         raw_path=_raw("cpa2019"),
         unit_label="Section",
-        chunk_style="constitution",
-        extraction_mode="gazette_body",
+        chunk_style="sanhita",
         chunk_start_marker="BE it enacted",
-        coverage_note="Full text as supplied. Section titles (marginal notes) are best-effort "
-                       "recovered (present for roughly 49% of sections; absent, never guessed, "
-                       "for the rest) due to this source's two-column gazette layout -- section "
-                       "numbers and body text are exact regardless (see docs/LEGAL_SOURCES.md's "
-                       "\"Two-column gazette PDFs\"). Covers Central/State consumer "
-                       "protection authorities and councils, consumer complaints and "
-                       "District/State/National Commissions, mediation, and product "
-                       "liability.",
+        coverage_note="Full text as supplied from a single-column 'bare Act' India Code PDF "
+                       "(replaced this session). Section titles are inline in the source text "
+                       "and recovered for all 107 sections (100%) -- the old two-column source's "
+                       "~49% title coverage is resolved by this replacement (see "
+                       "docs/LEGAL_SOURCES.md). Covers Central/State consumer protection "
+                       "authorities and councils, consumer complaints and District/State/"
+                       "National Commissions, mediation, and product liability.",
     ),
     "jj2015": SourceMeta(
         source_id="jj2015",
@@ -168,16 +163,20 @@ APPROVED_SOURCES: dict[str, SourceMeta] = {
         as_on_date="user-supplied PDF, official India Code text",
         raw_path=_raw("jj2015"),
         unit_label="Section",
-        chunk_style="constitution",
-        extraction_mode="gazette_body",
+        chunk_style="sanhita",
         chunk_start_marker="BE it enacted",
-        coverage_note="Full text as supplied. Section titles (marginal notes) are best-effort "
-                       "recovered (present for roughly 40% of sections; absent, never guessed, "
-                       "for the rest) due to this source's two-column gazette layout -- section "
-                       "numbers and body text are exact regardless (see docs/LEGAL_SOURCES.md's "
-                       "\"Two-column gazette PDFs\"). Covers children in conflict with law "
-                       "(Juvenile Justice Boards), children in need of care and protection "
-                       "(Child Welfare Committees), and offences against children.",
+        coverage_note="Full text as supplied from a single-column 'bare Act' India Code PDF "
+                       "(replaced this session). Section titles are inline in the source text "
+                       "and recovered for 110 of 112 sections (98.2%) -- the old two-column "
+                       "source's ~40% title coverage is resolved by this replacement. Two "
+                       "sections (61, 86) are a known residual gap: the source PDF marks their "
+                       "opening number with an amendment-substitution footnote bracket "
+                       "(e.g. \"1[86 Classification...\") that the chunker doesn't yet parse as "
+                       "a section boundary, so their body text is currently appended to the "
+                       "preceding section's chunk rather than split out on its own (see "
+                       "docs/LEGAL_SOURCES.md). Covers children in conflict with law (Juvenile "
+                       "Justice Boards), children in need of care and protection (Child Welfare "
+                       "Committees), and offences against children.",
     ),
 }
 

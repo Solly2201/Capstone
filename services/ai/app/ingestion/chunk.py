@@ -24,10 +24,10 @@ import re
 from .models import Chunk
 
 _SANHITA_HEADER = re.compile(
-    r"(?m)^(\d{1,3}[A-Z]?)\.\s+([A-Z][^\n]*?)\.\s*[—–-]{1,2}\s*"
+    r"(?m)^\s*(\d{1,3}[A-Z]?)\.\s*[—–-]{0,2}\s*([A-Z][^\n]*?)\.\s*[—–-]{1,2}\s*"
 )
 _CONSTITUTION_HEADER = re.compile(
-    r"(?m)^(\d{1,3}[A-Z]?)\.\s+(?=[\(A-Z])"
+    r"(?m)^\s*(\d{1,3}[A-Z]?)\.\s+(?=[\(A-Z])"
 )
 # Consolidated "as amended" India Code PDFs print each amendment's
 # history as a numbered footnote ("1. Subs. by Act 10 of 2009, s. 2,

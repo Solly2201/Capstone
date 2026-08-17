@@ -15,8 +15,14 @@ _HYPHEN_LINEBREAK = re.compile(r"(\w)-\n(\w)")
 # A single newline that is NOT a section/article boundary and not a
 # paragraph break -- i.e. a mid-sentence PDF line wrap. Section/article
 # headers always start with digits, so we protect those from being
-# joined into the previous line.
-_SOFT_LINEBREAK = re.compile(r"(?<!\n)\n(?!\n)(?!\d{1,3}[A-Z]?\.\s)")
+# joined into the previous line. The lookahead tolerates leading
+# whitespace before the digit too: some India Code "bare Act" PDFs
+# (BNS/BNSS/BSA/CPA2019/JJ Act, replaced this session) indent a
+# section's opening line by a few spaces on the page it starts on,
+# which would otherwise make this pattern miss the real header and
+# silently merge that section's text into the previous section's
+# chunk -- a citation-accuracy defect, not just a cosmetic one.
+_SOFT_LINEBREAK = re.compile(r"(?<!\n)\n(?!\n)(?!\s*\d{1,3}[A-Z]?\.\s)")
 
 
 def clean_extracted_text(text: str) -> str:

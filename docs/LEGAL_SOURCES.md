@@ -28,34 +28,90 @@ Run `python services/ai/scripts/ingest_corpus.py` to regenerate this from source
 
 | Source | Chunks ingested | Coverage |
 | --- | --- | --- |
-| Constitution | 346 articles | Full text supplied. Marginal-note article titles are not reliably extracted (two-column PDF layout); article numbers and body text are exact. |
-| Bharatiya Nagarik Suraksha Sanhita | 533 sections | **Full**, including Ch. XIII investigation/FIR (ss.173–196) and Ch. XXXV bail and bonds (ss.478–496). Section titles best-effort recovered for ~51% of sections (two-column layout, see below); section numbers and body text are exact regardless. One section (337) is mislabeled as a duplicate 338 — see below. |
-| Bharatiya Nyaya Sanhita | 357 sections | **Full.** Same title/layout note as BNSS (~57% titled). |
-| Bharatiya Sakshya Adhiniyam | 170 sections | **Full.** Same title/layout note as BNSS (~52% titled). |
+| Constitution | 366 articles | Full text supplied. Marginal-note article titles are not reliably extracted for most articles (two-column PDF layout, see below); a small hand-verified table recovers titles for Part III (Fundamental Rights, Articles 12-22). Article numbers and body text are exact throughout. |
+| Bharatiya Nagarik Suraksha Sanhita | 531 sections | **Full**, including Ch. XIII investigation/FIR (ss.173-196) and Ch. XXXV bail and bonds (ss.478-496). Replaced with a single-column "bare Act" India Code PDF (see "New single-column PDFs" below); section titles are inline in the source text and recovered for all 531 sections (100%). |
+| Bharatiya Nyaya Sanhita | 356 sections | **Full**, single-column source, titles recovered for 356 of 358 sections (99.4%) — see "New single-column PDFs" for the two-section residual gap. |
+| Bharatiya Sakshya Adhiniyam | 170 sections | **Full**, single-column source, titles recovered for all 170 sections (100%). |
 | Information Technology Act, 2000 | 92 sections | Full text as supplied. |
 | Protection of Women from Domestic Violence Act, 2005 | 37 sections | Full text as supplied. |
-| Legal Services Authorities Act, 1987 | 30 sections | Full text as supplied. |
-| Consumer Protection Act, 2019 | 107 sections | **Full.** Same title/layout note as BNSS (~49% titled). |
-| Juvenile Justice (Care and Protection of Children) Act, 2015 | 111 sections | **Full.** Same title/layout note as BNSS (~40% titled). |
+| Legal Services Authorities Act, 1987 | 32 sections | Full text as supplied. |
+| Consumer Protection Act, 2019 | 107 sections | **Full**, single-column source, titles recovered for all 107 sections (100%). |
+| Juvenile Justice (Care and Protection of Children) Act, 2015 | 110 sections | **Full**, single-column source, titles recovered for 110 of 112 sections (98.2%) — see "New single-column PDFs" for the two-section residual gap. |
 | Right to Information Act, 2005 | 0 sections | **Not ingested** — see below. |
 
 Coverage gaps are also surfaced live via each source's `coverage_note` field on `/corpus/sources` and on every search/section result, so the UI never implies more coverage than actually exists.
 
-### Two-column gazette PDFs
+### New single-column PDFs (BNS, BNSS, BSA, CPA2019, JJ Act)
 
-The official India Code PDFs for BNS, BNSS, BSA, the Consumer Protection
-Act 2019, and the Juvenile Justice Act 2015 share a two-column
-typesetting layout: a narrow marginal-note column (the section's
-official title) beside the body column, plus a printer's line-count
-ruler in the body column's right margin, mirrored left/right by page
-the way a bound gazette's running heads typically are. `pypdf`'s
-reading-order text extraction interleaves the note column into the
-body text out of order, and BNS/BSA specifically also route their page
-content through a PDF Form XObject that breaks `pypdf`'s
-position-aware "layout" mode extraction entirely (returns empty text);
-BNS/BSA additionally have no real space character in their embedded
-font (word spacing is a small positioning gap, not a space glyph),
-which separately breaks naive word segmentation.
+The original PDFs supplied for these five sources used the two-column
+India Code gazette layout described below, which required a
+purpose-built `pdfplumber`-based extractor and only recovered section
+titles for 40-57% of sections per source. All five were replaced this
+session with the plain single-column "bare Act" India Code PDFs
+(consolidated "as on 6th October, 2025", i.e. incorporating amendments
+made since original enactment, not just the as-passed 2023 text) —
+the same clean, directly-`pypdf`-extractable format already used for
+`it_act`/`pwdva`/`lsa`. Section headers in this format are inline
+(`"43. Arrest how made.—(1) In making an arrest..."`), so the existing
+`chunk_sanhita` chunker (`app/ingestion/chunk.py`) now handles all
+five, and every source in the corpus that isn't the Constitution uses
+the same extraction+chunking path.
+
+This raised section-title recovery from 40-57% to 98-100% across all
+five sources and, verified against the earlier two-column extraction's
+known residual defect, fixed BNSS's stray "337 mislabeled as duplicate
+338" artifact outright (the new source has no such duplicate — its
+531 sections match the official count with no gaps or collisions).
+
+Two small chunker regexes were widened to match this format's real
+layout variations, found by direct inspection rather than guessed:
+`clean.py`'s `_SOFT_LINEBREAK` now tolerates a few spaces of leading
+indentation before a section-opening line (some pages indent a
+section's first line), and `chunk.py`'s `_SANHITA_HEADER` now tolerates
+an em-dash appearing immediately after the section number with no
+space (a real, if less common, formatting variant in this source).
+Both changes were verified to produce byte-identical chunk counts for
+the four already-ingested sources that share this chunker
+(`it_act`/`pwdva`/`lsa`/`constitution`) before and after.
+
+**Known residual limitation, narrow and explicitly accepted, not
+silently hidden:** four sections across two sources -- BNS 217 and 255,
+JJ Act 61 and 86 -- have a page-layout quirk the chunker doesn't yet
+parse as a section boundary (BNS: the source PDF omits the line break
+between the previous section's last sentence and this section's
+opening number on that specific page; JJ Act: the section's opening
+number sits inside an amendment-substitution footnote bracket, e.g.
+`"1[86 Classification of offences..."`, with no plain `"86."` header
+for the parser to match). In both cases the affected section's real
+body text is still present in the corpus verbatim, but merged onto the
+end of the *preceding* section's chunk rather than split out under its
+own number -- a citation-accuracy defect for those 4 sections
+specifically (a citizen citing that preceding section's number would
+see the next section's text attributed to it too), not a content-loss
+one. Two narrower regex relaxations were tried and reverted after they
+introduced new false-positive header matches elsewhere in the corpus
+(duplicate/spurious chunks in bns/bnss/bsa/jj2015) -- not worth the
+risk for 4 of 1,274 sections (99.7% clean) when the alternative is
+documenting the gap, the same trade-off this project already accepted
+for the old BNSS 337/338 artifact. Extend the parser only if a future
+evaluation query specifically needs one of these four sections.
+
+### Two-column gazette PDFs (historical; Constitution only, going forward)
+
+The official India Code PDFs originally supplied for BNS, BNSS, BSA,
+the Consumer Protection Act 2019, and the Juvenile Justice Act 2015 (and
+still the PDF used for the Constitution, which has not been replaced)
+share a two-column typesetting layout: a narrow marginal-note column
+(the section's official title) beside the body column, plus a
+printer's line-count ruler in the body column's right margin, mirrored
+left/right by page the way a bound gazette's running heads typically
+are. `pypdf`'s reading-order text extraction interleaves the note
+column into the body text out of order, and BNS/BSA specifically also
+routed their page content through a PDF Form XObject that broke
+`pypdf`'s position-aware "layout" mode extraction entirely (returned
+empty text); BNS/BSA additionally had no real space character in their
+embedded font (word spacing was a small positioning gap, not a space
+glyph), which separately broke naive word segmentation.
 
 `app/ingestion/extract.py`'s `extract_gazette_body_text()` resolves
 all of this using `pdfplumber`'s real per-character page coordinates
@@ -67,38 +123,25 @@ page to page), keeps only body-column words with a tightened
 by real vertical position rather than a fixed grid (avoids scrambling
 word order), and drops repeating page-header/footer boilerplate by
 content. The result feeds the existing `chunk_constitution`
-numeric-boundary chunker (start marker `"BE it enacted"`).
+numeric-boundary chunker (start marker `"BE it enacted"`) -- still
+exactly how the Constitution is ingested today. This code path is kept
+for the Constitution and as a fallback for any future two-column
+source; it's no longer in use for BNS/BNSS/BSA/CPA2019/JJ Act now that
+cleaner single-column source PDFs exist for them (see above).
 
-This recovers the exact official section count for all five sources
-(BNS 357, BNSS 533, BSA 170, CPA2019 107, JJ Act 2015 111) with real
-cross-references intact. A 60-section random-sample audit across
-BNS/BSA/BNSS found 1 residual artifact (a stray ruler digit inside one
-BNSS section); a further 30-section audit of CPA2019/JJ Act found
-none. **Known limitations, both narrow and explicitly accepted:**
-
-- **Section titles are best-effort recovered, not guaranteed.**
-  `extract_gazette_titles()` is a second, entirely independent pass
-  (it never touches `lines_out`/body text, so a bad title association
-  can at worst produce a wrong or missing title, never corrupt a
-  chunk's verbatim body) that re-detects the same column gaps, row-
-  clusters the *note* column the same way it row-clusters the body
-  column, and attributes each note to whichever section boundary was
-  most recently seen. This recovers real titles ("Estoppel", "Arrest
-  how made", "In what cases bail to be taken") for 40-57% of sections
-  across the five sources (exact percentage per source in its
-  `coverage_note`); the rest are left empty rather than guessed, since
-  a short note can end many lines before its section's body does, or
-  start partway through it, and position alone can't always resolve
-  that. Query terms that appear only in a section's *un-recovered*
-  title, not its body prose, still won't match.
-- **BNSS section 337 is mislabeled as a duplicate "338".** A rare
-  digit-extraction fault on that one page drops the real "337."
-  section-number token; its body text is otherwise intact and
-  correctly ordered; the genuine section 338 is also present and
-  correct. Affects 1 of 1,207 sections across the five two-column
-  sources.
-- Both are recorded in each affected source's `coverage_note` and
-  surfaced live via `/corpus/sources`, not just in this doc.
+- **Section titles are best-effort recovered, not guaranteed, on this
+  path.** `extract_gazette_titles()` is a second, entirely independent
+  pass (it never touches `lines_out`/body text, so a bad title
+  association can at worst produce a wrong or missing title, never
+  corrupt a chunk's verbatim body) that re-detects the same column
+  gaps, row-clusters the *note* column the same way it row-clusters
+  the body column, and attributes each note to whichever section
+  boundary was most recently seen. On the Constitution (the only
+  source still using this path) titles are not attempted generally for
+  this reason; a small hand-verified table covers Part III instead
+  (see `docs/PROJECT_STATE.md`).
+- Recorded in each affected source's `coverage_note` and surfaced live
+  via `/corpus/sources`, not just in this doc.
 
 The **Right to Information Act, 2005** PDF has a different, unrelated
 problem: its embedded font maps the digit "1" to "/" for the large
