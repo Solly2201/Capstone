@@ -27,23 +27,39 @@ from .context import distinct_sources
 
 ABSTENTION_MESSAGE = "No verified information found."
 
-# Provisional, documented floor -- NOT a validated relevance measure.
+# Provisional, documented floors -- NOT a validated relevance measure.
 # Empirical testing against the built index showed off-topic queries can
 # score higher than genuine low-coverage topic queries with this corpus's
 # unfiltered BM25 tokenization (e.g. "pizza toppings in mumbai" outscored
-# "bail"), so no defensible cutoff exists in the data. This floor only
-# catches degenerate near-zero matches. Override via LEGAL_CHAT_MIN_SCORE.
-DEFAULT_MIN_SCORE = 3.0
+# "bail"), so no defensible cutoff exists in the data. These floors only
+# catch degenerate near-zero matches. Override via LEGAL_CHAT_MIN_SCORE
+# (applies to whichever mode is actually in effect for the top result).
+#
+# BM25 and dense-cosine scores are on entirely different scales --
+# BM25 is an unbounded corpus-relative lexical score, cosine similarity
+# is bounded in [-1, 1] -- so a single global threshold would be
+# meaningless for one or the other. Values below were chosen by
+# sweeping thresholds against eval/queries.jsonl's labeled
+# answer/abstain queries (see docs/RETRIEVAL_EVALUATION.md) and picking
+# the point that eliminates outright wrong-topic top hits while still
+# answering most genuinely-covered queries -- not a perfect separator
+# (none exists on this corpus/query set), but a measured one.
+DEFAULT_MIN_SCORE_BY_MODE = {
+    "bm25": 3.0,
+    "dense": 0.45,
+    "hybrid": 0.40,  # gates on the top hit's dense_score, not its RRF score -- see _passes_confidence_gate
+}
+DEFAULT_MIN_SCORE = DEFAULT_MIN_SCORE_BY_MODE["bm25"]  # kept for direct build_legal_answer() callers/tests
 
 
-def _min_score() -> float:
+def _min_score(mode: str = "bm25") -> float:
     raw = os.environ.get("LEGAL_CHAT_MIN_SCORE")
-    if raw is None:
-        return DEFAULT_MIN_SCORE
-    try:
-        return float(raw)
-    except ValueError:
-        return DEFAULT_MIN_SCORE
+    if raw is not None:
+        try:
+            return float(raw)
+        except ValueError:
+            pass
+    return DEFAULT_MIN_SCORE_BY_MODE.get(mode, DEFAULT_MIN_SCORE)
 
 
 @dataclass
@@ -67,9 +83,28 @@ class LegalAnswer:
 
 
 def _passes_confidence_gate(results: list[dict]) -> bool:
+    """Reciprocal Rank Fusion's score is a sum of 1/(k+rank) terms, so it
+    reflects a chunk's *relative* rank position within a small candidate
+    pool, not its *absolute* relevance -- on this corpus it compresses
+    into a narrow band (~0.027-0.033) for the single top hit regardless
+    of whether the query is genuinely covered (see
+    docs/RETRIEVAL_EVALUATION.md), which makes it useless as a
+    confidence-gate signal. Gating hybrid mode on the top hit's
+    dense_score (bounded, and empirically the best-separated signal
+    available) instead of its fused "score" avoids that trap. bm25 and
+    dense modes gate on their own native score as before.
+    """
     if not results:
         return False
-    return results[0]["score"] >= _min_score()
+    top = results[0]
+    mode = top.get("retrieval_mode", "bm25")
+    if mode == "hybrid":
+        gate_score = top.get("dense_score")
+        if gate_score is None:
+            gate_score = top["score"]
+    else:
+        gate_score = top["score"]
+    return gate_score >= _min_score(mode)
 
 
 def build_legal_answer(results: list[dict]) -> LegalAnswer:

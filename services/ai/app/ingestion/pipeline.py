@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 from .chunk import CHUNKERS
 from .clean import clean_extracted_text
+from .extract import extract_pdf_text
 from .models import Chunk, SourceMeta
 from .sources import APPROVED_SOURCES, get_source
 
@@ -32,13 +33,39 @@ def _source_dir(source_id: str) -> str:
     return os.path.dirname(get_source(source_id).raw_path)
 
 
+def _pdf_path(source_id: str) -> str:
+    return os.path.join(_source_dir(source_id), "raw.pdf")
+
+
+def _ensure_raw_text(source_id: str, raw_path: str) -> None:
+    """If raw.txt is missing but raw.pdf is present, extract it once.
+
+    This is the "drop a PDF, don't touch retrieval code" path: a
+    reviewer places an approved raw.pdf in the source's corpus folder,
+    and ingestion materializes raw.txt from it deterministically. The
+    extracted raw.txt is written to disk (not held in memory only) so
+    it stays inspectable/diffable exactly like a hand-supplied raw.txt,
+    and so re-ingestion doesn't re-run PDF extraction unless raw.txt is
+    deleted or the PDF is newer.
+    """
+    if os.path.exists(raw_path):
+        return
+    pdf_path = _pdf_path(source_id)
+    if not os.path.exists(pdf_path):
+        return
+    text = extract_pdf_text(pdf_path)
+    with open(raw_path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
 def ingest_source(source_id: str) -> dict:
     source = get_source(source_id)
+    _ensure_raw_text(source_id, source.raw_path)
     if not os.path.exists(source.raw_path):
         raise FileNotFoundError(
-            f"No raw text for '{source_id}' at {source.raw_path}. "
-            f"Drop the extracted/raw text there (or a PDF, once PDF extraction "
-            f"is wired in) and re-run ingestion."
+            f"No raw text for '{source_id}' at {source.raw_path}, and no "
+            f"raw.pdf found alongside it to extract from. Drop an approved "
+            f"raw.txt or raw.pdf into that folder and re-run ingestion."
         )
 
     with open(source.raw_path, encoding="utf-8") as f:

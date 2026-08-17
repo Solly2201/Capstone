@@ -9,7 +9,7 @@ flowchart LR
   Api <--> Redis[(Redis)]
   Api <--> Files["Local storage adapter"]
   Api <--> Ai["FastAPI AI service"]
-  Ai <--> Index["FAISS + BM25\nofficial legal corpus"]
+  Ai <--> Index["BM25 + local dense embeddings\n(RRF-fused), official legal corpus"]
   Ai <--> Files
 ```
 
@@ -22,7 +22,7 @@ flowchart TD
   Intent --> Risk["3. Risk / UPL agent\nrules + classifier"]
   Risk -->|"High-risk or advice request"| Redirect["Stop AI\nshow official emergency, police, cybercrime, or legal-aid route"]
   Risk -->|"Legal awareness"| Legal["2. Legal retrieval agent\nhybrid retrieval, no generation"]
-  Legal --> Retrieve["Official-source allow-list\nBM25 + FAISS + reranker"]
+  Legal --> Retrieve["Official-source allow-list\nBM25 + dense (RRF fusion)"]
   Retrieve --> Confidence{"Evidence + citation\nconfidence sufficient?"}
   Confidence -->|No| Abstain["Abstain\nNo verified information found"]
   Confidence -->|Yes| Explain["7. Explainability agent\nsections · links · verified date"]
@@ -52,8 +52,8 @@ flowchart TD
 | Increment | Outcome |
 | --- | --- |
 | 1 | Foundation, public UI, auth/RBAC boundary, CI and operational documentation — **done** |
-| 2 | Legal learning paths and official-source ingestion — **in progress**: ingestion pipeline, hybrid retrieval (BM25; dense embeddings optional), document browser, and 3 grounded learning articles are built and tested; BNS/BNSS full-corpus ingestion (FIR, bail, offences-against-property chapters) still outstanding |
-| 3 | Deterministic legal answers, UPL/risk guardrails, evaluation harness — **mostly done**: `POST /legal/answer` / `POST /api/legal/answer` implements Risk/UPL → retrieval → confidence gate → deterministic structured response (exact retrieved excerpts + citations, no generative LLM anywhere in the path — see "No-generation principle" below); a formal retrieval evaluation harness (Recall@K, MRR, nDCG, abstention accuracy, etc.) is still outstanding |
+| 2 | Legal learning paths and official-source ingestion — **in progress**: ingestion pipeline (raw.txt or raw.pdf), hybrid retrieval (BM25 + local dense embeddings, RRF-fused, evaluated against a BM25 baseline — see `docs/RETRIEVAL_EVALUATION.md`), document browser, and 3 grounded learning articles are built and tested; BNS/BNSS full-corpus ingestion (FIR, bail, offences-against-property chapters) still outstanding |
+| 3 | Deterministic legal answers, UPL/risk guardrails, evaluation harness — **done**: `POST /legal/answer` / `POST /api/legal/answer` implements Risk/UPL → hybrid retrieval → confidence gate → deterministic structured response (exact retrieved excerpts + citations, no generative LLM anywhere in the path — see "No-generation principle" below); the retrieval evaluation harness (`services/ai/eval/`, Recall@K, Precision@K, MRR, nDCG, top-1 citation correctness, abstention accuracy) is built and was used to choose hybrid over BM25-only, and to tune its fusion/gate parameters, with real measured results |
 | 4 | Civic reporting, image privacy processing, duplicates, SLA and Authority UI |
 | 5 | Petitions, signatures, moderation and recommendation agent |
 | 6 | Evaluation, observability and deployment preparation |
@@ -62,17 +62,46 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  Raw["data/legal-corpus/<source>/raw.txt\n(the upload folder)"] --> Clean["clean.py\nlayout-artifact removal only"]
+  Raw["data/legal-corpus/<source>/raw.txt OR raw.pdf\n(the upload folder)"] --> Extract["extract.py\nPDF-only: deterministic text-layer extraction"]
+  Extract --> Clean["clean.py\nlayout-artifact removal only"]
   Clean --> Chunk["chunk.py\nsection/article boundary split"]
   Chunk --> Manifest["source.json + chunks.jsonl\nchecksum, as-on date, coverage note"]
-  Manifest --> Index["index_build.py\nBM25 always; dense embeddings if installed"]
-  Index --> Search["retrieval/search.py\ncited results, no generation"]
+  Manifest --> Index["index_build.py\nBM25 always; dense embeddings if installed\n(title+text indexed, verbatim text still displayed)"]
+  Index --> Search["retrieval/search.py\nBM25 + dense + RRF fusion,\ncited results, no generation"]
   Search --> API["FastAPI /corpus/*"]
   API --> Proxy["Node /api/corpus/*"]
   Proxy --> UI["Document browser + learning articles"]
 ```
 
-Re-running `python services/ai/scripts/ingest_corpus.py` after editing or adding a `raw.txt` is the entire re-indexing workflow — no other code changes needed to pick up updated source text. This layer stays retrieval-only by design (`app/retrieval/search.py`); Module 1B, described next, is layered strictly on top of it and never adds generation into that file, or anywhere else.
+Adding a new official document is: drop an approved `raw.txt` (or
+`raw.pdf`, extracted automatically and cached to `raw.txt` on first
+ingest) into `data/legal-corpus/<source_id>/`, register `source_id` once
+in `app/ingestion/sources.py`'s `APPROVED_SOURCES` allow-list if it's a
+brand-new source, then run `python services/ai/scripts/ingest_corpus.py`.
+That command is the entire re-indexing workflow for both text and
+index — no retrieval code changes needed to pick up updated or added
+source text. This layer stays retrieval-only by design
+(`app/retrieval/search.py`); Module 1B, described next, is layered
+strictly on top of it and never adds generation into that file, or
+anywhere else.
+
+### Hybrid retrieval (BM25 + dense, RRF-fused)
+
+`app/retrieval/search.py` supports three modes (`bm25` | `dense` |
+`hybrid`, selectable per call or via `RETRIEVAL_MODE`; `hybrid` is the
+default whenever a dense index exists). Dense embeddings
+(`sentence-transformers/all-MiniLM-L6-v2`, 384-dim, local, no paid API
+— see `app/retrieval/embeddings.py`) are built at ingest time into a
+persistent, L2-normalized `data/index/dense_vectors.npy`; hybrid mode
+combines BM25 and dense candidate rankings with weighted Reciprocal
+Rank Fusion (`app/retrieval/fusion.py`) rather than concatenating
+result lists. Every result keeps its raw `bm25_score`/`bm25_rank` and
+`dense_score`/`dense_rank` alongside the fused `score`, so fusion
+behavior stays inspectable. **This was evaluated, not assumed** — see
+`docs/RETRIEVAL_EVALUATION.md` for the BM25-vs-dense-vs-hybrid
+measurements, why the textbook RRF default (k=60) underperformed at
+this corpus size, and why a reranker stage was deliberately deferred
+rather than added.
 
 ## Deterministic legal answers (Module 1B)
 
@@ -83,8 +112,8 @@ flowchart LR
   Q["Citizen question"] --> Risk["Risk/UPL rules\n(7 categories, deterministic)"]
   Risk -->|emergency/cyber category| Emg["Redirect: 112 / 1930 / 181 / cybercrime.gov.in"]
   Risk -->|personalised advice| Adv["Redirect: Tele-Law / Nyaya Bandhu / lawyer directory"]
-  Risk -->|informational| Search["app.retrieval.search\n(BM25, unchanged from Module 1A)"]
-  Search --> Gate{"Confidence gate\nLEGAL_CHAT_MIN_SCORE"}
+  Risk -->|informational| Search["app.retrieval.search\n(hybrid BM25+dense, RRF-fused)"]
+  Search --> Gate{"Confidence gate\nLEGAL_CHAT_MIN_SCORE, mode-aware"}
   Gate -->|below floor / no results| Abstain["Abstain: No verified information found"]
   Gate -->|passes| Resp["Deterministic response:\nexact retrieved excerpt(s) + real citations + disclaimer"]
 ```

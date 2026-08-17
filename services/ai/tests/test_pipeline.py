@@ -108,3 +108,34 @@ def test_multiple_sources_are_all_labeled_in_sources_field():
 def test_single_source_results_have_one_source_label():
     result = build_legal_answer([BNSS_RESULT])
     assert result.sources == ["Bharatiya Nagarik Suraksha Sanhita, 2023"]
+
+
+# --- mode-aware confidence gate (hybrid gates on dense_score, not RRF score) --
+
+
+def test_hybrid_result_gates_on_dense_score_not_fused_score(monkeypatch):
+    """A hybrid RRF fused score (~0.03) would fail the bm25-scale 3.0
+    floor if compared directly -- the gate must use dense_score for
+    hybrid results instead. See _passes_confidence_gate's docstring for
+    why the fused score itself is not a usable confidence signal."""
+    monkeypatch.delenv("LEGAL_CHAT_MIN_SCORE", raising=False)
+    hybrid_result = {
+        **BNSS_RESULT,
+        "score": 0.0328,  # a typical fused RRF score -- tiny, not bm25-scale
+        "retrieval_mode": "hybrid",
+        "dense_score": 0.9,  # well above the 0.45 hybrid floor
+    }
+    result = build_legal_answer([hybrid_result])
+    assert result.abstained is False
+
+
+def test_hybrid_result_abstains_on_low_dense_score_despite_high_fused_rank():
+    hybrid_result = {
+        **BNSS_RESULT,
+        "score": 0.0328,  # highest possible-looking fused score
+        "retrieval_mode": "hybrid",
+        "dense_score": 0.1,  # weak semantic match -- below the 0.45 floor
+    }
+    result = build_legal_answer([hybrid_result])
+    assert result.abstained is True
+    assert result.reason == "insufficient_evidence"
