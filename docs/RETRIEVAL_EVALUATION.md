@@ -833,6 +833,184 @@ instruction.** If the user approves proceeding, the recommended design:
   training would likely improve the fine-tune's own quality, not just
   the evaluation's statistical confidence.
 
+## Embedding fine-tuning experiment (run1): not promoted
+
+Following the citizen-language evaluation above, a first embedding
+fine-tuning experiment was run to test whether legal-domain fine-tuning
+of `all-MiniLM-L6-v2` could close the citizen-language recall gap.
+**Result: not promoted.** The full write-up, including a methodology
+correction discovered mid-evaluation, follows.
+
+### Training data (`services/ai/finetune/build_dataset.py`)
+
+Every `(query, positive_chunk_id)` pair was drawn directly from the two
+hand-verified eval sets (`eval/queries.jsonl`, `eval/queries_human.jsonl`)
+-- 180 pairs across 153 query groups (multi-source queries contribute
+one pair per relevant chunk; near-duplicate queries across the two sets,
+e.g. `q23`/`h076`'s identical "how do I file an FIR", and six
+deliberately-kept same-concept pairs like `q17`/`h040`, are merged into
+one group by exact-text match plus a small hand-verified cross-reference
+list, so they can never span more than one split).
+
+Hard negatives were mined from the **existing production retrieval
+index**, not chosen at random, per four strategies:
+
+| neg_type | count | source |
+| --- | --- | --- |
+| `same_act_nearby` | 360 | a different chunk from the same source, within 6 positions of the positive in document order (same chapter/cluster) |
+| `bm25_strong_wrong` | 346 | in the query's live top-10 BM25 results, not a relevant chunk |
+| `dense_strong_wrong` | 272 | in the query's live top-10 dense results (current production model), not a relevant chunk |
+| `boilerplate` | 177 | the source's own unit `:1` ("Short title...") chunk -- the generalizable false-positive pattern found during citizen-language evaluation |
+
+1155 total triplets, split by query group (not by row, to prevent
+leakage) 70/15/15 -> **train 801 / val 183 / test 171**, with an
+assertion in `build_dataset.py` that no query group appears in more
+than one split. Reproduce with `python finetune/build_dataset.py`
+(seeded, deterministic).
+
+### Training (`services/ai/finetune/train.py`)
+
+- **Base model:** `sentence-transformers/all-MiniLM-L6-v2` (the current
+  production model) -- continued training, never trained from scratch.
+- **Loss:** `MultipleNegativesRankingLoss` (standard Sentence-Transformers
+  query->passage retrieval objective), using each triplet's explicit
+  hard negative plus in-batch negatives from the rest of the batch.
+- **Chunk text format:** `"{title}. {text}"`, identical to
+  `index_build.py`'s `_index_text()` -- the fine-tune is trained on
+  exactly what it will be searched against, never a different
+  representation.
+- **Config (run1):** batch size 16, 4 epochs, lr 2e-5, warmup ratio 0.1,
+  seed 42, evaluated every 50 steps against the val split via
+  `TripletEvaluator`, best checkpoint kept. Uses sentence-transformers'
+  legacy `.fit()` API (still requires `datasets`/`accelerate` in this
+  version, added in `requirements-finetune.txt`, not a production
+  dependency).
+- **Duration:** 1359.7s (~22.7 min) on CPU (no GPU available in this
+  environment), 12 cores, ~204 total optimizer steps.
+- **Val triplet accuracy:** 0.7705 (pre-training) -> 0.8743 (best
+  checkpoint, reached by epoch 2, held through epoch 4).
+- **Held-out test triplet accuracy** (`test.jsonl`, never touched during
+  training or checkpoint selection): 0.7251 -> 0.7895 -- a genuine,
+  uncontaminated generalization signal on the narrow triplet-ranking
+  task (positive vs. one specific hard negative).
+
+### A methodology correction found mid-evaluation: train/val contamination
+
+The first full-eval-set comparison (`finetune/eval_candidate.py`, which
+builds a temporary index with the candidate model's dense vectors
+without touching production) showed spectacular numbers -- hybrid
+recall@5 0.8370 -> 0.9889 on the original 49-query set, 0.5805 -> 0.8898
+on the citizen 129-query set, and `q17`/`q18`/`q40`/`q46` all moving to
+dense rank 1. **These numbers are not a valid measure of generalization
+and are not reported as the result.** Every query in `eval/queries.jsonl`
+and `eval/queries_human.jsonl` was also a training-data source (Phase 2
+built the fine-tuning set directly from these two files, per
+instruction) -- so any query whose `(query, positive)` pair landed in
+`train` was directly optimized on that exact pair, and cross-checking
+found **all six of the queries Phase 5 was specifically asked to
+inspect (q17, q18, q23, q26, q40, q46) were in the training split**.
+Their dramatic improvement reflects memorization of the exact text,
+not evidence the model generalizes to new phrasing of the same legal
+concepts. Evaluating a fine-tuned model against the same data used to
+build its training set and reporting the result as "improvement" would
+be exactly the kind of unsupported claim this project's evaluation
+discipline exists to prevent -- so a second, corrected evaluation was
+run before drawing any conclusion.
+
+### The honest result: held-out (test-split) evaluation
+
+`services/ai/finetune/eval_heldout.py` re-runs the same metrics
+restricted to the 25 queries in the `test` split (5 from
+`queries.jsonl`, 20 from `queries_human.jsonl`) -- these `(query,
+positive)` pairs were never used for training or checkpoint selection.
+
+| Set | Mode | Metric | Base | Candidate (run1) |
+| --- | --- | --- | --- | --- |
+| original (n=5) | hybrid | recall@5 | 0.900 | 0.900 (unchanged) |
+| original (n=5) | hybrid | MRR / top1 correctness | 0.867 / 0.80 | 1.000 / 1.00 |
+| citizen (n=20) | hybrid | recall@5 | 0.550 | 0.550 (**unchanged**) |
+| citizen (n=20) | hybrid | MRR | 0.500 | 0.475 (slightly worse) |
+| citizen (n=20) | hybrid | top1 correctness | 0.45 | 0.40 (slightly worse) |
+| citizen (n=20) | hybrid | abstention accuracy | 0.65 | 0.60 (slightly worse) |
+
+The 5-query original-set slice is too small to draw any conclusion from
+(and recall@5 there didn't move regardless). The 20-query citizen slice
+is the meaningful one, and recall@5 is **exactly unchanged**, with MRR,
+top-1 correctness, and abstention accuracy all mildly *worse*.
+
+A per-query hit/miss diff (`finetune/per_query_diff.py`) confirms this
+isn't coincidental cancellation hiding a real shift: of the 20 held-out
+citizen queries, **18 are byte-identical hit/miss outcomes between base
+and candidate, one improved (`h078`), one regressed (`h027`)** -- a
+wash, not a directional change in either direction.
+
+### Diagnosis
+
+The held-out triplet-ranking accuracy genuinely improved (0.7251 ->
+0.7895) -- the model did learn *something* that generalizes to unseen
+queries at the narrow task of "is the positive closer than this one
+specific hard negative." That did not translate into full-corpus
+retrieval improvement (ranking correctly among all 1801 chunks, a much
+harder task) on queries outside the training set. The most likely
+cause, given the evidence: **153 query groups (115 in the actual
+training split) is too small a training set** for this fine-tune to
+learn a broadly better semantic space rather than narrow adjustments
+around the specific triplets it saw -- consistent with this document's
+own earlier "Embedding fine-tuning: not yet justified" section, which
+set exactly this expectation ("a few hundred to low thousands of pairs
+is the typical range... 150-300+ [eval] queries" as the trigger point
+to revisit). At 178 total labeled queries feeding the fine-tune, this
+session sits at the low edge of that range, and the result is
+consistent with that prediction rather than contradicting it.
+
+A second, hypothesis-driven experiment (larger batch size, to give
+`MultipleNegativesRankingLoss` more in-batch negative diversity per
+step -- a standard, well-documented lever for this loss) was attempted
+twice (batch size 32, then a more conservative 20) and both runs were
+killed by the environment before completing, at a point in the log too
+early to attribute to the batch-size change itself (this environment
+has ~8GB total RAM with only ~2.7-3.3GB free at the time, and the same
+early-kill pattern occurred at batch 20, barely different from run1's
+working batch 16) -- an infrastructure instability, not a hyperparameter
+finding. Per the standing instruction not to blindly re-run experiments
+against a failing environment, this was not retried further; **run1
+stands as the sole, complete, honestly-evaluated experiment.**
+
+### Safety gate
+
+Even had the recall numbers been favorable, the following were checked
+and found clean on both the full (contaminated) and held-out
+evaluations: zero wrong-Act false positives on hybrid mode in either
+set (`abstention_false_answer_ids` empty throughout); the short-title
+boilerplate artifact's dense rank *improved* (moved further from top)
+for every probed source under the candidate model (`pwdva:1` 1 -> 177,
+`cpa2019:1` 5 -> 110, `jj2015:1` 27 -> 33, `lsa:1` 88 -> 63, `it_act:1`
+615 -> 826) -- a genuinely encouraging signal specifically for the
+pattern this fine-tune targeted, even though it didn't move the
+aggregate held-out recall number. This is recorded for a future
+attempt with a larger dataset, not as grounds to promote run1.
+
+### Decision: **not promoted**
+
+The production embedding model (`sentence-transformers/all-MiniLM-L6-v2`,
+`DENSE_EMBEDDING_MODEL` unset/default) and the production dense index
+(`data/index/`) were never modified by this experiment --
+`finetune/eval_candidate.py`/`eval_heldout.py` build a temporary index
+in the OS temp directory and never write to `services/ai/data/index/`.
+No re-sweep of `DEFAULT_DENSE_WEIGHT` was needed since nothing about
+the production retrieval path changed.
+
+**Recommended next step, if fine-tuning is revisited:** grow
+`eval/queries_human.jsonl` toward the previously-documented 150-300+
+range (this session deliberately capped it at 129 to first confirm
+human-language retrieval was the real bottleneck, which it is) before
+re-attempting fine-tuning -- the evidence here points at training-set
+size as the limiting factor, not the loss function, hard-negative
+strategy, or batch size. The infrastructure (`finetune/build_dataset.py`,
+`finetune/train.py`, `finetune/eval_candidate.py`,
+`finetune/eval_heldout.py`, `finetune/per_query_diff.py`) is reusable
+as-is against a larger eval set.
+
 ## Remaining limitations
 
 - The confidence-gate thresholds (all three modes) are tuned against a

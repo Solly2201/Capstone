@@ -1,0 +1,801 @@
+{"query_id": "orig:q02", "query": "can police arrest a woman after sunset", "positive": "bnss:43", "negative": "bnss:42", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q02", "query": "can police arrest a woman after sunset", "positive": "bnss:43", "negative": "bnss:45", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q02", "query": "can police arrest a woman after sunset", "positive": "bnss:43", "negative": "bnss:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q02", "query": "can police arrest a woman after sunset", "positive": "bnss:43", "negative": "bnss:55", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q02", "query": "can police arrest a woman after sunset", "positive": "bnss:43", "negative": "jj2015:95", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q02", "query": "can police arrest a woman after sunset", "positive": "bnss:43", "negative": "bnss:58", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q02", "query": "can police arrest a woman after sunset", "positive": "bnss:43", "negative": "bnss:57", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q03", "query": "person arrested not detained more than twenty-four hours", "positive": "bnss:58", "negative": "bnss:61", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q03", "query": "person arrested not detained more than twenty-four hours", "positive": "bnss:58", "negative": "bnss:63", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q03", "query": "person arrested not detained more than twenty-four hours", "positive": "bnss:58", "negative": "bnss:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q03", "query": "person arrested not detained more than twenty-four hours", "positive": "bnss:58", "negative": "bnss:170", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q03", "query": "person arrested not detained more than twenty-four hours", "positive": "bnss:58", "negative": "bnss:78", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q03", "query": "person arrested not detained more than twenty-four hours", "positive": "bnss:58", "negative": "bnss:187", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q03", "query": "person arrested not detained more than twenty-four hours", "positive": "bnss:58", "negative": "bnss:40", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q04", "query": "stalking", "positive": "bns:78", "negative": "bns:84", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q04", "query": "stalking", "positive": "bns:78", "negative": "bns:81", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q04", "query": "stalking", "positive": "bns:78", "negative": "bns:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q04", "query": "stalking", "positive": "bns:78", "negative": "bnss:531", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q04", "query": "stalking", "positive": "bns:78", "negative": "bnss:100", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q04", "query": "stalking", "positive": "bns:78", "negative": "bns:142", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q05", "query": "sexual harassment", "positive": "bns:75", "negative": "bns:81", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q05", "query": "sexual harassment", "positive": "bns:75", "negative": "bns:69", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q05", "query": "sexual harassment", "positive": "bns:75", "negative": "bns:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q05", "query": "sexual harassment", "positive": "bns:75", "negative": "bns:86", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q05", "query": "sexual harassment", "positive": "bns:75", "negative": "bns:68", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q05", "query": "sexual harassment", "positive": "bns:75", "negative": "bns:74", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q06", "query": "right of private defence of body and of property", "positive": "bns:35", "negative": "bns:37", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q06", "query": "right of private defence of body and of property", "positive": "bns:35", "negative": "bns:31", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q06", "query": "right of private defence of body and of property", "positive": "bns:35", "negative": "bns:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q06", "query": "right of private defence of body and of property", "positive": "bns:35", "negative": "bns:40", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q06", "query": "right of private defence of body and of property", "positive": "bns:35", "negative": "bns:41", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q08", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:140", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q08", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:151", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q08", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q08", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:154", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q08", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:149", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q08", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:157", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q09", "query": "who may testify", "positive": "bsa:124", "negative": "bsa:129", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q09", "query": "who may testify", "positive": "bsa:124", "negative": "bsa:122", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q09", "query": "who may testify", "positive": "bsa:124", "negative": "bsa:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q09", "query": "who may testify", "positive": "bsa:124", "negative": "bsa:163", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q09", "query": "who may testify", "positive": "bsa:124", "negative": "bsa:158", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q09", "query": "who may testify", "positive": "bsa:124", "negative": "bnss:353", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q09", "query": "who may testify", "positive": "bsa:124", "negative": "bnss:265", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q10", "query": "act of a child under seven years of age", "positive": "bns:20", "negative": "bns:14", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q10", "query": "act of a child under seven years of age", "positive": "bns:20", "negative": "bns:19", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q10", "query": "act of a child under seven years of age", "positive": "bns:20", "negative": "bns:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q10", "query": "act of a child under seven years of age", "positive": "bns:20", "negative": "bns:21", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q10", "query": "act of a child under seven years of age", "positive": "bns:20", "negative": "bns:97", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q10", "query": "act of a child under seven years of age", "positive": "bns:20", "negative": "bns:93", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q11", "query": "can a seven year old be punished for a crime", "positive": "bns:20", "negative": "bns:15", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q11", "query": "can a seven year old be punished for a crime", "positive": "bns:20", "negative": "bns:22", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q11", "query": "can a seven year old be punished for a crime", "positive": "bns:20", "negative": "bns:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q11", "query": "can a seven year old be punished for a crime", "positive": "bns:20", "negative": "bns:112", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q11", "query": "can a seven year old be punished for a crime", "positive": "bns:20", "negative": "bns:111", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q11", "query": "can a seven year old be punished for a crime", "positive": "bns:20", "negative": "bns:21", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q11", "query": "can a seven year old be punished for a crime", "positive": "bns:20", "negative": "bns:97", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q12", "query": "is it legal to defend my home against an intruder", "positive": "bns:35", "negative": "bns:38", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q12", "query": "is it legal to defend my home against an intruder", "positive": "bns:35", "negative": "bns:29", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q12", "query": "is it legal to defend my home against an intruder", "positive": "bns:35", "negative": "bns:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q12", "query": "is it legal to defend my home against an intruder", "positive": "bns:35", "negative": "lsa:13", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q12", "query": "is it legal to defend my home against an intruder", "positive": "bns:35", "negative": "lsa:12", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q12", "query": "is it legal to defend my home against an intruder", "positive": "bns:35", "negative": "bns:333", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q12", "query": "is it legal to defend my home against an intruder", "positive": "bns:35", "negative": "bns:41", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q13", "query": "how long can police hold someone before bringing them to court", "positive": "bnss:58", "negative": "bnss:60", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q13", "query": "how long can police hold someone before bringing them to court", "positive": "bnss:58", "negative": "bnss:59", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q13", "query": "how long can police hold someone before bringing them to court", "positive": "bnss:58", "negative": "bnss:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q13", "query": "how long can police hold someone before bringing them to court", "positive": "bnss:58", "negative": "jj2015:13", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q13", "query": "how long can police hold someone before bringing them to court", "positive": "bnss:58", "negative": "bnss:177", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q13", "query": "how long can police hold someone before bringing them to court", "positive": "bnss:58", "negative": "bnss:78", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q13", "query": "how long can police hold someone before bringing them to court", "positive": "bnss:58", "negative": "bnss:187", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q14", "query": "what happens if I refuse to tell police my name", "positive": "bnss:39", "negative": "bnss:44", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q14", "query": "what happens if I refuse to tell police my name", "positive": "bnss:39", "negative": "bnss:36", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q14", "query": "what happens if I refuse to tell police my name", "positive": "bnss:39", "negative": "bnss:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q14", "query": "what happens if I refuse to tell police my name", "positive": "bnss:39", "negative": "constitution:159", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q14", "query": "what happens if I refuse to tell police my name", "positive": "bnss:39", "negative": "constitution:60", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q14", "query": "what happens if I refuse to tell police my name", "positive": "bnss:39", "negative": "bns:72", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q14", "query": "what happens if I refuse to tell police my name", "positive": "bnss:39", "negative": "bsa:23", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q16", "query": "equal treatment under law regardless of religion or caste", "positive": "constitution:15", "negative": "constitution:11", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q16", "query": "equal treatment under law regardless of religion or caste", "positive": "constitution:15", "negative": "constitution:16", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q16", "query": "equal treatment under law regardless of religion or caste", "positive": "constitution:15", "negative": "constitution:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q16", "query": "equal treatment under law regardless of religion or caste", "positive": "constitution:15", "negative": "constitution:23", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q16", "query": "equal treatment under law regardless of religion or caste", "positive": "constitution:15", "negative": "constitution:14", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q17", "query": "government cannot punish me for something that was not a crime when I did it", "positive": "constitution:20", "negative": "constitution:13", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q17", "query": "government cannot punish me for something that was not a crime when I did it", "positive": "constitution:20", "negative": "constitution:16", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q17", "query": "government cannot punish me for something that was not a crime when I did it", "positive": "constitution:20", "negative": "constitution:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q17", "query": "government cannot punish me for something that was not a crime when I did it", "positive": "constitution:20", "negative": "bsa:12", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q17", "query": "government cannot punish me for something that was not a crime when I did it", "positive": "constitution:20", "negative": "bsa:6", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q17", "query": "government cannot punish me for something that was not a crime when I did it", "positive": "constitution:20", "negative": "it_act:84C", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q17", "query": "government cannot punish me for something that was not a crime when I did it", "positive": "constitution:20", "negative": "cpa2019:72", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q18", "query": "state cannot take away someone's life without due process", "positive": "constitution:21", "negative": "constitution:22", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q18", "query": "state cannot take away someone's life without due process", "positive": "constitution:21", "negative": "constitution:25", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q18", "query": "state cannot take away someone's life without due process", "positive": "constitution:21", "negative": "constitution:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q18", "query": "state cannot take away someone's life without due process", "positive": "constitution:21", "negative": "jj2015:45", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q18", "query": "state cannot take away someone's life without due process", "positive": "constitution:21", "negative": "bns:303", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q18", "query": "state cannot take away someone's life without due process", "positive": "constitution:21", "negative": "bnss:475", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q18", "query": "state cannot take away someone's life without due process", "positive": "constitution:21", "negative": "constitution:228", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q19", "query": "does everyone get an equal chance at government jobs", "positive": "constitution:16", "negative": "constitution:18", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q19", "query": "does everyone get an equal chance at government jobs", "positive": "constitution:16", "negative": "constitution:22", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q19", "query": "does everyone get an equal chance at government jobs", "positive": "constitution:16", "negative": "constitution:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q19", "query": "does everyone get an equal chance at government jobs", "positive": "constitution:16", "negative": "constitution:39", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q19", "query": "does everyone get an equal chance at government jobs", "positive": "constitution:16", "negative": "bnss:27", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q19", "query": "does everyone get an equal chance at government jobs", "positive": "constitution:16", "negative": "cpa2019:95", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q19", "query": "does everyone get an equal chance at government jobs", "positive": "constitution:16", "negative": "constitution:41", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q20", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:23", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "orig:q20", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:13", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "orig:q20", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:1", "neg_type": "boilerplate", "category": "ambiguous"}
+{"query_id": "orig:q20", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:194", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "orig:q20", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:105", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "orig:q20", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "bns:302", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "orig:q20", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "bns:196", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "orig:q30", "query": "professional communications between advocate and client", "positive": "bsa:132", "negative": "bsa:136", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q30", "query": "professional communications between advocate and client", "positive": "bsa:132", "negative": "bsa:131", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q30", "query": "professional communications between advocate and client", "positive": "bsa:132", "negative": "bsa:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q30", "query": "professional communications between advocate and client", "positive": "bsa:132", "negative": "bsa:114", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q30", "query": "professional communications between advocate and client", "positive": "bsa:132", "negative": "bsa:134", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q30", "query": "professional communications between advocate and client", "positive": "bsa:132", "negative": "bnss:257", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q23", "query": "how do I file an FIR", "positive": "bnss:173", "negative": "bnss:170", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q23", "query": "how do I file an FIR", "positive": "bnss:173", "negative": "bnss:176", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q23", "query": "how do I file an FIR", "positive": "bnss:173", "negative": "bnss:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q23", "query": "how do I file an FIR", "positive": "bnss:173", "negative": "it_act:44", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q23", "query": "how do I file an FIR", "positive": "bnss:173", "negative": "bnss:177", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q23", "query": "how do I file an FIR", "positive": "bnss:173", "negative": "bnss:193", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q24", "query": "what is the procedure for getting bail", "positive": "bnss:480", "negative": "bnss:482", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q24", "query": "what is the procedure for getting bail", "positive": "bnss:480", "negative": "bnss:476", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q24", "query": "what is the procedure for getting bail", "positive": "bnss:480", "negative": "bnss:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q24", "query": "what is the procedure for getting bail", "positive": "bnss:480", "negative": "bnss:478", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q24", "query": "what is the procedure for getting bail", "positive": "bnss:480", "negative": "jj2015:12", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q24", "query": "what is the procedure for getting bail", "positive": "bnss:480", "negative": "bnss:481", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q24", "query": "what is the procedure for getting bail", "positive": "bnss:480", "negative": "bnss:483", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q25", "query": "compounding of offences between parties", "positive": "bnss:359", "negative": "bnss:361", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q25", "query": "compounding of offences between parties", "positive": "bnss:359", "negative": "bnss:353", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q25", "query": "compounding of offences between parties", "positive": "bnss:359", "negative": "bnss:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q25", "query": "compounding of offences between parties", "positive": "bnss:359", "negative": "it_act:77A", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q25", "query": "compounding of offences between parties", "positive": "bnss:359", "negative": "cpa2019:96", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:303", "negative": "bns:300", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:303", "negative": "bns:302", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:303", "negative": "bns:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:303", "negative": "bns:313", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:303", "negative": "bns:51", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:303", "negative": "bns:307", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:309", "negative": "bns:311", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:309", "negative": "bns:304", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:309", "negative": "bns:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:309", "negative": "bns:313", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:309", "negative": "bns:51", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q26", "query": "punishment for theft and robbery", "positive": "bns:309", "negative": "bns:307", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q27", "query": "burden of proof in a criminal trial", "positive": "bsa:105", "negative": "bsa:109", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q27", "query": "burden of proof in a criminal trial", "positive": "bsa:105", "negative": "bsa:106", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q27", "query": "burden of proof in a criminal trial", "positive": "bsa:105", "negative": "bsa:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q27", "query": "burden of proof in a criminal trial", "positive": "bsa:105", "negative": "bsa:108", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q27", "query": "burden of proof in a criminal trial", "positive": "bsa:105", "negative": "bsa:104", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q31", "query": "How do I get bail?", "positive": "bnss:480", "negative": "bnss:481", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q31", "query": "How do I get bail?", "positive": "bnss:480", "negative": "bnss:475", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q31", "query": "How do I get bail?", "positive": "bnss:480", "negative": "bnss:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q31", "query": "How do I get bail?", "positive": "bnss:480", "negative": "bnss:488", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q31", "query": "How do I get bail?", "positive": "bnss:480", "negative": "bnss:49", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q31", "query": "How do I get bail?", "positive": "bnss:480", "negative": "bnss:483", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q32", "query": "Who has the burden of proof?", "positive": "bsa:105", "negative": "bsa:109", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q32", "query": "Who has the burden of proof?", "positive": "bsa:105", "negative": "bsa:111", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q32", "query": "Who has the burden of proof?", "positive": "bsa:105", "negative": "bsa:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q32", "query": "Who has the burden of proof?", "positive": "bsa:105", "negative": "bsa:106", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q32", "query": "Who has the burden of proof?", "positive": "bsa:105", "negative": "bsa:113", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q32", "query": "Who has the burden of proof?", "positive": "bsa:105", "negative": "bsa:107", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:14", "negative": "jj2015:11", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:14", "negative": "jj2015:12", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:14", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:14", "negative": "jj2015:23", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:14", "negative": "jj2015:17", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:10", "negative": "jj2015:7", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:10", "negative": "jj2015:9", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:10", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:10", "negative": "jj2015:23", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:10", "negative": "jj2015:11", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q33", "query": "What happens when a child is in conflict with law?", "positive": "jj2015:10", "negative": "jj2015:17", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q36", "query": "what actions by a family member count as abuse of a woman at home", "positive": "pwdva:3", "negative": "pwdva:7", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q36", "query": "what actions by a family member count as abuse of a woman at home", "positive": "pwdva:3", "negative": "pwdva:9", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q36", "query": "what actions by a family member count as abuse of a woman at home", "positive": "pwdva:3", "negative": "pwdva:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q36", "query": "what actions by a family member count as abuse of a woman at home", "positive": "pwdva:3", "negative": "pwdva:2", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q36", "query": "what actions by a family member count as abuse of a woman at home", "positive": "pwdva:3", "negative": "bns:64", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q36", "query": "what actions by a family member count as abuse of a woman at home", "positive": "pwdva:3", "negative": "bns:85", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q37", "query": "duties of a protection officer", "positive": "pwdva:9", "negative": "pwdva:11", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q37", "query": "duties of a protection officer", "positive": "pwdva:9", "negative": "pwdva:14", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "orig:q37", "query": "duties of a protection officer", "positive": "pwdva:9", "negative": "pwdva:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "orig:q37", "query": "duties of a protection officer", "positive": "pwdva:9", "negative": "pwdva:8", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q37", "query": "duties of a protection officer", "positive": "pwdva:9", "negative": "pwdva:5", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q37", "query": "duties of a protection officer", "positive": "pwdva:9", "negative": "pwdva:30", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "orig:q38", "query": "punishment for tampering with computer source code", "positive": "it_act:65", "negative": "it_act:66B", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q38", "query": "punishment for tampering with computer source code", "positive": "it_act:65", "negative": "it_act:67", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q38", "query": "punishment for tampering with computer source code", "positive": "it_act:65", "negative": "it_act:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q38", "query": "punishment for tampering with computer source code", "positive": "it_act:65", "negative": "it_act:76", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q38", "query": "punishment for tampering with computer source code", "positive": "it_act:65", "negative": "it_act:66D", "neg_type": "dense_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q40", "query": "how can I get free legal aid", "positive": "lsa:13", "negative": "lsa:16", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q40", "query": "how can I get free legal aid", "positive": "lsa:13", "negative": "lsa:11B", "neg_type": "same_act_nearby", "category": "source_specific"}
+{"query_id": "orig:q40", "query": "how can I get free legal aid", "positive": "lsa:13", "negative": "lsa:1", "neg_type": "boilerplate", "category": "source_specific"}
+{"query_id": "orig:q40", "query": "how can I get free legal aid", "positive": "lsa:13", "negative": "pwdva:9", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q40", "query": "how can I get free legal aid", "positive": "lsa:13", "negative": "lsa:15", "neg_type": "bm25_strong_wrong", "category": "source_specific"}
+{"query_id": "orig:q41", "query": "what is a lok adalat", "positive": "lsa:20", "negative": "lsa:22E", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q41", "query": "what is a lok adalat", "positive": "lsa:20", "negative": "lsa:14", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q41", "query": "what is a lok adalat", "positive": "lsa:20", "negative": "lsa:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q41", "query": "what is a lok adalat", "positive": "lsa:20", "negative": "lsa:21", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q41", "query": "what is a lok adalat", "positive": "lsa:20", "negative": "lsa:22C", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q41", "query": "what is a lok adalat", "positive": "lsa:20", "negative": "lsa:22A", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q42", "query": "jurisdiction of the national consumer commission", "positive": "cpa2019:58", "negative": "cpa2019:52", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q42", "query": "jurisdiction of the national consumer commission", "positive": "cpa2019:58", "negative": "cpa2019:64", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q42", "query": "jurisdiction of the national consumer commission", "positive": "cpa2019:58", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q42", "query": "jurisdiction of the national consumer commission", "positive": "cpa2019:58", "negative": "cpa2019:81", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q42", "query": "jurisdiction of the national consumer commission", "positive": "cpa2019:58", "negative": "cpa2019:53", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q42", "query": "jurisdiction of the national consumer commission", "positive": "cpa2019:58", "negative": "cpa2019:47", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q44", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:31", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q44", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:26", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "orig:q44", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "orig:q44", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:36", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q44", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:30", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "jj2015:10", "negative": "jj2015:14", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "jj2015:10", "negative": "jj2015:6", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "jj2015:10", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "jj2015:10", "negative": "bnss:60", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "jj2015:10", "negative": "bns:259", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "jj2015:10", "negative": "jj2015:97", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "jj2015:10", "negative": "jj2015:13", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "constitution:22", "negative": "constitution:18", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "constitution:22", "negative": "constitution:26", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "constitution:22", "negative": "constitution:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "constitution:22", "negative": "bnss:60", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "constitution:22", "negative": "bns:259", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "constitution:22", "negative": "jj2015:97", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q45", "query": "rights of a child who has been arrested or apprehended", "positive": "constitution:22", "negative": "jj2015:13", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "constitution:15", "negative": "constitution:14", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "constitution:15", "negative": "constitution:9", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "constitution:15", "negative": "constitution:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "constitution:15", "negative": "pwdva:10", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "constitution:15", "negative": "lsa:4", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "constitution:15", "negative": "pwdva:1", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "pwdva:3", "negative": "pwdva:1", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "pwdva:3", "negative": "pwdva:7", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "pwdva:3", "negative": "pwdva:10", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q46", "query": "constitutional equality and legal protection of women from abuse at home", "positive": "pwdva:3", "negative": "lsa:4", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "orig:q48", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:479", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "orig:q48", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:474", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "orig:q48", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:1", "neg_type": "boilerplate", "category": "ambiguous"}
+{"query_id": "orig:q48", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "constitution:326", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "orig:q48", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:483", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "orig:q48", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "jj2015:6", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "orig:q48", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "jj2015:12", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h001", "query": "equality before law", "positive": "constitution:14", "negative": "constitution:19", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h001", "query": "equality before law", "positive": "constitution:14", "negative": "constitution:18", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h001", "query": "equality before law", "positive": "constitution:14", "negative": "constitution:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h001", "query": "equality before law", "positive": "constitution:14", "negative": "constitution:13", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h001", "query": "equality before law", "positive": "constitution:14", "negative": "constitution:16", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h001", "query": "equality before law", "positive": "constitution:14", "negative": "bsa:83", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h003", "query": "criminal breach of trust", "positive": "bns:316", "negative": "bns:315", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h003", "query": "criminal breach of trust", "positive": "bns:316", "negative": "bns:318", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h003", "query": "criminal breach of trust", "positive": "bns:316", "negative": "bns:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h003", "query": "criminal breach of trust", "positive": "bns:316", "negative": "bnss:244", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h003", "query": "criminal breach of trust", "positive": "bns:316", "negative": "bnss:245", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h003", "query": "criminal breach of trust", "positive": "bns:316", "negative": "bnss:202", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h004", "query": "form of summons", "positive": "bnss:63", "negative": "bnss:62", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h004", "query": "form of summons", "positive": "bnss:63", "negative": "bnss:64", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h004", "query": "form of summons", "positive": "bnss:63", "negative": "bnss:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h004", "query": "form of summons", "positive": "bnss:63", "negative": "bnss:123", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h004", "query": "form of summons", "positive": "bnss:63", "negative": "bnss:71", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h005", "query": "burden of proof", "positive": "bsa:104", "negative": "bsa:107", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h005", "query": "burden of proof", "positive": "bsa:104", "negative": "bsa:101", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h005", "query": "burden of proof", "positive": "bsa:104", "negative": "bsa:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h005", "query": "burden of proof", "positive": "bsa:104", "negative": "bsa:105", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h005", "query": "burden of proof", "positive": "bsa:104", "negative": "bsa:106", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h006", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:144", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h006", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:145", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h006", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h006", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:154", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h006", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:149", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h006", "query": "leading questions", "positive": "bsa:146", "negative": "bsa:157", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h008", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:22", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h008", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:23", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h008", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h008", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:31", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h008", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:36", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h008", "query": "child welfare committee", "positive": "jj2015:27", "negative": "jj2015:30", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h013", "query": "extortion", "positive": "bns:308", "negative": "bns:302", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h013", "query": "extortion", "positive": "bns:308", "negative": "bns:312", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h013", "query": "extortion", "positive": "bns:308", "negative": "bns:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h013", "query": "extortion", "positive": "bns:308", "negative": "bns:309", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h013", "query": "extortion", "positive": "bns:308", "negative": "bns:307", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h013", "query": "extortion", "positive": "bns:308", "negative": "bns:120", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h014", "query": "plea bargaining application", "positive": "bnss:290", "negative": "bnss:287", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h014", "query": "plea bargaining application", "positive": "bnss:290", "negative": "bnss:293", "neg_type": "same_act_nearby", "category": "direct_lexical"}
+{"query_id": "human:h014", "query": "plea bargaining application", "positive": "bnss:290", "negative": "bnss:1", "neg_type": "boilerplate", "category": "direct_lexical"}
+{"query_id": "human:h014", "query": "plea bargaining application", "positive": "bnss:290", "negative": "bnss:299", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h014", "query": "plea bargaining application", "positive": "bnss:290", "negative": "bnss:296", "neg_type": "bm25_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h014", "query": "plea bargaining application", "positive": "bnss:290", "negative": "bnss:276", "neg_type": "dense_strong_wrong", "category": "direct_lexical"}
+{"query_id": "human:h018", "query": "a man is following me everywhere and won't stop", "positive": "bns:78", "negative": "bns:72", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h018", "query": "a man is following me everywhere and won't stop", "positive": "bns:78", "negative": "bns:73", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h018", "query": "a man is following me everywhere and won't stop", "positive": "bns:78", "negative": "bns:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h018", "query": "a man is following me everywhere and won't stop", "positive": "bns:78", "negative": "bnss:281", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h018", "query": "a man is following me everywhere and won't stop", "positive": "bns:78", "negative": "bsa:119", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h018", "query": "a man is following me everywhere and won't stop", "positive": "bns:78", "negative": "bnss:162", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h018", "query": "a man is following me everywhere and won't stop", "positive": "bns:78", "negative": "bnss:161", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h019", "query": "my boss touched me inappropriately at work", "positive": "bns:75", "negative": "bns:72", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h019", "query": "my boss touched me inappropriately at work", "positive": "bns:75", "negative": "bns:73", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h019", "query": "my boss touched me inappropriately at work", "positive": "bns:75", "negative": "bns:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h019", "query": "my boss touched me inappropriately at work", "positive": "bns:75", "negative": "bsa:97", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h019", "query": "my boss touched me inappropriately at work", "positive": "bns:75", "negative": "bsa:98", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h019", "query": "my boss touched me inappropriately at work", "positive": "bns:75", "negative": "bns:79", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h019", "query": "my boss touched me inappropriately at work", "positive": "bns:75", "negative": "bns:74", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h020", "query": "the police won't tell me why they arrested my brother", "positive": "bnss:47", "negative": "bnss:41", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h020", "query": "the police won't tell me why they arrested my brother", "positive": "bnss:47", "negative": "bnss:48", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h020", "query": "the police won't tell me why they arrested my brother", "positive": "bnss:47", "negative": "bnss:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h020", "query": "the police won't tell me why they arrested my brother", "positive": "bnss:47", "negative": "bnss:220", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h020", "query": "the police won't tell me why they arrested my brother", "positive": "bnss:47", "negative": "bnss:36", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h021", "query": "can they keep him in jail forever without a court date", "positive": "bnss:58", "negative": "bnss:60", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h021", "query": "can they keep him in jail forever without a court date", "positive": "bnss:58", "negative": "bnss:62", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h021", "query": "can they keep him in jail forever without a court date", "positive": "bnss:58", "negative": "bnss:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h021", "query": "can they keep him in jail forever without a court date", "positive": "bnss:58", "negative": "bnss:458", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h021", "query": "can they keep him in jail forever without a court date", "positive": "bnss:58", "negative": "bnss:472", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h021", "query": "can they keep him in jail forever without a court date", "positive": "bnss:58", "negative": "bnss:457", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h021", "query": "can they keep him in jail forever without a court date", "positive": "bnss:58", "negative": "bnss:480", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h022", "query": "I bought a broken washing machine and the shop won't refund me", "positive": "cpa2019:35", "negative": "cpa2019:34", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h022", "query": "I bought a broken washing machine and the shop won't refund me", "positive": "cpa2019:35", "negative": "cpa2019:32", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h022", "query": "I bought a broken washing machine and the shop won't refund me", "positive": "cpa2019:35", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h022", "query": "I bought a broken washing machine and the shop won't refund me", "positive": "cpa2019:35", "negative": "cpa2019:2", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h022", "query": "I bought a broken washing machine and the shop won't refund me", "positive": "cpa2019:35", "negative": "bsa:58", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h022", "query": "I bought a broken washing machine and the shop won't refund me", "positive": "cpa2019:35", "negative": "cpa2019:39", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h022", "query": "I bought a broken washing machine and the shop won't refund me", "positive": "cpa2019:35", "negative": "cpa2019:81", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h024", "query": "a family member keeps controlling my money and threatening me at home", "positive": "pwdva:3", "negative": "pwdva:4", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h024", "query": "a family member keeps controlling my money and threatening me at home", "positive": "pwdva:3", "negative": "pwdva:5", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h024", "query": "a family member keeps controlling my money and threatening me at home", "positive": "pwdva:3", "negative": "pwdva:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h024", "query": "a family member keeps controlling my money and threatening me at home", "positive": "pwdva:3", "negative": "bnss:36", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h024", "query": "a family member keeps controlling my money and threatening me at home", "positive": "pwdva:3", "negative": "jj2015:45", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h024", "query": "a family member keeps controlling my money and threatening me at home", "positive": "pwdva:3", "negative": "bns:351", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h024", "query": "a family member keeps controlling my money and threatening me at home", "positive": "pwdva:3", "negative": "bns:333", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h025", "query": "what happens to a 10 year old who steals something", "positive": "jj2015:10", "negative": "jj2015:4", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h025", "query": "what happens to a 10 year old who steals something", "positive": "jj2015:10", "negative": "jj2015:15", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h025", "query": "what happens to a 10 year old who steals something", "positive": "jj2015:10", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h025", "query": "what happens to a 10 year old who steals something", "positive": "jj2015:10", "negative": "bsa:124", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h025", "query": "what happens to a 10 year old who steals something", "positive": "jj2015:10", "negative": "bns:170", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h025", "query": "what happens to a 10 year old who steals something", "positive": "jj2015:10", "negative": "bns:97", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h025", "query": "what happens to a 10 year old who steals something", "positive": "jj2015:10", "negative": "bns:305", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h028", "query": "the shop is selling fake branded shoes as if they're real", "positive": "cpa2019:91", "negative": "cpa2019:92", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h028", "query": "the shop is selling fake branded shoes as if they're real", "positive": "cpa2019:91", "negative": "cpa2019:94", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h028", "query": "the shop is selling fake branded shoes as if they're real", "positive": "cpa2019:91", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h028", "query": "the shop is selling fake branded shoes as if they're real", "positive": "cpa2019:91", "negative": "bnss:433", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h028", "query": "the shop is selling fake branded shoes as if they're real", "positive": "cpa2019:91", "negative": "bsa:12", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h028", "query": "the shop is selling fake branded shoes as if they're real", "positive": "cpa2019:91", "negative": "bns:349", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h028", "query": "the shop is selling fake branded shoes as if they're real", "positive": "cpa2019:91", "negative": "cpa2019:89", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h029", "query": "a stranger grabbed my daughter off the street", "positive": "bns:137", "negative": "bns:133", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h029", "query": "a stranger grabbed my daughter off the street", "positive": "bns:137", "negative": "bns:139", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h029", "query": "a stranger grabbed my daughter off the street", "positive": "bns:137", "negative": "bns:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h029", "query": "a stranger grabbed my daughter off the street", "positive": "bns:137", "negative": "bnss:468", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h029", "query": "a stranger grabbed my daughter off the street", "positive": "bns:137", "negative": "bns:18", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h029", "query": "a stranger grabbed my daughter off the street", "positive": "bns:137", "negative": "bnss:101", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h029", "query": "a stranger grabbed my daughter off the street", "positive": "bns:137", "negative": "bns:97", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h033", "query": "the shopkeeper cheated me by giving fake weight for my goods", "positive": "bns:318", "negative": "bns:323", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h033", "query": "the shopkeeper cheated me by giving fake weight for my goods", "positive": "bns:318", "negative": "bns:317", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h033", "query": "the shopkeeper cheated me by giving fake weight for my goods", "positive": "bns:318", "negative": "bns:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h033", "query": "the shopkeeper cheated me by giving fake weight for my goods", "positive": "bns:318", "negative": "bns:187", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h033", "query": "the shopkeeper cheated me by giving fake weight for my goods", "positive": "bns:318", "negative": "constitution:303", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h033", "query": "the shopkeeper cheated me by giving fake weight for my goods", "positive": "bns:318", "negative": "cpa2019:39", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h034", "query": "my elderly parents' money was stolen by a relative they trusted", "positive": "bns:316", "negative": "bns:314", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h034", "query": "my elderly parents' money was stolen by a relative they trusted", "positive": "bns:316", "negative": "bns:319", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h034", "query": "my elderly parents' money was stolen by a relative they trusted", "positive": "bns:316", "negative": "bns:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h034", "query": "my elderly parents' money was stolen by a relative they trusted", "positive": "bns:316", "negative": "bnss:499", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h034", "query": "my elderly parents' money was stolen by a relative they trusted", "positive": "bns:316", "negative": "jj2015:60", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h034", "query": "my elderly parents' money was stolen by a relative they trusted", "positive": "bns:316", "negative": "bns:338", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h035", "query": "what money can I get if I was arrested for no good reason", "positive": "bnss:399", "negative": "bnss:402", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h035", "query": "what money can I get if I was arrested for no good reason", "positive": "bnss:399", "negative": "bnss:398", "neg_type": "same_act_nearby", "category": "ordinary_citizen"}
+{"query_id": "human:h035", "query": "what money can I get if I was arrested for no good reason", "positive": "bnss:399", "negative": "bnss:1", "neg_type": "boilerplate", "category": "ordinary_citizen"}
+{"query_id": "human:h035", "query": "what money can I get if I was arrested for no good reason", "positive": "bnss:399", "negative": "bns:356", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h035", "query": "what money can I get if I was arrested for no good reason", "positive": "bnss:399", "negative": "bns:17", "neg_type": "bm25_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h035", "query": "what money can I get if I was arrested for no good reason", "positive": "bnss:399", "negative": "bnss:499", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h035", "query": "what money can I get if I was arrested for no good reason", "positive": "bnss:399", "negative": "bnss:469", "neg_type": "dense_strong_wrong", "category": "ordinary_citizen"}
+{"query_id": "human:h036", "query": "is a young child legally capable of committing an offence", "positive": "bns:20", "negative": "bns:19", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h036", "query": "is a young child legally capable of committing an offence", "positive": "bns:20", "negative": "bns:18", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h036", "query": "is a young child legally capable of committing an offence", "positive": "bns:20", "negative": "bns:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h036", "query": "is a young child legally capable of committing an offence", "positive": "bns:20", "negative": "bns:46", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h036", "query": "is a young child legally capable of committing an offence", "positive": "bns:20", "negative": "bnss:200", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h036", "query": "is a young child legally capable of committing an offence", "positive": "bns:20", "negative": "bns:21", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h036", "query": "is a young child legally capable of committing an offence", "positive": "bns:20", "negative": "jj2015:89", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h038", "query": "how many hours can someone be held before appearing before a judge", "positive": "bnss:58", "negative": "bnss:64", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h038", "query": "how many hours can someone be held before appearing before a judge", "positive": "bnss:58", "negative": "bnss:59", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h038", "query": "how many hours can someone be held before appearing before a judge", "positive": "bnss:58", "negative": "bnss:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h038", "query": "how many hours can someone be held before appearing before a judge", "positive": "bnss:58", "negative": "bnss:422", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h038", "query": "how many hours can someone be held before appearing before a judge", "positive": "bnss:58", "negative": "constitution:217", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h038", "query": "how many hours can someone be held before appearing before a judge", "positive": "bnss:58", "negative": "bnss:78", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h038", "query": "how many hours can someone be held before appearing before a judge", "positive": "bnss:58", "negative": "bnss:481", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h040", "query": "is retroactive criminalization permitted under the constitution", "positive": "constitution:20", "negative": "constitution:24", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h040", "query": "is retroactive criminalization permitted under the constitution", "positive": "constitution:20", "negative": "constitution:21", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h040", "query": "is retroactive criminalization permitted under the constitution", "positive": "constitution:20", "negative": "constitution:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h040", "query": "is retroactive criminalization permitted under the constitution", "positive": "constitution:20", "negative": "bnss:156", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h040", "query": "is retroactive criminalization permitted under the constitution", "positive": "constitution:20", "negative": "bnss:154", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h040", "query": "is retroactive criminalization permitted under the constitution", "positive": "constitution:20", "negative": "bns:13", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h040", "query": "is retroactive criminalization permitted under the constitution", "positive": "constitution:20", "negative": "bnss:473", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h041", "query": "must the state follow fair procedure before depriving a person of liberty", "positive": "constitution:21", "negative": "constitution:25", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h041", "query": "must the state follow fair procedure before depriving a person of liberty", "positive": "constitution:21", "negative": "constitution:15", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h041", "query": "must the state follow fair procedure before depriving a person of liberty", "positive": "constitution:21", "negative": "constitution:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h041", "query": "must the state follow fair procedure before depriving a person of liberty", "positive": "constitution:21", "negative": "jj2015:19", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h041", "query": "must the state follow fair procedure before depriving a person of liberty", "positive": "constitution:21", "negative": "jj2015:103", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h041", "query": "must the state follow fair procedure before depriving a person of liberty", "positive": "constitution:21", "negative": "bnss:134", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h041", "query": "must the state follow fair procedure before depriving a person of liberty", "positive": "constitution:21", "negative": "bsa:123", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h042", "query": "who bears the responsibility of establishing facts in a dispute", "positive": "bsa:105", "negative": "bsa:99", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h042", "query": "who bears the responsibility of establishing facts in a dispute", "positive": "bsa:105", "negative": "bsa:110", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h042", "query": "who bears the responsibility of establishing facts in a dispute", "positive": "bsa:105", "negative": "bsa:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h042", "query": "who bears the responsibility of establishing facts in a dispute", "positive": "bsa:105", "negative": "lsa:22C", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h042", "query": "who bears the responsibility of establishing facts in a dispute", "positive": "bsa:105", "negative": "bsa:7", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h042", "query": "who bears the responsibility of establishing facts in a dispute", "positive": "bsa:105", "negative": "bsa:10", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h043", "query": "can prior statements made to law enforcement be used against the person who made them", "positive": "bsa:23", "negative": "bsa:19", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h043", "query": "can prior statements made to law enforcement be used against the person who made them", "positive": "bsa:23", "negative": "bsa:27", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h043", "query": "can prior statements made to law enforcement be used against the person who made them", "positive": "bsa:23", "negative": "bsa:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h043", "query": "can prior statements made to law enforcement be used against the person who made them", "positive": "bsa:23", "negative": "bsa:148", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h043", "query": "can prior statements made to law enforcement be used against the person who made them", "positive": "bsa:23", "negative": "bsa:17", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h043", "query": "can prior statements made to law enforcement be used against the person who made them", "positive": "bsa:23", "negative": "bnss:299", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h043", "query": "can prior statements made to law enforcement be used against the person who made them", "positive": "bsa:23", "negative": "bnss:181", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h044", "query": "is compensation available to someone acquitted after a wrongful arrest", "positive": "bnss:399", "negative": "bnss:401", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h044", "query": "is compensation available to someone acquitted after a wrongful arrest", "positive": "bnss:399", "negative": "bnss:405", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h044", "query": "is compensation available to someone acquitted after a wrongful arrest", "positive": "bnss:399", "negative": "bnss:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h044", "query": "is compensation available to someone acquitted after a wrongful arrest", "positive": "bnss:399", "negative": "bnss:396", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h044", "query": "is compensation available to someone acquitted after a wrongful arrest", "positive": "bnss:399", "negative": "bnss:53", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h044", "query": "is compensation available to someone acquitted after a wrongful arrest", "positive": "bnss:399", "negative": "bnss:273", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h045", "query": "what protections exist for an accused minor facing serious charges", "positive": "jj2015:15", "negative": "jj2015:18", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h045", "query": "what protections exist for an accused minor facing serious charges", "positive": "jj2015:15", "negative": "jj2015:9", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h045", "query": "what protections exist for an accused minor facing serious charges", "positive": "jj2015:15", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h045", "query": "what protections exist for an accused minor facing serious charges", "positive": "jj2015:15", "negative": "bnss:241", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h045", "query": "what protections exist for an accused minor facing serious charges", "positive": "jj2015:15", "negative": "bnss:245", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h045", "query": "what protections exist for an accused minor facing serious charges", "positive": "jj2015:15", "negative": "jj2015:6", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h045", "query": "what protections exist for an accused minor facing serious charges", "positive": "jj2015:15", "negative": "jj2015:10", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h047", "query": "is unauthorized use of someone's digital signature a punishable offence", "positive": "it_act:66C", "negative": "it_act:63", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h047", "query": "is unauthorized use of someone's digital signature a punishable offence", "positive": "it_act:66C", "negative": "it_act:66E", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h047", "query": "is unauthorized use of someone's digital signature a punishable offence", "positive": "it_act:66C", "negative": "it_act:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h047", "query": "is unauthorized use of someone's digital signature a punishable offence", "positive": "it_act:66C", "negative": "it_act:38", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h047", "query": "is unauthorized use of someone's digital signature a punishable offence", "positive": "it_act:66C", "negative": "it_act:36", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h047", "query": "is unauthorized use of someone's digital signature a punishable offence", "positive": "it_act:66C", "negative": "it_act:74", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h047", "query": "is unauthorized use of someone's digital signature a punishable offence", "positive": "it_act:66C", "negative": "bns:180", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h048", "query": "what happens if a company's advertisement is misleading", "positive": "cpa2019:89", "negative": "cpa2019:93", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h048", "query": "what happens if a company's advertisement is misleading", "positive": "cpa2019:89", "negative": "cpa2019:91", "neg_type": "same_act_nearby", "category": "paraphrase"}
+{"query_id": "human:h048", "query": "what happens if a company's advertisement is misleading", "positive": "cpa2019:89", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "paraphrase"}
+{"query_id": "human:h048", "query": "what happens if a company's advertisement is misleading", "positive": "cpa2019:89", "negative": "cpa2019:21", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h048", "query": "what happens if a company's advertisement is misleading", "positive": "cpa2019:89", "negative": "cpa2019:39", "neg_type": "bm25_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h048", "query": "what happens if a company's advertisement is misleading", "positive": "cpa2019:89", "negative": "cpa2019:17", "neg_type": "dense_strong_wrong", "category": "paraphrase"}
+{"query_id": "human:h052", "query": "some guy keeps texting and calling me even after I said stop", "positive": "bns:78", "negative": "bns:82", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h052", "query": "some guy keeps texting and calling me even after I said stop", "positive": "bns:78", "negative": "bns:83", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h052", "query": "some guy keeps texting and calling me even after I said stop", "positive": "bns:78", "negative": "bns:1", "neg_type": "boilerplate", "category": "colloquial"}
+{"query_id": "human:h052", "query": "some guy keeps texting and calling me even after I said stop", "positive": "bns:78", "negative": "bnss:281", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h052", "query": "some guy keeps texting and calling me even after I said stop", "positive": "bns:78", "negative": "cpa2019:80", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h052", "query": "some guy keeps texting and calling me even after I said stop", "positive": "bns:78", "negative": "bnss:388", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h052", "query": "some guy keeps texting and calling me even after I said stop", "positive": "bns:78", "negative": "bnss:162", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h053", "query": "my landlord's goons broke my door down", "positive": "bns:331", "negative": "bns:337", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h053", "query": "my landlord's goons broke my door down", "positive": "bns:331", "negative": "bns:328", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h053", "query": "my landlord's goons broke my door down", "positive": "bns:331", "negative": "bns:1", "neg_type": "boilerplate", "category": "colloquial"}
+{"query_id": "human:h053", "query": "my landlord's goons broke my door down", "positive": "bns:331", "negative": "bns:330", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h053", "query": "my landlord's goons broke my door down", "positive": "bns:331", "negative": "bsa:101", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h053", "query": "my landlord's goons broke my door down", "positive": "bns:331", "negative": "bns:333", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h055", "query": "they took my stuff and roughed me up while doing it", "positive": "bns:309", "negative": "bns:303", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h055", "query": "they took my stuff and roughed me up while doing it", "positive": "bns:309", "negative": "bns:313", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h055", "query": "they took my stuff and roughed me up while doing it", "positive": "bns:309", "negative": "bns:1", "neg_type": "boilerplate", "category": "colloquial"}
+{"query_id": "human:h055", "query": "they took my stuff and roughed me up while doing it", "positive": "bns:309", "negative": "it_act:52D", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h055", "query": "they took my stuff and roughed me up while doing it", "positive": "bns:309", "negative": "bsa:147", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h055", "query": "they took my stuff and roughed me up while doing it", "positive": "bns:309", "negative": "bns:134", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h057", "query": "I heard you can get bail even before they arrest you", "positive": "bnss:482", "negative": "bnss:477", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h057", "query": "I heard you can get bail even before they arrest you", "positive": "bnss:482", "negative": "bnss:480", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h057", "query": "I heard you can get bail even before they arrest you", "positive": "bnss:482", "negative": "bnss:1", "neg_type": "boilerplate", "category": "colloquial"}
+{"query_id": "human:h057", "query": "I heard you can get bail even before they arrest you", "positive": "bnss:482", "negative": "bnss:531", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h057", "query": "I heard you can get bail even before they arrest you", "positive": "bnss:482", "negative": "bnss:488", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h057", "query": "I heard you can get bail even before they arrest you", "positive": "bnss:482", "negative": "bnss:57", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h057", "query": "I heard you can get bail even before they arrest you", "positive": "bnss:482", "negative": "bnss:78", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h058", "query": "the shopkeeper won't give me my money back for the busted TV", "positive": "cpa2019:35", "negative": "cpa2019:31", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h058", "query": "the shopkeeper won't give me my money back for the busted TV", "positive": "cpa2019:35", "negative": "cpa2019:39", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h058", "query": "the shopkeeper won't give me my money back for the busted TV", "positive": "cpa2019:35", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "colloquial"}
+{"query_id": "human:h058", "query": "the shopkeeper won't give me my money back for the busted TV", "positive": "cpa2019:35", "negative": "cpa2019:79", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h058", "query": "the shopkeeper won't give me my money back for the busted TV", "positive": "cpa2019:35", "negative": "cpa2019:38", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h058", "query": "the shopkeeper won't give me my money back for the busted TV", "positive": "cpa2019:35", "negative": "cpa2019:81", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h059", "query": "my kid got picked up by the cops, is that even legal", "positive": "jj2015:10", "negative": "jj2015:11", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h059", "query": "my kid got picked up by the cops, is that even legal", "positive": "jj2015:10", "negative": "jj2015:6", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h059", "query": "my kid got picked up by the cops, is that even legal", "positive": "jj2015:10", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "colloquial"}
+{"query_id": "human:h059", "query": "my kid got picked up by the cops, is that even legal", "positive": "jj2015:10", "negative": "jj2015:37", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h059", "query": "my kid got picked up by the cops, is that even legal", "positive": "jj2015:10", "negative": "jj2015:75", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h059", "query": "my kid got picked up by the cops, is that even legal", "positive": "jj2015:10", "negative": "jj2015:78", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h059", "query": "my kid got picked up by the cops, is that even legal", "positive": "jj2015:10", "negative": "bns:97", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h060", "query": "can they just barge into my house without any paper", "positive": "bnss:96", "negative": "bnss:90", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h060", "query": "can they just barge into my house without any paper", "positive": "bnss:96", "negative": "bnss:92", "neg_type": "same_act_nearby", "category": "colloquial"}
+{"query_id": "human:h060", "query": "can they just barge into my house without any paper", "positive": "bnss:96", "negative": "bnss:1", "neg_type": "boilerplate", "category": "colloquial"}
+{"query_id": "human:h060", "query": "can they just barge into my house without any paper", "positive": "bnss:96", "negative": "constitution:194", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h060", "query": "can they just barge into my house without any paper", "positive": "bnss:96", "negative": "constitution:105", "neg_type": "bm25_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h060", "query": "can they just barge into my house without any paper", "positive": "bnss:96", "negative": "bnss:109", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h060", "query": "can they just barge into my house without any paper", "positive": "bnss:96", "negative": "bsa:75", "neg_type": "dense_strong_wrong", "category": "colloquial"}
+{"query_id": "human:h066", "query": "how to fil fir", "positive": "bnss:173", "negative": "bnss:171", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h066", "query": "how to fil fir", "positive": "bnss:173", "negative": "bnss:175", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h066", "query": "how to fil fir", "positive": "bnss:173", "negative": "bnss:1", "neg_type": "boilerplate", "category": "misspelling"}
+{"query_id": "human:h066", "query": "how to fil fir", "positive": "bnss:173", "negative": "bnss:177", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h066", "query": "how to fil fir", "positive": "bnss:173", "negative": "bsa:32", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h066", "query": "how to fil fir", "positive": "bnss:173", "negative": "bnss:193", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h067", "query": "wat is dowry deth", "positive": "bns:80", "negative": "bns:79", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h067", "query": "wat is dowry deth", "positive": "bns:80", "negative": "bns:77", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h067", "query": "wat is dowry deth", "positive": "bns:80", "negative": "bns:1", "neg_type": "boilerplate", "category": "misspelling"}
+{"query_id": "human:h067", "query": "wat is dowry deth", "positive": "bns:80", "negative": "bsa:118", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h067", "query": "wat is dowry deth", "positive": "bns:80", "negative": "pwdva:2", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h067", "query": "wat is dowry deth", "positive": "bns:80", "negative": "bns:141", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h069", "query": "bale procedur for accused", "positive": "bnss:480", "negative": "bnss:477", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h069", "query": "bale procedur for accused", "positive": "bnss:480", "negative": "bnss:479", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h069", "query": "bale procedur for accused", "positive": "bnss:480", "negative": "bnss:1", "neg_type": "boilerplate", "category": "misspelling"}
+{"query_id": "human:h069", "query": "bale procedur for accused", "positive": "bnss:480", "negative": "bnss:293", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h069", "query": "bale procedur for accused", "positive": "bnss:480", "negative": "bnss:250", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h069", "query": "bale procedur for accused", "positive": "bnss:480", "negative": "bnss:273", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h069", "query": "bale procedur for accused", "positive": "bnss:480", "negative": "bnss:270", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h070", "query": "juvenil justice bord", "positive": "jj2015:4", "negative": "jj2015:1", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h070", "query": "juvenil justice bord", "positive": "jj2015:4", "negative": "jj2015:8", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h070", "query": "juvenil justice bord", "positive": "jj2015:4", "negative": "constitution:126", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h070", "query": "juvenil justice bord", "positive": "jj2015:4", "negative": "lsa:22D", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h070", "query": "juvenil justice bord", "positive": "jj2015:4", "negative": "bnss:365", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h070", "query": "juvenil justice bord", "positive": "jj2015:4", "negative": "constitution:235", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h071", "query": "burdon of proof in triall", "positive": "bsa:105", "negative": "bsa:99", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h071", "query": "burdon of proof in triall", "positive": "bsa:105", "negative": "bsa:103", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h071", "query": "burdon of proof in triall", "positive": "bsa:105", "negative": "bsa:1", "neg_type": "boilerplate", "category": "misspelling"}
+{"query_id": "human:h071", "query": "burdon of proof in triall", "positive": "bsa:105", "negative": "bsa:76", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h071", "query": "burdon of proof in triall", "positive": "bsa:105", "negative": "bsa:106", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h071", "query": "burdon of proof in triall", "positive": "bsa:105", "negative": "bsa:70", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h071", "query": "burdon of proof in triall", "positive": "bsa:105", "negative": "bsa:167", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h072", "query": "consumer complaint procedur", "positive": "cpa2019:35", "negative": "cpa2019:29", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h072", "query": "consumer complaint procedur", "positive": "cpa2019:35", "negative": "cpa2019:32", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h072", "query": "consumer complaint procedur", "positive": "cpa2019:35", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "misspelling"}
+{"query_id": "human:h072", "query": "consumer complaint procedur", "positive": "cpa2019:35", "negative": "cpa2019:17", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h072", "query": "consumer complaint procedur", "positive": "cpa2019:35", "negative": "cpa2019:18", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h072", "query": "consumer complaint procedur", "positive": "cpa2019:35", "negative": "cpa2019:38", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h073", "query": "artical 21 right to life", "positive": "constitution:21", "negative": "constitution:18", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h073", "query": "artical 21 right to life", "positive": "constitution:21", "negative": "constitution:23", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h073", "query": "artical 21 right to life", "positive": "constitution:21", "negative": "constitution:1", "neg_type": "boilerplate", "category": "misspelling"}
+{"query_id": "human:h073", "query": "artical 21 right to life", "positive": "constitution:21", "negative": "jj2015:64", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h073", "query": "artical 21 right to life", "positive": "constitution:21", "negative": "bsa:42", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h073", "query": "artical 21 right to life", "positive": "constitution:21", "negative": "bns:39", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h073", "query": "artical 21 right to life", "positive": "constitution:21", "negative": "bns:42", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h075", "query": "leagal aid for poor ppl", "positive": "lsa:13", "negative": "lsa:10", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h075", "query": "leagal aid for poor ppl", "positive": "lsa:13", "negative": "lsa:11B", "neg_type": "same_act_nearby", "category": "misspelling"}
+{"query_id": "human:h075", "query": "leagal aid for poor ppl", "positive": "lsa:13", "negative": "lsa:1", "neg_type": "boilerplate", "category": "misspelling"}
+{"query_id": "human:h075", "query": "leagal aid for poor ppl", "positive": "lsa:13", "negative": "lsa:7", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h075", "query": "leagal aid for poor ppl", "positive": "lsa:13", "negative": "lsa:4", "neg_type": "bm25_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h075", "query": "leagal aid for poor ppl", "positive": "lsa:13", "negative": "pwdva:15", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h075", "query": "leagal aid for poor ppl", "positive": "lsa:13", "negative": "lsa:14", "neg_type": "dense_strong_wrong", "category": "misspelling"}
+{"query_id": "human:h076", "query": "how to file an FIR", "positive": "bnss:173", "negative": "bnss:178", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h076", "query": "how to file an FIR", "positive": "bnss:173", "negative": "bnss:177", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h076", "query": "how to file an FIR", "positive": "bnss:173", "negative": "bnss:1", "neg_type": "boilerplate", "category": "abbreviation"}
+{"query_id": "human:h076", "query": "how to file an FIR", "positive": "bnss:173", "negative": "it_act:44", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h076", "query": "how to file an FIR", "positive": "bnss:173", "negative": "bnss:193", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h079", "query": "JJ Act rules for a CCL", "positive": "jj2015:10", "negative": "jj2015:15", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h079", "query": "JJ Act rules for a CCL", "positive": "jj2015:10", "negative": "jj2015:7", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h079", "query": "JJ Act rules for a CCL", "positive": "jj2015:10", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "abbreviation"}
+{"query_id": "human:h079", "query": "JJ Act rules for a CCL", "positive": "jj2015:10", "negative": "constitution:145", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h079", "query": "JJ Act rules for a CCL", "positive": "jj2015:10", "negative": "bnss:523", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h079", "query": "JJ Act rules for a CCL", "positive": "jj2015:10", "negative": "lsa:29A", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h080", "query": "CPA consumer commission jurisdiction", "positive": "cpa2019:58", "negative": "cpa2019:62", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h080", "query": "CPA consumer commission jurisdiction", "positive": "cpa2019:58", "negative": "cpa2019:57", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h080", "query": "CPA consumer commission jurisdiction", "positive": "cpa2019:58", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "abbreviation"}
+{"query_id": "human:h080", "query": "CPA consumer commission jurisdiction", "positive": "cpa2019:58", "negative": "cpa2019:81", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h080", "query": "CPA consumer commission jurisdiction", "positive": "cpa2019:58", "negative": "cpa2019:74", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h080", "query": "CPA consumer commission jurisdiction", "positive": "cpa2019:58", "negative": "cpa2019:10", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h081", "query": "BSA rules on estoppel", "positive": "bsa:121", "negative": "bsa:120", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h081", "query": "BSA rules on estoppel", "positive": "bsa:121", "negative": "bsa:117", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h081", "query": "BSA rules on estoppel", "positive": "bsa:121", "negative": "bsa:1", "neg_type": "boilerplate", "category": "abbreviation"}
+{"query_id": "human:h081", "query": "BSA rules on estoppel", "positive": "bsa:121", "negative": "bsa:122", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h081", "query": "BSA rules on estoppel", "positive": "bsa:121", "negative": "it_act:31", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h081", "query": "BSA rules on estoppel", "positive": "bsa:121", "negative": "bsa:25", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h082", "query": "LSA free legal services", "positive": "lsa:13", "negative": "lsa:15", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h082", "query": "LSA free legal services", "positive": "lsa:13", "negative": "lsa:9", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h082", "query": "LSA free legal services", "positive": "lsa:13", "negative": "lsa:1", "neg_type": "boilerplate", "category": "abbreviation"}
+{"query_id": "human:h082", "query": "LSA free legal services", "positive": "lsa:13", "negative": "pwdva:5", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h082", "query": "LSA free legal services", "positive": "lsa:13", "negative": "lsa:11B", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h082", "query": "LSA free legal services", "positive": "lsa:13", "negative": "lsa:12", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h082", "query": "LSA free legal services", "positive": "lsa:13", "negative": "lsa:16", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h083", "query": "NCR filing procedure", "positive": "bnss:174", "negative": "bnss:173", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h083", "query": "NCR filing procedure", "positive": "bnss:174", "negative": "bnss:176", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h083", "query": "NCR filing procedure", "positive": "bnss:174", "negative": "bnss:1", "neg_type": "boilerplate", "category": "abbreviation"}
+{"query_id": "human:h083", "query": "NCR filing procedure", "positive": "bnss:174", "negative": "jj2015:85", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h083", "query": "NCR filing procedure", "positive": "bnss:174", "negative": "pwdva:32", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h083", "query": "NCR filing procedure", "positive": "bnss:174", "negative": "bnss:292", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h083", "query": "NCR filing procedure", "positive": "bnss:174", "negative": "bnss:224", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h085", "query": "difference between FIR and NCR", "positive": "bnss:173", "negative": "bnss:175", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h085", "query": "difference between FIR and NCR", "positive": "bnss:173", "negative": "bnss:177", "neg_type": "same_act_nearby", "category": "abbreviation"}
+{"query_id": "human:h085", "query": "difference between FIR and NCR", "positive": "bnss:173", "negative": "bnss:1", "neg_type": "boilerplate", "category": "abbreviation"}
+{"query_id": "human:h085", "query": "difference between FIR and NCR", "positive": "bnss:173", "negative": "bnss:174", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h085", "query": "difference between FIR and NCR", "positive": "bnss:173", "negative": "bnss:2", "neg_type": "bm25_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h085", "query": "difference between FIR and NCR", "positive": "bnss:173", "negative": "bnss:193", "neg_type": "dense_strong_wrong", "category": "abbreviation"}
+{"query_id": "human:h086", "query": "what are my rights if I get arrested", "positive": "bnss:47", "negative": "bnss:45", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h086", "query": "what are my rights if I get arrested", "positive": "bnss:47", "negative": "bnss:41", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h086", "query": "what are my rights if I get arrested", "positive": "bnss:47", "negative": "bnss:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h086", "query": "what are my rights if I get arrested", "positive": "bnss:47", "negative": "bnss:48", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h086", "query": "what are my rights if I get arrested", "positive": "bnss:47", "negative": "bnss:49", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h086", "query": "what are my rights if I get arrested", "positive": "bnss:47", "negative": "bnss:58", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h086", "query": "what are my rights if I get arrested", "positive": "bnss:47", "negative": "bnss:38", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h087", "query": "what happens after someone reports a crime to the police", "positive": "bnss:175", "negative": "bnss:177", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h087", "query": "what happens after someone reports a crime to the police", "positive": "bnss:175", "negative": "bnss:173", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h087", "query": "what happens after someone reports a crime to the police", "positive": "bnss:175", "negative": "bnss:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h087", "query": "what happens after someone reports a crime to the police", "positive": "bnss:175", "negative": "bnss:107", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h087", "query": "what happens after someone reports a crime to the police", "positive": "bnss:175", "negative": "bnss:43", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h087", "query": "what happens after someone reports a crime to the police", "positive": "bnss:175", "negative": "bnss:193", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h087", "query": "what happens after someone reports a crime to the police", "positive": "bnss:175", "negative": "bnss:233", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h088", "query": "how does bail work", "positive": "bnss:478", "negative": "bnss:483", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h088", "query": "how does bail work", "positive": "bnss:478", "negative": "bnss:482", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h088", "query": "how does bail work", "positive": "bnss:478", "negative": "bnss:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h088", "query": "how does bail work", "positive": "bnss:478", "negative": "bnss:92", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h088", "query": "how does bail work", "positive": "bnss:478", "negative": "bnss:49", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h088", "query": "how does bail work", "positive": "bnss:478", "negative": "bnss:485", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h088", "query": "how does bail work", "positive": "bnss:478", "negative": "bnss:481", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h089", "query": "what protections do consumers have against unsafe products", "positive": "cpa2019:83", "negative": "cpa2019:81", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h089", "query": "what protections do consumers have against unsafe products", "positive": "cpa2019:83", "negative": "cpa2019:77", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h089", "query": "what protections do consumers have against unsafe products", "positive": "cpa2019:83", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h089", "query": "what protections do consumers have against unsafe products", "positive": "cpa2019:83", "negative": "cpa2019:18", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h089", "query": "what protections do consumers have against unsafe products", "positive": "cpa2019:83", "negative": "cpa2019:20", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h089", "query": "what protections do consumers have against unsafe products", "positive": "cpa2019:83", "negative": "cpa2019:87", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h089", "query": "what protections do consumers have against unsafe products", "positive": "cpa2019:83", "negative": "cpa2019:86", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h090", "query": "what happens when a child breaks the law", "positive": "jj2015:14", "negative": "jj2015:13", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h090", "query": "what happens when a child breaks the law", "positive": "jj2015:14", "negative": "jj2015:11", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h090", "query": "what happens when a child breaks the law", "positive": "jj2015:14", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h090", "query": "what happens when a child breaks the law", "positive": "jj2015:14", "negative": "bns:334", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h090", "query": "what happens when a child breaks the law", "positive": "jj2015:14", "negative": "bnss:249", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h090", "query": "what happens when a child breaks the law", "positive": "jj2015:14", "negative": "jj2015:21", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h090", "query": "what happens when a child breaks the law", "positive": "jj2015:14", "negative": "jj2015:26", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h091", "query": "what counts as evidence in a court case", "positive": "bsa:3", "negative": "bsa:2", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h091", "query": "what counts as evidence in a court case", "positive": "bsa:3", "negative": "bsa:5", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h091", "query": "what counts as evidence in a court case", "positive": "bsa:3", "negative": "bsa:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h091", "query": "what counts as evidence in a court case", "positive": "bsa:3", "negative": "bsa:127", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h091", "query": "what counts as evidence in a court case", "positive": "bsa:3", "negative": "bsa:33", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h091", "query": "what counts as evidence in a court case", "positive": "bsa:3", "negative": "bsa:27", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h092", "query": "what basic rights are guaranteed to every citizen", "positive": "constitution:14", "negative": "constitution:9", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h092", "query": "what basic rights are guaranteed to every citizen", "positive": "constitution:14", "negative": "constitution:13", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h092", "query": "what basic rights are guaranteed to every citizen", "positive": "constitution:14", "negative": "constitution:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h092", "query": "what basic rights are guaranteed to every citizen", "positive": "constitution:14", "negative": "constitution:32", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h092", "query": "what basic rights are guaranteed to every citizen", "positive": "constitution:14", "negative": "constitution:10", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h092", "query": "what basic rights are guaranteed to every citizen", "positive": "constitution:14", "negative": "constitution:39", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h092", "query": "what basic rights are guaranteed to every citizen", "positive": "constitution:14", "negative": "constitution:11", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h093", "query": "what happens if I don't pay a court fine", "positive": "bns:8", "negative": "bns:3", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h093", "query": "what happens if I don't pay a court fine", "positive": "bns:8", "negative": "bns:6", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h093", "query": "what happens if I don't pay a court fine", "positive": "bns:8", "negative": "bns:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h093", "query": "what happens if I don't pay a court fine", "positive": "bns:8", "negative": "bns:307", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h093", "query": "what happens if I don't pay a court fine", "positive": "bns:8", "negative": "bnss:478", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h093", "query": "what happens if I don't pay a court fine", "positive": "bns:8", "negative": "bnss:121", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h093", "query": "what happens if I don't pay a court fine", "positive": "bns:8", "negative": "bnss:461", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h095", "query": "what protection can a woman get from violence within her own household", "positive": "pwdva:18", "negative": "pwdva:24", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h095", "query": "what protection can a woman get from violence within her own household", "positive": "pwdva:18", "negative": "pwdva:15", "neg_type": "same_act_nearby", "category": "vague_answerable"}
+{"query_id": "human:h095", "query": "what protection can a woman get from violence within her own household", "positive": "pwdva:18", "negative": "pwdva:1", "neg_type": "boilerplate", "category": "vague_answerable"}
+{"query_id": "human:h095", "query": "what protection can a woman get from violence within her own household", "positive": "pwdva:18", "negative": "pwdva:19", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h095", "query": "what protection can a woman get from violence within her own household", "positive": "pwdva:18", "negative": "pwdva:3", "neg_type": "bm25_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h095", "query": "what protection can a woman get from violence within her own household", "positive": "pwdva:18", "negative": "pwdva:10", "neg_type": "dense_strong_wrong", "category": "vague_answerable"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "bnss:47", "negative": "bnss:43", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "bnss:47", "negative": "bnss:41", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "bnss:47", "negative": "bnss:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "bnss:47", "negative": "bnss:48", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "bnss:47", "negative": "bnss:54", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "bnss:47", "negative": "bnss:38", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "constitution:22", "negative": "constitution:24", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "constitution:22", "negative": "constitution:15", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "constitution:22", "negative": "constitution:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "constitution:22", "negative": "bnss:48", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "constitution:22", "negative": "bnss:54", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h096", "query": "rights of an arrested person", "positive": "constitution:22", "negative": "bnss:38", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "jj2015:10", "negative": "jj2015:7", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "jj2015:10", "negative": "jj2015:5", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "jj2015:10", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "jj2015:10", "negative": "bsa:127", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "jj2015:10", "negative": "jj2015:74", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "jj2015:10", "negative": "jj2015:19", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "jj2015:10", "negative": "jj2015:13", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "constitution:22", "negative": "constitution:28", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "constitution:22", "negative": "constitution:24", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "constitution:22", "negative": "constitution:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "constitution:22", "negative": "bsa:127", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "constitution:22", "negative": "jj2015:74", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "constitution:22", "negative": "jj2015:19", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h097", "query": "what protects a child accused of a crime", "positive": "constitution:22", "negative": "jj2015:13", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "constitution:15", "negative": "constitution:12", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "constitution:15", "negative": "constitution:18", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "constitution:15", "negative": "constitution:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "constitution:15", "negative": "pwdva:10", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "constitution:15", "negative": "pwdva:11", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "constitution:15", "negative": "pwdva:1", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "pwdva:3", "negative": "pwdva:7", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "pwdva:3", "negative": "pwdva:9", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "pwdva:3", "negative": "pwdva:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "pwdva:3", "negative": "pwdva:10", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h098", "query": "equality and protection for women facing violence at home", "positive": "pwdva:3", "negative": "pwdva:11", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:104", "negative": "bsa:109", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:104", "negative": "bsa:102", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:104", "negative": "bsa:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:104", "negative": "bsa:108", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:104", "negative": "bsa:106", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:104", "negative": "bsa:107", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:105", "negative": "bsa:99", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:105", "negative": "bsa:103", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:105", "negative": "bsa:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:105", "negative": "bsa:108", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:105", "negative": "bsa:106", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h099", "query": "evidence and burden of proof in a criminal case", "positive": "bsa:105", "negative": "bsa:107", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:478", "negative": "bnss:474", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:478", "negative": "bnss:472", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:478", "negative": "bnss:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:478", "negative": "bnss:481", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:478", "negative": "bnss:480", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:478", "negative": "bnss:369", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:47", "negative": "bnss:53", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:47", "negative": "bnss:44", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:47", "negative": "bnss:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:47", "negative": "bnss:481", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:47", "negative": "bnss:480", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h100", "query": "bail and pre-trial rights of the accused", "positive": "bnss:47", "negative": "bnss:369", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:4", "negative": "jj2015:10", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:4", "negative": "jj2015:6", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:4", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:4", "negative": "jj2015:13", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:4", "negative": "jj2015:95", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:4", "negative": "jj2015:18", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:27", "negative": "jj2015:31", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:27", "negative": "jj2015:24", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:27", "negative": "jj2015:1", "neg_type": "boilerplate", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:27", "negative": "jj2015:13", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:27", "negative": "jj2015:95", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h102", "query": "child welfare committee vs juvenile justice board, who handles what", "positive": "jj2015:27", "negative": "jj2015:18", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:106", "negative": "bnss:104", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:106", "negative": "bnss:103", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:106", "negative": "bnss:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:106", "negative": "bnss:105", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:106", "negative": "cpa2019:22", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:106", "negative": "bnss:97", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:107", "negative": "bnss:111", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:107", "negative": "bnss:108", "neg_type": "same_act_nearby", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:107", "negative": "bnss:1", "neg_type": "boilerplate", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:107", "negative": "bnss:105", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:107", "negative": "cpa2019:22", "neg_type": "bm25_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h103", "query": "search, seizure and property rights during a police investigation", "positive": "bnss:107", "negative": "bnss:97", "neg_type": "dense_strong_wrong", "category": "multi_source"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:66E", "negative": "it_act:67B", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:66E", "negative": "it_act:66D", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:66E", "negative": "it_act:1", "neg_type": "boilerplate", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:66E", "negative": "it_act:69B", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:66E", "negative": "it_act:70B", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:66E", "negative": "bnss:202", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:67", "negative": "it_act:66F", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:67", "negative": "it_act:66C", "neg_type": "same_act_nearby", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:67", "negative": "it_act:1", "neg_type": "boilerplate", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:67", "negative": "it_act:69B", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:67", "negative": "it_act:70B", "neg_type": "bm25_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:67", "negative": "bnss:202", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h104", "query": "cyber offences against women online", "positive": "it_act:67", "negative": "it_act:67B", "neg_type": "dense_strong_wrong", "category": "ambiguous"}
+{"query_id": "human:h107", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:477", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h107", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:485", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h107", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h107", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "constitution:326", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h107", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "bnss:483", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h107", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "jj2015:6", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h107", "query": "bail for an adult accused of a serious crime", "positive": "bnss:480", "negative": "jj2015:12", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h108", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:14", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h108", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:12", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h108", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h108", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:194", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h108", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "constitution:105", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h108", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "bns:302", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h108", "query": "freedom of speech and expression", "positive": "constitution:19", "negative": "bns:196", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h109", "query": "punishment for grievous hurt", "positive": "bns:117", "negative": "bns:113", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h109", "query": "punishment for grievous hurt", "positive": "bns:117", "negative": "bns:122", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h109", "query": "punishment for grievous hurt", "positive": "bns:117", "negative": "bns:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h109", "query": "punishment for grievous hurt", "positive": "bns:117", "negative": "bns:52", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h109", "query": "punishment for grievous hurt", "positive": "bns:117", "negative": "bns:53", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h109", "query": "punishment for grievous hurt", "positive": "bns:117", "negative": "bns:116", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h110", "query": "who investigates a non-cognizable case", "positive": "bnss:174", "negative": "bnss:168", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h110", "query": "who investigates a non-cognizable case", "positive": "bnss:174", "negative": "bnss:171", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h110", "query": "who investigates a non-cognizable case", "positive": "bnss:174", "negative": "bnss:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h110", "query": "who investigates a non-cognizable case", "positive": "bnss:174", "negative": "bnss:531", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h110", "query": "who investigates a non-cognizable case", "positive": "bnss:174", "negative": "jj2015:85", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h110", "query": "who investigates a non-cognizable case", "positive": "bnss:174", "negative": "bnss:224", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h110", "query": "who investigates a non-cognizable case", "positive": "bnss:174", "negative": "bnss:175", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h111", "query": "kidnapping a child for ransom", "positive": "bns:140", "negative": "bns:141", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h111", "query": "kidnapping a child for ransom", "positive": "bns:140", "negative": "bns:143", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h111", "query": "kidnapping a child for ransom", "positive": "bns:140", "negative": "bns:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h111", "query": "kidnapping a child for ransom", "positive": "bns:140", "negative": "bns:137", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h111", "query": "kidnapping a child for ransom", "positive": "bns:140", "negative": "bns:97", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h112", "query": "burden of proof for an exception claimed by the accused", "positive": "bsa:108", "negative": "bsa:111", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h112", "query": "burden of proof for an exception claimed by the accused", "positive": "bsa:108", "negative": "bsa:110", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h112", "query": "burden of proof for an exception claimed by the accused", "positive": "bsa:108", "negative": "bsa:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h112", "query": "burden of proof for an exception claimed by the accused", "positive": "bsa:108", "negative": "bsa:105", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h112", "query": "burden of proof for an exception claimed by the accused", "positive": "bsa:108", "negative": "bsa:106", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h112", "query": "burden of proof for an exception claimed by the accused", "positive": "bsa:108", "negative": "bnss:273", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h113", "query": "who decides consumer disputes at the national level", "positive": "cpa2019:58", "negative": "cpa2019:61", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h113", "query": "who decides consumer disputes at the national level", "positive": "cpa2019:58", "negative": "cpa2019:63", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h113", "query": "who decides consumer disputes at the national level", "positive": "cpa2019:58", "negative": "cpa2019:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h113", "query": "who decides consumer disputes at the national level", "positive": "cpa2019:58", "negative": "cpa2019:53", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h113", "query": "who decides consumer disputes at the national level", "positive": "cpa2019:58", "negative": "cpa2019:42", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h113", "query": "who decides consumer disputes at the national level", "positive": "cpa2019:58", "negative": "cpa2019:81", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h115", "query": "stealing someone's password to access their bank account", "positive": "it_act:66C", "negative": "it_act:66B", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h115", "query": "stealing someone's password to access their bank account", "positive": "it_act:66C", "negative": "it_act:66F", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h115", "query": "stealing someone's password to access their bank account", "positive": "it_act:66C", "negative": "it_act:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h115", "query": "stealing someone's password to access their bank account", "positive": "it_act:66C", "negative": "jj2015:99", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h115", "query": "stealing someone's password to access their bank account", "positive": "it_act:66C", "negative": "constitution:283", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h115", "query": "stealing someone's password to access their bank account", "positive": "it_act:66C", "negative": "bns:305", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h115", "query": "stealing someone's password to access their bank account", "positive": "it_act:66C", "negative": "bns:304", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h116", "query": "arrest of a person by someone who isn't a police officer", "positive": "bnss:40", "negative": "bnss:36", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h116", "query": "arrest of a person by someone who isn't a police officer", "positive": "bnss:40", "negative": "bnss:44", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h116", "query": "arrest of a person by someone who isn't a police officer", "positive": "bnss:40", "negative": "bnss:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h116", "query": "arrest of a person by someone who isn't a police officer", "positive": "bnss:40", "negative": "bnss:43", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h116", "query": "arrest of a person by someone who isn't a police officer", "positive": "bnss:40", "negative": "bnss:57", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h117", "query": "wrongful confinement of a person", "positive": "bns:127", "negative": "bns:124", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h117", "query": "wrongful confinement of a person", "positive": "bns:127", "negative": "bns:128", "neg_type": "same_act_nearby", "category": "hard_negative"}
+{"query_id": "human:h117", "query": "wrongful confinement of a person", "positive": "bns:127", "negative": "bns:1", "neg_type": "boilerplate", "category": "hard_negative"}
+{"query_id": "human:h117", "query": "wrongful confinement of a person", "positive": "bns:127", "negative": "bns:125", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h117", "query": "wrongful confinement of a person", "positive": "bns:127", "negative": "bns:12", "neg_type": "bm25_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h117", "query": "wrongful confinement of a person", "positive": "bns:127", "negative": "bns:142", "neg_type": "dense_strong_wrong", "category": "hard_negative"}
+{"query_id": "human:h117", "query": "wrongful confinement of a person", "positive": "bns:127", "negative": "bns:258", "neg_type": "dense_strong_wrong", "category": "hard_negative"}

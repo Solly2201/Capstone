@@ -20,3 +20,12 @@ services/ai/data/legal-corpus/*/source.json
 services/ai/.venv/
 services/ai/__pycache__/
 services/ai/**/__pycache__/
+
+# Fine-tuned embedding model checkpoints and candidate dense-vector
+# caches -- reproducible from services/ai/finetune/train.py, never
+# committed (see docs/RETRIEVAL_EVALUATION.md's fine-tuning section).
+services/ai/finetune/output/
+# sentence-transformers' Trainer writes default TensorBoard run logs
+# here (its own default output_dir when not overridden) -- log noise,
+# not a real artifact.
+services/ai/checkpoints/

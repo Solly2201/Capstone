@@ -1,0 +1,8 @@
+-r requirements-full.txt
+# Only needed for services/ai/finetune/train.py -- sentence-transformers
+# 3.3.1's .fit() API internally routes through the newer trainer, which
+# requires these even for the legacy training loop. Not a production
+# runtime dependency: the AI service itself (retrieval/generation/eval)
+# never imports either package.
+datasets==5.0.1
+accelerate==1.14.0
