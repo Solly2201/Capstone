@@ -29,6 +29,16 @@ _SANHITA_HEADER = re.compile(
 _CONSTITUTION_HEADER = re.compile(
     r"(?m)^(\d{1,3}[A-Z]?)\.\s+(?=[\(A-Z])"
 )
+# Consolidated "as amended" India Code PDFs print each amendment's
+# history as a numbered footnote ("1. Subs. by Act 10 of 2009, s. 2,
+# for ...", reusing small numbers that collide with real section
+# numbers). A footnote's own text always opens with one of these
+# standard amendment-drafting verbs, which a real section title never
+# does, so it is a safe, content-based way to reject that false match
+# rather than parse it as a bogus duplicate-numbered section.
+_FOOTNOTE_TITLE = re.compile(
+    r"^(Subs\.|Ins\.|Om\.|Reps\.|Renumbered\b|Added\b|Substituted\b|Inserted\b|Omitted\b)"
+)
 
 
 def chunk_sanhita(source_id: str, text: str, start_marker: str = "BE it enacted") -> list[Chunk]:
@@ -42,7 +52,7 @@ def chunk_sanhita(source_id: str, text: str, start_marker: str = "BE it enacted"
         content_start = m.end()
         content_end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
         content = body[content_start:content_end].strip()
-        if not content:
+        if not content or _FOOTNOTE_TITLE.match(title):
             continue
         chunks.append(
             Chunk(

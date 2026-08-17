@@ -22,6 +22,14 @@ python eval/run_eval.py --json eval/last_run.json   # full per-query dump
 
 ## Evaluation set
 
+> **Since updated:** `eval/queries.jsonl` now has 49 queries covering
+> all 9 ingested sources (added `ambiguous` and `source_specific`
+> categories; RTI is excluded except as an abstain-expected control).
+> The set and counts below describe the original evaluation this
+> document records, at the point BM25 vs hybrid was decided -- see
+> `docs/PROJECT_STATE.md`'s "Retrieval/evaluation hardening" for the
+> current set and its results.
+
 `services/ai/eval/queries.jsonl` -- 30 hand-curated queries against the
 actually-ingested corpus (395 chunks across Constitution, BNS, BNSS,
 BSA as of this evaluation), each with a hand-verified ground-truth
@@ -260,33 +268,56 @@ optional stage after fusion, gated the same way dense retrieval is
 (available-if-installed, degrade gracefully if not) -- not before that
 evidence exists.
 
-## Query preprocessing: deferred, not added
+## Query preprocessing: mostly deferred, one narrow exception added
 
-No synonym expansion, spelling correction, or query rewriting was
-added. The paraphrase category in this evaluation already tests
-whether the *retrieval methods themselves* (dense embeddings
-specifically) handle vocabulary variation without needing a
-preprocessing layer, and hybrid's paraphrase-query results were
-adequate without one. Revisit only if future evaluation queries expose
-failures specifically attributable to misspellings or abbreviations
-dense embeddings don't already absorb.
+No general synonym expansion, spelling correction, or query rewriting
+was added. This section's original conclusion held for a while: the
+paraphrase category in this evaluation tests whether the *retrieval
+methods themselves* (dense embeddings specifically) handle vocabulary
+variation without needing a preprocessing layer, and hybrid's
+paraphrase-query results were adequate without one.
+
+The stated trigger condition -- "revisit only if future evaluation
+queries expose failures specifically attributable to ... abbreviations"
+-- was met after the corpus expanded to include BNSS's FIR chapter
+(ss.173-196): "how do I file an FIR" false-abstained, because "FIR"
+(the term nearly every citizen actually uses) appears almost nowhere
+in BNSS's own statutory text (s.173 is titled "Information in
+cognizable cases" and never uses the abbreviation). `app/retrieval/
+query_expand.py` was added specifically for this: a fixed dict of 2
+well-established Indian legal abbreviations (FIR, NCR), expanded by
+*appending* the spelled-out form to the query at search time so the
+original tokens are preserved. This is not a general synonym model, a
+misspelling corrector, or a reranker -- it is the same narrow,
+evaluation-justified exception the original deferral decision always
+allowed for, and should stay that narrow unless evaluation names
+another specific gap.
 
 ## Remaining limitations
 
 - The confidence-gate thresholds (all three modes) are tuned against a
-  30-query hand-curated set over a 395-chunk partial corpus -- real
-  floors, backed by real numbers, but not statistically robust the way
-  a much larger labeled eval set would be. Re-run
-  `python eval/run_eval.py` and re-sweep after any significant corpus
-  growth (see `docs/PROJECT_STATE.md`'s ingestion gaps).
-- Three near-miss legal topics (bail, compounding of offences, burden
-  of proof) can still pass the hybrid confidence gate with a
-  topically-adjacent-but-not-actually-relevant citation, because the
-  corpus has partial, nearby content for each. The response's
-  `coverage_note` still honestly flags partial coverage in every case,
-  but this is a real precision gap worth revisiting once those
-  chapters are ingested (at which point the query stops being
-  abstain-expected at all).
+  49-query hand-curated set (`eval/queries.jsonl`, rebuilt to cover all
+  9 ingested sources) over a 1,783-chunk corpus -- real floors, backed
+  by real numbers, but still not statistically robust the way a much
+  larger labeled eval set would be. Re-run `python eval/run_eval.py`
+  and re-sweep after any significant corpus growth (see
+  `docs/PROJECT_STATE.md`'s ingestion gaps).
+- The hybrid floor was raised 0.40->0.42 after stress-testing
+  out-of-domain queries against the expanded corpus found real false
+  positives (see `docs/PROJECT_STATE.md`'s "Retrieval/evaluation
+  hardening"). That raise is not a complete fix -- two of the three
+  stress-test false positives found (both ~0.45) still clear even the
+  raised floor, and closing that gap fully would cost a genuine query
+  (q20, at 0.4531) under a single global threshold. A smarter
+  out-of-domain signal, not another threshold nudge, is the likely
+  actual fix, and hasn't been built.
+- Bail, compounding of offences, and burden of proof -- the three
+  near-miss topics this document originally flagged here -- are no
+  longer near-misses: BNSS's bail chapter, s.359, and BSA's
+  burden-of-proof sections are all now ingested, and all three now
+  answer with a directly relevant citation (verified end to end, see
+  `docs/PROJECT_STATE.md`). Two similarly-shaped topics (FIR, child in
+  conflict with law) were also confirmed fixed the same way.
 - Dense embeddings depend on the optional `sentence-transformers`
   install (`requirements-full.txt`); this environment's global
   TensorFlow/Keras install was incompatible with `transformers`'s TF

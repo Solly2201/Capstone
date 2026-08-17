@@ -12,11 +12,12 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.ingestion.pipeline import ingest_all, load_chunks  # noqa: E402
+from app.ingestion.sources import APPROVED_SOURCES  # noqa: E402
 
 
 def test_ingest_all_sources_produce_chunks():
     manifests = ingest_all()
-    assert len(manifests) == 4
+    assert len(manifests) == len(APPROVED_SOURCES)
     for m in manifests:
         assert m["chunk_count"] > 0
 

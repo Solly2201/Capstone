@@ -29,6 +29,7 @@ from ..ingestion.pipeline import load_chunks
 from ..ingestion.sources import get_source
 from . import embeddings as dense_embeddings
 from .fusion import DEFAULT_BM25_WEIGHT, DEFAULT_DENSE_WEIGHT, DEFAULT_RRF_K, reciprocal_rank_fusion
+from .query_expand import expand_query
 from .tokenize import tokenize
 
 _INDEX_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "index")
@@ -174,6 +175,7 @@ def search(
     if resolved_mode == "dense" and not dense_index_available():
         resolved_mode = "bm25"
 
+    query = expand_query(query)
     bm25_scores = _bm25_scores(query) if resolved_mode in ("bm25", "hybrid") else {}
     dense_scores = _dense_scores(query) if resolved_mode in ("dense", "hybrid") else {}
 

@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 from .chunk import CHUNKERS
 from .clean import clean_extracted_text
-from .extract import extract_pdf_text
+from .extract import extract_gazette_body_text, extract_gazette_titles, extract_pdf_text
 from .models import Chunk, SourceMeta
 from .sources import APPROVED_SOURCES, get_source
 
@@ -53,7 +53,11 @@ def _ensure_raw_text(source_id: str, raw_path: str) -> None:
     pdf_path = _pdf_path(source_id)
     if not os.path.exists(pdf_path):
         return
-    text = extract_pdf_text(pdf_path)
+    source = get_source(source_id)
+    if source.extraction_mode == "gazette_body":
+        text = extract_gazette_body_text(pdf_path)
+    else:
+        text = extract_pdf_text(pdf_path)
     with open(raw_path, "w", encoding="utf-8") as f:
         f.write(text)
 
@@ -73,7 +77,10 @@ def ingest_source(source_id: str) -> dict:
 
     cleaned = clean_extracted_text(raw)
     chunker = CHUNKERS[source.chunk_style]
-    chunks = chunker(source_id, cleaned)
+    if source.chunk_start_marker:
+        chunks = chunker(source_id, cleaned, start_marker=source.chunk_start_marker)
+    else:
+        chunks = chunker(source_id, cleaned)
 
     if not chunks:
         raise ValueError(
@@ -81,6 +88,19 @@ def ingest_source(source_id: str) -> dict:
             f"likely doesn't match the expected layout -- inspect raw.txt before "
             f"trusting this source for citations."
         )
+
+    if source.extraction_mode == "gazette_body":
+        pdf_path = _pdf_path(source_id)
+        if os.path.exists(pdf_path):
+            # Best-effort title recovery, entirely independent of the
+            # chunks/body text already built above -- see
+            # extract_gazette_titles's docstring. A section absent from
+            # the returned dict just keeps its existing empty title;
+            # nothing here is ever inferred or guessed.
+            titles = extract_gazette_titles(pdf_path)
+            for c in chunks:
+                if not c.title and c.unit_number in titles:
+                    c.title = titles[c.unit_number]
 
     out_dir = _source_dir(source_id)
     os.makedirs(out_dir, exist_ok=True)

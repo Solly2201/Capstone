@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.ingestion.index_build import build_index  # noqa: E402
 from app.ingestion.pipeline import ingest_all  # noqa: E402
+from app.ingestion.sources import APPROVED_SOURCES  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -52,7 +53,7 @@ def test_api_list_sources():
     resp = client.get("/corpus/sources")
     assert resp.status_code == 200
     ids = {s["source_id"] for s in resp.json()}
-    assert ids == {"constitution", "bns", "bnss", "bsa"}
+    assert ids == set(APPROVED_SOURCES)
 
 
 def test_api_search_requires_min_query_length():
@@ -63,8 +64,11 @@ def test_api_search_requires_min_query_length():
 
 def test_api_get_section_404_for_uningested_section():
     client = TestClient(app)
-    # Section 478 (bail) is explicitly not yet ingested -- coverage_note says so.
-    resp = client.get("/corpus/sections/bnss/478")
+    # BNSS is now fully ingested (533/533 sections); 9999 is guaranteed
+    # to not exist in any source, unlike a real-but-once-partial section
+    # number that ingestion progress could later make this test flaky
+    # against.
+    resp = client.get("/corpus/sections/bnss/9999")
     assert resp.status_code == 404
 
 

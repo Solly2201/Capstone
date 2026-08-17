@@ -24,6 +24,8 @@ class SourceMeta:
     raw_path: str               # path to the raw text file under data/legal-corpus/<id>/
     unit_label: str = "Section"  # "Section" for the Sanhitas/Adhiniyam, "Article" for the Constitution
     chunk_style: str = "sanhita"  # "sanhita" | "constitution"
+    extraction_mode: str = "plain"  # "plain" | "gazette_body" -- see extract.py's extract_gazette_body_text
+    chunk_start_marker: str = ""  # override chunk_constitution's default "PART I" start marker, e.g. "BE it enacted"
     coverage_note: str = ""    # honest note on what part of the source is ingested, if partial
     import_date: str = field(default_factory=lambda: date.today().isoformat())
 

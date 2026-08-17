@@ -53,10 +53,21 @@ def test_ensure_raw_text_does_nothing_when_neither_file_exists(tmp_path, monkeyp
 
 def test_ensure_raw_text_extracts_pdf_when_raw_txt_missing(tmp_path, monkeypatch):
     import app.ingestion.pipeline as pipeline_module
+    from app.ingestion.models import SourceMeta
 
     raw_path = tmp_path / "raw.txt"
     (tmp_path / "raw.pdf").write_bytes(b"placeholder")
+    fake_source = SourceMeta(
+        source_id="some_source",
+        display_name="Some Source",
+        act_no="",
+        official_url="",
+        publisher="",
+        as_on_date="",
+        raw_path=str(raw_path),
+    )
     monkeypatch.setattr(pipeline_module, "_source_dir", lambda source_id: str(tmp_path))
+    monkeypatch.setattr(pipeline_module, "get_source", lambda source_id: fake_source)
     monkeypatch.setattr(pipeline_module, "extract_pdf_text", lambda path: "extracted statutory text")
 
     pipeline_module._ensure_raw_text("some_source", str(raw_path))

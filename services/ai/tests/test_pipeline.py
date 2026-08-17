@@ -134,8 +134,30 @@ def test_hybrid_result_abstains_on_low_dense_score_despite_high_fused_rank():
         **BNSS_RESULT,
         "score": 0.0328,  # highest possible-looking fused score
         "retrieval_mode": "hybrid",
-        "dense_score": 0.1,  # weak semantic match -- below the 0.45 floor
+        "dense_score": 0.1,  # weak semantic match -- below the floor
     }
     result = build_legal_answer([hybrid_result])
     assert result.abstained is True
     assert result.reason == "insufficient_evidence"
+
+
+def test_hybrid_abstains_on_out_of_domain_score_that_used_to_pass(monkeypatch):
+    """Regression for a real false-answer found by stress-testing
+    out-of-domain queries against the expanded (1,783-chunk) corpus:
+    "How do I register a company in India?" scored dense=0.4117 --
+    above the old 0.40 hybrid floor -- because a BNSS section about
+    serving a summons "on a company" shares enough vocabulary to look
+    like a semantic match. The floor was raised to 0.42 specifically
+    to close this gap (see DEFAULT_MIN_SCORE_BY_MODE's docstring
+    comment); this pins that exact score to abstaining so it can't
+    silently regress back down.
+    """
+    monkeypatch.delenv("LEGAL_CHAT_MIN_SCORE", raising=False)
+    hybrid_result = {
+        **BNSS_RESULT,
+        "score": 0.0328,
+        "retrieval_mode": "hybrid",
+        "dense_score": 0.4117,
+    }
+    result = build_legal_answer([hybrid_result])
+    assert result.abstained is True

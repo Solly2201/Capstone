@@ -47,7 +47,24 @@ ABSTENTION_MESSAGE = "No verified information found."
 DEFAULT_MIN_SCORE_BY_MODE = {
     "bm25": 3.0,
     "dense": 0.45,
-    "hybrid": 0.40,  # gates on the top hit's dense_score, not its RRF score -- see _passes_confidence_gate
+    # 0.42, raised from 0.40 after the corpus expansion to BNS/BNSS/BSA/
+    # CPA2019/JJ Act full text (1,783 chunks, up from ~430): a stress
+    # test of clearly out-of-domain queries ("How do I register a
+    # company in India?", "What is the income tax slab?", "How do I get
+    # a driving licence?") found dense scores 0.41-0.45 on the larger
+    # corpus -- topically-adjacent-word false positives (e.g. "company"
+    # also appears in a BNSS summons-service section) that would have
+    # answered confidently from the wrong Act. Checked against
+    # eval/queries.jsonl's full set of genuine (non-abstain) queries:
+    # every one still clears 0.42 except q19, which already failed at
+    # 0.40 too (a separate, pre-existing paraphrase-calibration gap --
+    # see docs/RETRIEVAL_EVALUATION.md). 0.42 does not fully separate
+    # every out-of-domain false positive from genuine queries (a
+    # residual gap remains for "income tax slab" / "driving licence"
+    # specifically, both ~0.45) -- closing that fully would cost real
+    # recall (q20 sits at 0.4531) and likely needs a smarter signal
+    # than a single global threshold, not a further blanket raise.
+    "hybrid": 0.42,  # gates on the top hit's dense_score, not its RRF score -- see _passes_confidence_gate
 }
 DEFAULT_MIN_SCORE = DEFAULT_MIN_SCORE_BY_MODE["bm25"]  # kept for direct build_legal_answer() callers/tests
 

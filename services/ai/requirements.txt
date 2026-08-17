@@ -2,4 +2,8 @@ fastapi==0.115.6
 pydantic==2.10.4
 uvicorn[standard]==0.34.0
 rank-bm25==0.2.2
-pypdf==5.1.0
+pypdf==6.16.1
+# Used by app/ingestion/extract.py's extract_gazette_body_text() -- pypdf
+# alone can't correctly extract BNS/BNSS/BSA/CPA2019/JJ Act's two-column
+# gazette layout (see docs/LEGAL_SOURCES.md "Two-column gazette PDFs").
+pdfplumber==0.11.10
