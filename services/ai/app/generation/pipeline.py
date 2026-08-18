@@ -3,7 +3,9 @@
 Flow:
     question
         -> Risk/UPL check (app.safety.risk), deterministic rules
-        -> app.retrieval.search (BM25, retrieval-only)
+        -> topic-relevance guard (app.safety.topic_relevance)
+        -> corpus-coverage guard (app.safety.corpus_coverage)
+        -> app.retrieval.search (retrieval-only)
         -> confidence gate
         -> LegalAnswer built directly from the retrieved chunks
 
@@ -22,6 +24,7 @@ import os
 from dataclasses import dataclass, field
 
 from ..retrieval.search import search as _search
+from ..safety.corpus_coverage import NOT_IN_CORPUS_MESSAGE, classify_coverage_gap
 from ..safety.risk import EMERGENCY_CONTACTS, PERSONALIZED_ADVICE_MESSAGE, classify_risk
 from ..safety.topic_relevance import OUT_OF_DOMAIN_MESSAGE, classify_topic
 from .context import distinct_sources
@@ -150,8 +153,8 @@ def build_legal_answer(results: list[dict]) -> LegalAnswer:
 
 
 def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
-    """Full Module 1B entry point: Risk/UPL -> topic guard -> retrieval ->
-    deterministic answer.
+    """Full Module 1B entry point: Risk/UPL -> topic guard ->
+    corpus-coverage guard -> retrieval -> deterministic answer.
 
     Risk/UPL runs first and, if triggered, returns immediately -- no
     retrieval call happens for a message that hard-stops here. The
@@ -160,6 +163,19 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
     rejected before spending a retrieval call on it, since no score
     from that retrieval could be trusted as a real confidence signal
     for a topic this corpus was never meant to answer.
+
+    The corpus-coverage guard runs third and handles the harder case the
+    313-query evaluation exposed: a query that genuinely *is* a legal
+    question in this service's subject area, but names an Act the corpus
+    does not contain (POCSO, Motor Vehicles, matrimonial law, SC/ST
+    Atrocities, RTI, Court Fees). Those share real legal vocabulary with
+    real legal content, so they clear the dense-score floor and get
+    answered confidently from the wrong Act -- see
+    app.safety.corpus_coverage for the measured failures and the
+    deliberately narrow scope. It runs before retrieval for the same
+    reason the topic guard does, and returns a different message,
+    because "try a government services portal" is the wrong advice for
+    someone asking a real legal question.
     """
     category = classify_risk(question)
     if category == "personalized_advice":
@@ -183,6 +199,15 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             message=OUT_OF_DOMAIN_MESSAGE,
             abstained=True,
             reason=f"out_of_domain_{topic_category}",
+            policy_decision="abstained",
+        )
+
+    coverage_category = classify_coverage_gap(question)
+    if coverage_category is not None:
+        return LegalAnswer(
+            message=NOT_IN_CORPUS_MESSAGE,
+            abstained=True,
+            reason=f"not_in_corpus_{coverage_category}",
             policy_decision="abstained",
         )
 

@@ -89,6 +89,16 @@ _CATEGORY_PATTERNS: list[tuple[str, list[str]]] = [
         r"\bhotel booking\b",
         r"\bjob vacanc\w*\b",
         r"\bexam result\w*\b",
+        # Added after the 313-query evaluation: "who won the last
+        # general election in india" (h279) was answered from
+        # constitution:58 (qualifications for President) purely on
+        # shared election vocabulary. That is a current-affairs
+        # question, not a legal one. Bare "election" is deliberately
+        # NOT matched -- BNS ss.169-177 (election offences) and
+        # Constitution Part XV are genuinely ingested and genuinely
+        # answerable.
+        r"\belection results?\b",
+        r"\bwho won\b[^?]{0,40}\belection\b",
     ]),
 ]
 

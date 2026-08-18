@@ -286,9 +286,15 @@ target chunks (30.3%) sit inside *both* methods top-50 candidate pools
 and are still ranked below 5 by fusion -- the exact "right answer buried
 in an otherwise-good candidate list" pattern a cross-encoder reranker
 exists to fix -- clustered in the multi_source, ambiguous and paraphrase
-categories. Reranking was still not implemented in that session (it was
-scoped to measurement only), but the stated condition for revisiting this
-decision has now been met by measurement rather than assumption.
+categories. Reranking was implemented and measured in the session
+that followed, and **rejected on legal-safety grounds** -- the
+candidate-pool premise proved correct (76.9% of missed chunks were
+reachable) and the intervention still failed, degrading `hard_negative`
+recall 0.966 -> 0.793, abstention accuracy 0.7764 -> 0.6677, and the
+short-title artifact, for +1.7pp recall@5. See "Safety guard,
+confidence-gate calibration, and the rejected reranker" below for the
+full numbers. This deferral is therefore no longer an untested
+assumption: it is a tested and rejected approach.
 
 ## Failure-analysis-driven fixes: Constitution titles + RRF retune
 
@@ -1369,6 +1375,346 @@ quality metric. Suggested order:
 
 No training was started, no retrieval code was touched, and nothing was
 committed this session.
+
+## Safety guard, confidence-gate calibration, and the rejected reranker
+
+The 313-query evaluation above ended with three candidate interventions
+ranked ahead of embedding fine-tuning. This section records what
+happened when all three were actually attempted. Summary: **one shipped,
+one was investigated and deliberately not changed, one was implemented,
+measured, and rejected.** The production retrieval architecture
+(BM25 + dense + weighted RRF, dense weight 3.0, k=5, hybrid confidence
+floor 0.42) is unchanged by everything below.
+
+The committed starting point for this work is
+`4f7fd54 feat(ai): expand citizen-language retrieval evaluation`.
+
+### Baseline being measured against
+
+313-query citizen-language set, hybrid, 281 non-abstain groups:
+
+| Metric | Value |
+| --- | --- |
+| Recall@5 | 0.6246 |
+| Precision@5 | 0.1381 |
+| MRR | 0.4874 |
+| nDCG@5 | 0.5160 |
+| Top-1 citation correctness | 0.3879 |
+| Abstention accuracy (all 313) | 0.7572 |
+| Wrong-Act top-1 rate | 0.196 |
+| False accepts (should abstain, answered) | 7 |
+| False abstains (should answer, abstained) | 69 |
+
+49-query control, hybrid: recall@5 0.8370, precision@5 0.1822, MRR
+0.7096, nDCG@5 0.7227, top-1 0.6222, abstention 0.9796.
+
+### 1. Corpus-coverage guard: shipped
+
+`app/safety/corpus_coverage.py`, run in `handle_legal_query()` after the
+topic-relevance guard and before retrieval. It closes the failure class
+the `insufficient_evidence` category was invented to expose: a query
+that genuinely *is* a legal question in this service's subject area but
+names an Act the corpus does not contain. Such a query shares real legal
+vocabulary with real legal content, so it clears the dense-score floor
+and gets answered confidently from the wrong Act -- the same structural
+problem `topic_relevance.py` was built for, one level harder, and
+equally unfixable by moving a bounded threshold.
+
+Six categories, one per demonstrated failure, and nothing else:
+
+| Query | Was answered from | Now |
+| --- | --- | --- |
+| "what is the penalty for drunk driving" | `bns:355` (misconduct in public by a drunken person) | abstains |
+| "how do I get a divorce in india" | `bnss:219` (prosecution for offences against marriage) | abstains |
+| "what does the law against caste-based atrocities cover" | `constitution:16` (equality of opportunity) | abstains |
+| "what is the punishment under the POCSO act" | `bns:198` (public servant disobeying law) | abstains |
+| "what are the court fees for filing a civil suit" | `bnss:400` (costs in non-cognizable cases) | abstains |
+| "How do I file an RTI application?" (`q35`, 49-query set) | wrong-Act answer in bm25 mode | abstains |
+
+**Result: hybrid false accepts 7 -> 1; abstention accuracy 0.7572 ->
+0.7764. bm25-mode abstention on the 49-query control 0.9796 -> 1.0000.**
+Retrieval-quality metrics are untouched by construction (the guard only
+changes pre-retrieval gating, never ranking), and this was verified
+rather than assumed -- recall@5/precision@5/MRR/nDCG@5/top-1 are
+byte-identical on both eval sets before and after.
+
+**Every pattern was checked against real indexed corpus text before
+being added**, because the obvious discriminators are unsafe:
+
+- bare `divorce` appears in `bnss:144`/`bnss:146` (maintenance for a
+  divorced woman), `bsa:44` and `jj2015:45` -- all genuinely answerable,
+  so only divorce *procedure* phrasings match.
+- bare `drunk` is the literal subject of `bns:355`, so only
+  drunk-*driving* phrasings match.
+- bare `scheduled caste` appears in `constitution:15`, `constitution:16`,
+  `constitution:46` and `lsa:12`, so the SC/ST entry keys off
+  "atrocities" (zero occurrences anywhere in the corpus) and the Act's
+  own name.
+- bare `court fee` appears in `lsa:21` (court-fee refund on a Lok Adalat
+  award), a real answerable question, so only filing-cost phrasings
+  match.
+
+Over-blocking is the failure mode that would matter most here, so it is
+asserted, not spot-checked: `test_guard_never_fires_on_a_query_that_
+expects_an_answer` scans all 362 labelled queries across both eval sets
+and fails on a single fire against an `expect_abstain=False` row.
+Measured: **zero false fires**, plus zero fires across twelve
+hand-built adversarial near-miss probes drawn from the bullet list
+above. 8 tests in `tests/test_corpus_coverage.py`.
+
+One `topic_relevance.py` addition came from the same evaluation: "who
+won the last general election in india" (`h279`) was answered from
+`constitution:58` (qualifications for President) on shared election
+vocabulary alone. Two patterns (`election results?`, `who won ...
+election`) were added to the existing `everyday_nonlegal` category.
+Bare "election" is deliberately not matched -- BNS ss.169-177 (election
+offences) and Constitution Part XV are genuinely ingested; all five
+genuine election-offence phrasings were verified to still pass through.
+
+**Residual, documented rather than papered over:** `h286` ("how do I
+file an application for information from a government office") still
+answers from `it_act:6`. It is the RTI question deliberately phrased
+without naming RTI, and a phrase-pattern guard cannot reach a query that
+names nothing. Closing it would need a semantic classifier, which is out
+of scope by standing decision. It is the sole remaining false accept in
+hybrid mode.
+
+**Scope discipline:** five other un-ingested subjects in the same eval
+category (rent control, minimum wages, stamp duty, arbitration, labour
+notice periods) are deliberately *absent* from the pattern list, because
+the confidence gate already abstains correctly on them. Adding them
+would be speculative rather than evidence-driven. Same "extend only when
+evaluation names a specific gap" rule as `query_expand.py`'s
+abbreviation dict and `chunk.py`'s `_KNOWN_ARTICLE_TITLES`.
+
+### 2. Confidence gate: investigated, deliberately not changed
+
+The 313-query evaluation's 69 false abstains -- 57 of them
+`ordinary_citizen`/`colloquial`, on queries whose correct chunk *was*
+retrieved into the top-5 -- looked like a straightforward calibration
+problem. It is not. Measuring the gate signal (hybrid = top hit's
+`dense_score`) across all 362 labelled queries, grouped by what the gate
+*should* do:
+
+| Group | n | min | p25 | median | p75 | max |
+| --- | --- | --- | --- | --- | --- | --- |
+| should answer | 220 | 0.181 | 0.482 | 0.599 | 0.693 | 0.889 |
+| should answer (citizen-language only) | 78 | 0.181 | 0.390 | 0.456 | 0.537 | 0.760 |
+| should answer (legal-terminology only) | 81 | 0.394 | 0.559 | 0.648 | 0.728 | 0.889 |
+| answered from wrong Act | 42 | 0.167 | 0.369 | 0.442 | 0.537 | 0.682 |
+| should abstain (post-guard) | 15 | 0.127 | 0.181 | 0.264 | 0.352 | 0.429 |
+
+The signal *is* miscalibrated for citizen language -- median 0.456
+against 0.648 for legal terminology, so the 0.42 floor sits above the
+25th percentile of citizen queries that deserve an answer. But the
+citizen-language true-positive distribution sits almost exactly on top
+of the wrong-Act distribution (median 0.456 vs 0.442). **There is no
+threshold that separates them.** Sweeping the floor:
+
+| threshold | citizen TPs kept | wrong-Act admitted | TP per wrong-Act |
+| --- | --- | --- | --- |
+| 0.30 | 72 | 36 | 2.00 |
+| 0.34 | 68 | 34 | 2.00 |
+| 0.36 | 65 | 32 | 2.03 |
+| 0.38 | 59 | 31 | 1.90 |
+| 0.40 | 55 | 26 | 2.12 |
+| **0.42 (current)** | **48** | **23** | **2.09** |
+| 0.44 | 42 | 21 | 2.00 |
+| 0.46 | 36 | 20 | 1.80 |
+
+The ratio is **flat at ~2.0 across the entire range**. Moving the
+threshold does not find a better operating point; it slides along a line
+of constant trade-off. Every genuine citizen answer recovered costs
+roughly half a wrong-Act answer, at every setting.
+
+A second hypothesis was tested before concluding: perhaps the problem is
+*what* the gate reads, not the number. The product shows every retrieved
+excerpt, so "is there confident evidence anywhere in the returned
+window" is arguably the better question than "is rank 1 confident". Two
+alternative signals were measured -- `max` and `mean` of `dense_score`
+over the returned top-5. At the zero-false-accept operating point all
+three are within noise of each other (top-1 @0.44: 177 answered / 43
+false abstains / 21 wrong-Act; max-of-5 @0.45: 176 / 44 / 21; mean-of-5
+@0.40: 171 / 49 / 22). **No signal re-parameterisation helps.**
+
+One candidate was genuinely tempting: 0.43 removes the last false accept
+(`h286` sits at 0.4292) and two wrong-Act answers, costing five genuine
+answers. It was **not** applied. Moving a global threshold to catch a
+single labelled query is overfitting to the eval set, and `h286` is
+already understood as a guard-shaped problem, not a threshold-shaped
+one. `DEFAULT_MIN_SCORE_BY_MODE["hybrid"]` stays at 0.42.
+
+This is a negative result, and it is the useful kind: it rules out the
+cheapest remaining intervention on measurement rather than on taste, and
+it says the citizen-language gap is a *representation* problem showing
+up in the gate, not a gate problem.
+
+### 3. Cross-encoder reranking: implemented, measured, rejected
+
+Earlier revisions of this document deferred reranking twice on the
+grounds that the misses were not reranking-shaped. The 313-query
+root-cause split overturned that premise -- 36 of 119 missed chunks
+(30.3%) sat inside *both* methods' top-50 pools while fusion still
+ranked them below 5. So the reranker was built and measured rather than
+deferred a third time.
+
+**Reachability ceiling, measured before implementing anything** (130
+relevant chunks hybrid misses at top-5, both eval sets):
+
+| candidate pool | reachable | share of misses |
+| --- | --- | --- |
+| 25 | 84 | 64.6% |
+| **50 (current `_FUSION_CANDIDATE_POOL`)** | **100** | **76.9%** |
+| 75 | 111 | 85.4% |
+| 100 | 113 | 86.9% |
+
+Pool 50 was kept -- it is what candidate generation already produces,
+and 75 costs 50% more inference for 11 more reachable chunks. The
+premise was therefore sound: three quarters of the misses were in
+principle recoverable by reordering alone.
+
+**Implementation:** `sentence-transformers` `CrossEncoder` with
+`cross-encoder/ms-marco-MiniLM-L-6-v2`, local, no external API, gated
+behind `RETRIEVAL_RERANK` and degrading to plain hybrid if unavailable.
+It reordered only the existing fused candidates -- never adding or
+dropping one, so the BM25+dense+RRF recall ceiling was untouched.
+
+**A domain-mismatch warning showed up before any evaluation.** Probed
+directly, the model separates a MS MARCO-style pair cleanly (+8.85
+relevant vs -4.32 irrelevant) but compresses to near-nothing on
+statutory text (-10.34 vs -11.05 for a clearly-relevant vs
+clearly-irrelevant BNSS pair). Correct ordering, almost no confidence
+margin. This is why its score was deliberately never wired into the
+confidence gate.
+
+**Targeted experiment first** (30 known fusion-ranking failures):
+66.7% of reachable missed targets improved rank, 50% newly entered the
+top-5, mean rank 13.6 -> 10.4, and the FIR queries moved from rank ~18
+to rank 2. On that evidence the full evaluation was authorised.
+
+**Full evaluation result, 313-query set (hybrid, vs the post-guard
+baseline):**
+
+| Metric | Baseline | + reranker | Δ |
+| --- | --- | --- | --- |
+| Recall@5 | 0.6246 | 0.6412 | **+0.017** |
+| Precision@5 | 0.1381 | 0.1416 | +0.004 |
+| MRR | 0.4874 | 0.4846 | **-0.003** |
+| nDCG@5 | 0.5160 | 0.5205 | +0.005 |
+| Top-1 citation correctness | 0.3879 | 0.3772 | **-0.011** |
+| Abstention accuracy | 0.7764 | 0.6677 | **-0.109** |
+| False abstains | 69 | 103 | **+34** |
+| Wrong-Act top-1 rate | 0.196 | 0.189 | +0.007 |
+| **`hard_negative` recall@5** | **0.966** | **0.793** | **-0.173** |
+
+**49-query control, hybrid:**
+
+| Metric | Baseline | + reranker |
+| --- | --- | --- |
+| Recall@5 | 0.8370 | **0.8074** |
+| Precision@5 | 0.1822 | **0.1733** |
+| MRR | 0.7096 | **0.6996** |
+| nDCG@5 | 0.7227 | **0.7070** |
+| Top-1 | 0.6222 | **0.6000** |
+| Abstention | 0.9796 | **0.9388** |
+
+On the control set the reranker is worse on **every single metric** --
+not a trade-off, just degradation.
+
+#### Why it was rejected
+
+The +1.7pp recall@5 on the citizen set was the only thing it bought, and
+three findings outweigh it.
+
+**(a) The hard-negative regression is disqualifying.** `hard_negative`
+is the category built to test resistance to legally-wrong-but-lexically-
+attractive sections -- the most safety-relevant slice in the set. Its
+recall fell 0.966 -> 0.793 (zero-hit groups 1 -> 6). Two of the five
+regressions are the exact failure this product must never make:
+
+| Query | Wants | Reranked top-3 |
+| --- | --- | --- |
+| "bharatiya nagarik **suraksha sanhita** rules about taking bail" | `bnss:478` | `bns:200`, `bns:209`, `bnss:4` |
+| "bharatiya **nyaya sanhita** list of punishments" | `bns:4` | `bnss:220`, `bns:200`, `bnss:33` |
+| "punishment for grievous hurt" | `bns:117` | `bns:122`, `bns:119`, `bns:125` |
+| "who decides consumer disputes at the national level" | `cpa2019:58` | `cpa2019:53`, `cpa2019:76`, `cpa2019:81` |
+| "what does the legal services authorities law say about who gets help" | `lsa:12` | `lsa:5`, `lsa:13`, `lsa:4` |
+
+The first two name their Act *in full* and are answered from the other
+Sanhita. A retrieval stage that cannot keep the BNS and the BNSS apart
+on a query that spells out which one it wants is not safe to put in
+front of citizens, whatever it does to aggregate recall.
+
+**(b) The abstention regression is a second safety failure.**
+Accuracy 0.7764 -> 0.6677, false abstains 69 -> 103. Mechanism confirmed:
+the reranker promotes chunks with lower `dense_score` to rank 1, which
+depresses the gate signal, so queries whose correct chunk it had just
+pulled into view were suppressed anyway. The recall gain and the
+abstention loss are partly the same queries.
+
+**(c) The short-title artifact got worse.** Of ten probes, three moved
+the boilerplate `:1` chunk closer to rank 1 and only one moved it away.
+Most clearly, `h259` ("which law protects a woman from violence by her
+own family") regressed from a correct `pwdva:3` top-1 to the contentless
+`pwdva:1` ("Short title, extent and commencement"). This is explicable:
+a title-like passage naming the Act looks like an ideal match to a
+topical question, which is precisely what an MS MARCO cross-encoder
+rewards.
+
+A per-query diff makes the shape of the trade explicit: **29 fixed, 25
+broken** -- near parity in count, but asymmetric in composition. It
+fixed `ordinary_citizen`/`colloquial` (recall-flavoured) and broke
+`hard_negative` (safety-flavoured).
+
+**(d) Cost.** The 313-query evaluation took ~34 minutes against ~4
+minutes un-reranked, an ~8x wall-clock increase from 594 cross-encoder
+invocations over 50 candidates each. That is per-query latency a
+citizen-facing endpoint would have to absorb, for a negative
+safety result.
+
+#### Status change: tested and rejected, not merely deferred
+
+This matters for future sessions. Reranking was previously an *untested
+deferral* -- "we think the misses aren't this shape." It is now a
+**tested and rejected approach**: the premise was verified correct
+(76.9% of misses were reachable in the candidate pool), the intervention
+was implemented properly, and it still failed on legal-safety grounds.
+
+Do not re-propose a cross-encoder reranker for this project on the
+strength of the candidate-pool argument alone -- that argument is
+already known to be true and already known to be insufficient. A future
+attempt would need to answer the actual failure: a general-purpose
+reranker has no notion that BNS and BNSS are different statutes, and
+rewards boilerplate that names the Act. A legal-domain-tuned
+cross-encoder might; `ms-marco-MiniLM` demonstrably does not.
+
+All reranker code was removed after measurement. `app/retrieval/
+search.py` was restored byte-identically to `4f7fd54`, and both eval
+sets were re-run to confirm the production path is back to its exact
+baseline (49-query hybrid recall@5 0.8370; 313-query hybrid recall@5
+0.6246, `hard_negative` 0.966, wrong-Act 0.196).
+
+### Where this leaves embedding fine-tuning
+
+Three of the four candidate interventions from the previous section are
+now resolved: the topic/coverage guard shipped and fixed a real safety
+gap; confidence calibration was investigated and found to have no
+available operating point; reranking was built and rejected. The
+remaining failures are, by elimination, concentrated where the evidence
+always pointed -- `representation_gap` (29 of 119 misses) and
+`dense_embedding` (15 of 119), 37.0% combined, which no reranker and no
+gate change can reach.
+
+That does not automatically make fine-tuning correct; it makes it the
+next thing worth *evaluating*, with the labelled pool now at ~362 query
+groups (313 + 49) against the 153 that run1 concluded was too small.
+The standing evaluation discipline is unchanged: held-out-only
+measurement, no promotion without real before/after numbers on both eval
+sets, and no promotion at all if `hard_negative` recall or the wrong-Act
+rate degrades -- the reranker's failure mode is the exact thing a
+fine-tune could also cause, and it would be caught the same way.
+
+**No training has been started, and none is authorised.**
 
 ## Remaining limitations
 
