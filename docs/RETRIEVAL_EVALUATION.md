@@ -277,6 +277,19 @@ perturbations (9-53) scattered across unrelated sources, not a
 systematic "right answer buried in an otherwise-good list" pattern.
 Deferral stands.
 
+**Superseded by the 313-query evaluation (see "Citizen-language
+evaluation set expanded to 313 query groups" below).** The deferral above
+rests entirely on the claim that the remaining misses are not
+reranking-shaped. That claim was true and independently re-verified at 49
+and at 129 queries. At 313 queries it no longer holds: 36 of 119 missed
+target chunks (30.3%) sit inside *both* methods top-50 candidate pools
+and are still ranked below 5 by fusion -- the exact "right answer buried
+in an otherwise-good candidate list" pattern a cross-encoder reranker
+exists to fix -- clustered in the multi_source, ambiguous and paraphrase
+categories. Reranking was still not implemented in that session (it was
+scoped to measurement only), but the stated condition for revisiting this
+decision has now been met by measurement rather than assumption.
+
 ## Failure-analysis-driven fixes: Constitution titles + RRF retune
 
 A full per-query failure analysis was run over `eval/queries.jsonl`'s
@@ -1010,6 +1023,352 @@ strategy, or batch size. The infrastructure (`finetune/build_dataset.py`,
 `finetune/train.py`, `finetune/eval_candidate.py`,
 `finetune/eval_heldout.py`, `finetune/per_query_diff.py`) is reusable
 as-is against a larger eval set.
+
+## Citizen-language evaluation set expanded to 313 query groups
+
+The prior section's citizen-language finding rested on 129 hand-verified
+queries. That was enough to establish *that* human-language retrieval is
+the bottleneck, but not enough to characterise *why* with any statistical
+confidence -- and the fine-tuning experiment above concluded that the
+labelled set's size, not the loss function or hard-negative strategy, was
+the limiting factor. This session grew `eval/queries_human.jsonl` from
+**129 to 313 query groups** (184 added) and re-measured. **No retrieval
+code, index, embedding model, RRF weight, query-expansion entry, or
+confidence threshold was changed** -- this session is measurement only.
+
+Every added positive was verified the same way as the original 129: the
+intended Act and section were identified first, the real chunk text was
+read out of `data/legal-corpus/<source>/chunks.jsonl`, and the query was
+only kept if it is genuinely answerable from that text. No section number
+was guessed and no mapping was inferred from general legal knowledge.
+
+### Composition
+
+| Category | n | What it tests |
+| --- | --- | --- |
+| `ordinary_citizen` | 55 | Scenario description in everyday words |
+| `colloquial` | 44 | Slang/informal register ("nicked", "goons", "barge in") |
+| `paraphrase` | 34 | Formal-register rewording with low term overlap |
+| `hard_negative` | 29 | A strong but legally wrong decoy exists |
+| `vague_answerable` | 29 | Under-specified but answerable from one section |
+| `direct_lexical` | 24 | Exact statutory terminology (control group) |
+| `misspelling` | 22 | Real typing errors |
+| `out_of_domain` | 22 | Non-legal; abstention is correct |
+| `abbreviation` | 18 | FIR/NCR/BNS/IPC/CrPC/CWC/DLSA/NCDRC |
+| `multi_source` | 18 | Evidence genuinely spans 2+ chunks |
+| `insufficient_evidence` | 10 | **New category** (see below) |
+| `ambiguous` | 8 | Several sections are all legitimately correct |
+
+281 positive groups / 32 abstain-expected groups; 26 groups have more
+than one relevant chunk; 219 distinct corpus chunks are referenced.
+
+Source coverage (by relevant-chunk reference, all 9 ingested Acts):
+`bns` 76, `bnss` 74, `constitution` 28, `bsa` 27, `jj2015` 27,
+`cpa2019` 26, `it_act` 22, `pwdva` 21, `lsa` 12.
+
+**`insufficient_evidence` is the one new category, and it was added for a
+specific reason**: `out_of_domain` only ever contained *non-legal*
+queries (biryani, cricket scores, PAN cards), which the deterministic
+topic-relevance guard catches by phrase pattern before retrieval even
+runs. That left an entire class untested -- a question that is
+unmistakably a legal question, in this system's own subject area, about
+an Act that simply is not in the corpus (divorce, POCSO, Motor Vehicles,
+rent control, minimum wages, stamp duty, SC/ST Atrocities, arbitration,
+labour notice periods, RTI). Abstaining is the only correct answer there,
+and nothing in the existing eval set measured it. It turned out to be the
+single most informative addition (see "Abstention" below).
+
+Duplicate/near-duplicate control: exact-duplicate detection over
+whitespace/punctuation-normalised query text, plus a `difflib` ratio scan
+at a 0.85 threshold across all 313 queries. One flagged pair from this
+session's draft (a misspelled respelling of an existing query, carrying no
+independent information) was replaced with a different concept before the
+evaluation was run. The one remaining flagged pair (`h066` "how to fil
+fir" / `h076` "how to file an FIR") is the pre-existing deliberate
+misspelling-vs-abbreviation pair and is kept.
+
+### Results (top_k=5, 281 non-abstain groups, one full run)
+
+| Metric | BM25 | Dense | Hybrid |
+| --- | --- | --- | --- |
+| Recall@5 | 0.3855 | 0.6115 | **0.6246** |
+| Precision@5 | 0.0861 | 0.1359 | **0.1381** |
+| MRR | 0.2972 | 0.4723 | **0.4874** |
+| nDCG@5 | 0.3137 | 0.5027 | **0.5160** |
+| Top-1 citation correctness | 0.2321 | 0.3737 | **0.3879** |
+| Abstention accuracy (all 313) | 0.9201 | 0.7188 | 0.7572 |
+| Wrong-Act top-1 rate | 0.359 | 0.181 | **0.196** |
+
+Hybrid still beats both single methods on every retrieval-quality metric,
+as it does on both smaller sets -- the architecture conclusion this
+document was originally written to justify holds at 6.4x the original
+evaluation size. BM25's high abstention accuracy is the same artefact
+this document has flagged since the beginning and is *not* a point in its
+favour: BM25 answered **all 21** of the abstain-expected queries it saw as
+false positives and simply almost never false-abstains, so the ratio
+flatters it. Its wrong-Act top-1 rate (0.359, nearly double hybrid's) is
+the honest read of the same behaviour.
+
+### Do not compare these percentages to the earlier ones directly
+
+Recall@5 on this set (0.6246) is *higher* than on the 129-query set
+(0.5805), and that is a composition effect, not an improvement. Nothing
+in the retrieval path changed. Scoring the original `h001`-`h129` rows in
+isolation out of this same run reproduces the earlier numbers exactly:
+
+| Slice | n | Recall@5 | Precision@5 | MRR | nDCG@5 | Top-1 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Original `h001`-`h129` | 118 | 0.5805 | 0.1237 | 0.4273 | 0.4604 | 0.3136 |
+| Added `h130`-`h313` | 163 | 0.6564 | 0.1485 | 0.5310 | 0.5563 | 0.4417 |
+| Combined | 281 | 0.6246 | 0.1381 | 0.4874 | 0.5160 | 0.3879 |
+
+0.5805 is byte-identical to the previously recorded figure, which is the
+control that proves the pipeline is unchanged. The added rows score
+higher mainly because they deliberately rebalanced the set toward
+under-tested Acts and toward control categories (`direct_lexical`,
+`hard_negative`) that the original 129 under-weighted. The 49-query
+`eval/queries.jsonl` set was also re-run unchanged as a second control:
+hybrid recall@5 0.8370 / precision@5 0.1822 / MRR 0.7096 / nDCG@5 0.7227 /
+top-1 0.6222 / abstention 0.9796 -- every figure identical to the
+previously documented values.
+
+### The category split is the real result, and it is now stable
+
+Hybrid, recall@5 by category:
+
+| Category | n | Recall@5 | Top-1 |
+| --- | --- | --- | --- |
+| `hard_negative` | 29 | 0.966 | 0.655 |
+| `direct_lexical` | 24 | 0.958 | 0.833 |
+| `abbreviation` | 18 | 0.722 | 0.333 |
+| `ordinary_citizen` | 55 | 0.600 | 0.273 |
+| `ambiguous` | 8 | 0.562 | 0.375 |
+| `paraphrase` | 34 | 0.559 | 0.353 |
+| `misspelling` | 22 | 0.500 | 0.364 |
+| `multi_source` | 18 | 0.500 | 0.389 |
+| `vague_answerable` | 29 | 0.483 | 0.345 |
+| `colloquial` | 44 | 0.477 | 0.205 |
+
+Collapsed: **citizen-language categories** (`ordinary_citizen`,
+`colloquial`, `vague_answerable`, `misspelling`, n=150) score recall@5
+**0.527**; **legal-terminology categories** (`direct_lexical`,
+`abbreviation`, `paraphrase`, n=76) score **0.724**; `hard_negative`
+scores **0.966**. The 0.20 gap between how a citizen types and how a
+statute is written is the finding, and at n=150 vs n=76 it is no longer a
+small-sample impression.
+
+Two things the larger set changed relative to the 129-query read:
+
+- **`ordinary_citizen` is much less bad than it looked** (0.450 -> 0.600).
+  The earlier 20-query sample happened to over-represent hard scenarios.
+- **`hard_negative` got *better*, not worse, as it grew** (0.923 -> 0.966
+  across 13 -> 29 queries), including 7 newly added Act-name/short-title
+  probes and a deliberate inverse pair (`h108` "freedom of speech and
+  expression" -> Article 19 with Article 105 as decoy; `h306` "freedom of
+  speech inside parliament" -> Article 105 with Article 19 as decoy).
+  **Both directions resolve correctly**, which is a genuinely strong
+  result and rules out "the retriever is just confused between adjacent
+  sections" as an explanation for anything else here.
+
+Per-Act (single-source groups, hybrid recall@5): `lsa` 0.900,
+`constitution` 0.714, `it_act` 0.688, `bns` 0.648, `jj2015` 0.619,
+`bnss` 0.617, `pwdva` 0.562, `cpa2019` 0.550, `bsa` 0.520. No Act is
+catastrophically worse than the others; this is not a corpus-quality
+problem localised to one source.
+
+### Root-cause split (per missed target chunk, uncapped ranks)
+
+For all 119 relevant chunks hybrid missed at top-5, the target's
+*uncapped* BM25 and dense rank were dumped and bucketed by which stage
+actually failed (`_FUSION_CANDIDATE_POOL` is 50, so "in pool" means
+rank <= 50):
+
+| Bucket | n | % | Meaning |
+| --- | --- | --- | --- |
+| `bm25_vocabulary` | 39 | 32.8% | Dense found it (rank <= 50), BM25 nowhere -- so it carries only one list's fusion contribution and lands below 5 |
+| `fusion_ranking` | 36 | 30.3% | **Both** methods had it in their top-50, fusion still ranked it below 5 |
+| `representation_gap` | 29 | 24.4% | Neither method's top-50 contains it at all |
+| `dense_embedding` | 15 | 12.6% | BM25 found it, dense rank catastrophic -- and dense is weighted 3x, so it crushes the fused score |
+
+By category, the buckets separate cleanly: `representation_gap` is
+dominated by `colloquial` (10) and `ordinary_citizen` (6);
+`bm25_vocabulary` by `ordinary_citizen` (11) and `vague_answerable` (8);
+`fusion_ranking` by `multi_source` (9), `paraphrase` (5),
+`vague_answerable` (5) and `ambiguous` (4).
+
+**The `fusion_ranking` bucket is new information and it changes a
+standing decision.** This document has twice deferred reranking on the
+explicit grounds that the misses were *not* "correct chunk present but
+mis-ordered in an otherwise-good candidate list" -- at 49 and at 129
+queries that was true and was verified each time. At 313 queries it is no
+longer true: 36 missed chunks are exactly that shape, and they cluster in
+`multi_source`/`ambiguous`/`paraphrase`, precisely the queries where more
+than one section is defensible and ordering is the whole problem. That is
+a reranker-shaped failure mode, and it is the largest single actionable
+bucket after BM25 vocabulary. It is **not** implemented this session
+(measurement only), but the evidence that previously blocked it no longer
+holds.
+
+### Abstention: the informative failure
+
+| Mode | Accuracy (313) | False answers (should abstain) | False abstains (should answer) |
+| --- | --- | --- | --- |
+| bm25 | 0.9201 | 21 (11 OOD + 10 insufficient_evidence) | 4 |
+| dense | 0.7188 | 5 | 83 |
+| hybrid | 0.7572 | 7 | 69 |
+
+Hybrid's 7 false answers are the headline: **2 of 22 `out_of_domain`
+(0.909 correct) but 5 of 10 `insufficient_evidence` (0.500 correct)**.
+The deterministic topic-relevance guard plus the dense-score floor handle
+non-legal queries well. They do not handle *legal* queries about
+un-ingested Acts at all, because such a query shares genuine legal
+vocabulary with genuine legal content and lands in the same score band as
+a real match. The concrete cases:
+
+| Query | Answered with | Why it is wrong |
+| --- | --- | --- |
+| "what is the penalty for drunk driving" | `bns:355` | Misconduct in public by a drunken person -- not a driving offence; the Motor Vehicles Act is not ingested |
+| "how do I get a divorce in india" | `bnss:219` | Prosecution for offences against marriage -- not matrimonial law |
+| "what does the law against caste-based atrocities cover" | `constitution:16` | Equality of opportunity -- not the SC/ST Atrocities Act |
+| "what is the punishment under the POCSO act" | `bns:198` | Public servant disobeying law -- POCSO is only *cited by name* in the corpus, never reproduced |
+| "how do I file an application for information from a government office" | `it_act:6` | Electronic records in Government -- the RTI Act is the known un-ingested source |
+| "what are the court fees for filing a civil suit" | `bnss:400` | Costs in non-cognizable cases -- not the Court Fees Act |
+| "who won the last general election in india" | `constitution:58` | Qualifications for President -- shares election vocabulary only |
+
+This is the same failure mode as the original out-of-domain gap the
+topic-relevance guard was built for, one level harder: the guard works by
+recognising *subjects it knows are outside scope*, and "family law",
+"motor vehicles", "POCSO" are outside scope in exactly the same way that
+"income tax" is. Extending the curated pattern set to name the Acts the
+corpus does **not** contain is the obvious, in-keeping next step, and it
+is the same narrow-curated-list discipline this project already applies
+in `query_expand.py`, `topic_relevance.py`, and `_KNOWN_ARTICLE_TITLES`.
+It was not done this session (measurement only).
+
+Hybrid's 69 false abstains are almost entirely `ordinary_citizen` (33)
+and `colloquial` (24) -- the confidence gate rejecting a *correct* top hit
+because citizen phrasing produces a lower dense score than the phrasing
+the 0.42 floor was tuned against. This reproduces the 129-query finding at
+5x the sample size and confirms it was not a small-sample artefact.
+
+### q17 / q46 and the short-title artefact, re-measured
+
+Both tracked failures remain present and remain measurable:
+
+- **q17 equivalent (`h040`, "is retroactive criminalization permitted
+  under the constitution" -> `constitution:20`)**: bm25 rank 1180/1766,
+  dense rank 63/1801, not in the fusion pool. Total miss; the five chunks
+  returned instead are all generic sentencing/remission sections. The
+  original phrasing (`q17`) is worse still: dense rank 113. Unchanged
+  diagnosis -- a representation gap, and one a reranker cannot touch.
+- **q46 equivalent (`h098`)**: `pwdva:3` now ranks 4 (a hit);
+  `constitution:15` is still missed at bm25 63 / dense 68, outside the
+  50-candidate pool. Partial recall only.
+- **The short-title boilerplate artefact reproduces, and `h098` shows it
+  at rank 1**: the top result for "equality and protection for women
+  facing violence at home" is `pwdva:1` ("Short title, extent and
+  commencement"), a chunk with no substantive content, ahead of the
+  actual definition section.
+
+Re-probed across all 9 sources with a fresh set of topical queries:
+
+| Boilerplate chunk | dense rank | bm25 rank | probe query |
+| --- | --- | --- | --- |
+| `pwdva:1` | 3 | 157 | "which law protects a woman from violence by her own family" |
+| `cpa2019:1` | 5 | (unranked) | "what protections do consumers have" |
+| `bns:1` | 10 | 37 | "bharatiya nyaya sanhita list of punishments" |
+| `jj2015:1` | 27 | 1344 | "what happens when a child breaks the law" |
+| `lsa:1` | 88 | 112 | "how can I get free legal aid" |
+| `bnss:1` | 309 | **4** | "bharatiya nagarik suraksha sanhita rules about taking bail" |
+| `bsa:1` | 579 | 1102 | "what counts as evidence in a court case" |
+| `it_act:1` | 615 | 1176 | "punishment for cyber terrorism" |
+| `constitution:1` | 921 | (unranked) | "what basic rights are guaranteed to every citizen" |
+
+Two things are new here. First, the artefact fires hardest when the query
+*names the Act* -- which is ordinary citizen behaviour, not an artificial
+probe (`bns:1` at dense rank 10). Second, **it is not dense-only**:
+`bnss:1` sits at BM25 rank 4 for a query naming the Sanhita, because the
+short-title chunk is the one place in 531 sections where the Act's full
+name literally appears. Previous write-ups characterised this as a
+dense-embedding artefact; it is more precisely an artefact of the
+short-title chunk being the corpus's only carrier of the Act's own name,
+and it affects both retrieval methods. Despite that, the seven dedicated
+short-title probe queries added this session (`h259`-`h265`) all resolve
+to their substantive target at top-5 -- the boilerplate chunk appears in
+the returned window (e.g. `pwdva:1` at rank 4 for `h259`) but does not
+displace the right answer.
+
+### A separate finding: the FIR query misses on both eval sets
+
+`h076` ("how to file an FIR") and the original set's `q23` ("how do I
+file an FIR") both fail to retrieve `bnss:173` at top-5 today --
+`bnss:173` sits at bm25 rank 16-18 and dense rank 20-21, while the top of
+the list is taken by `bnss:177` ("Report how submitted") and `bnss:193`
+("Report of police officer on completion of investigation"). The token
+"report", appended by `query_expand.py`'s FIR expansion, dominates. This
+is not a regression: `q23` is one of the pre-existing misses inside the
+49-query set's unchanged 0.8370 recall, and the earlier "FIR regression
+query re-verified" note referred to the *pipeline answering with a
+relevant citation*, not to the labelled chunk's top-5 rank. An `h076`
+note claiming its wording was identical to `q23`'s was corrected in the
+dataset while confirming this -- the wordings differ, and the pair is now
+documented as a measurement of how little phrasing change it takes to
+lose the target.
+
+### Does the larger dataset justify embedding fine-tuning?
+
+**Partly, and less exclusively than the 129-query read suggested.**
+
+**Stronger:** the citizen-vs-statute gap is confirmed at a sample size
+where it means something (0.527 vs 0.724 recall@5 over 150 and 76
+queries). 44 of 119 missed chunks (`representation_gap` 29 +
+`dense_embedding` 15, 37.0%) are failures no reranker and no fusion
+retune can reach -- the target is either outside both candidate pools or
+so badly embedded that a 3x-weighted dense signal actively buries it.
+Those are embedding-quality failures by definition. The labelled pool
+available for training also roughly doubles: 313 groups here plus 49 in
+`eval/queries.jsonl` is ~362 groups, materially more than the 153 the
+run1 experiment concluded was too small.
+
+**Weaker, or at least less exclusive:** the largest actionable bucket is
+no longer embedding-shaped. `bm25_vocabulary` (32.8%) plus
+`fusion_ranking` (30.3%) is 63% of missed chunks, and both are
+candidate-generation/ordering problems. `fusion_ranking` in particular is
+the exact pattern this document twice cited as *absent* when deferring
+reranking, and it is now the second-largest bucket. Separately, the
+single clearest correctness risk this session surfaced is not a ranking
+problem at all: it is 5-of-10 confident wrong-Act answers on legal
+questions about un-ingested Acts, which fine-tuning would not fix and
+might worsen (a model tuned to map citizen language onto *this* corpus
+more aggressively has more, not less, reason to answer a POCSO question
+from the BNS).
+
+**Recommendation, on this evidence:** fine-tuning is now adequately
+supported by data volume and by a confirmed, measured failure class, but
+it should not be the *next* experiment, because three cheaper changes
+address larger buckets and one addresses a correctness risk rather than a
+quality metric. Suggested order:
+
+1. **Extend the topic-relevance guard to name un-ingested Acts**
+   (family law, motor vehicles, POCSO, rent control, labour/wages,
+   stamp duty/registration, SC/ST Atrocities, arbitration, RTI). Directly
+   targets the 5 wrong-Act false answers -- a correctness risk in a
+   legal-information product, not a metric. Cheapest change here, and
+   squarely within the existing curated-pattern discipline.
+2. **Re-evaluate the confidence gate for citizen phrasing.** 69 false
+   abstains, 57 of them `ordinary_citizen`/`colloquial`, on queries whose
+   correct chunk *was* retrieved. This is threshold behaviour on a query
+   population the threshold was never tuned against.
+3. **Add the deferred cross-encoder reranker** over the existing fused
+   candidates, gated available-if-installed like dense retrieval is. The
+   `fusion_ranking` bucket (36 chunks) is precisely what it fixes, and
+   the stated blocking condition for adding it is now measurably met.
+4. **Then** re-attempt embedding fine-tuning against the ~362-group
+   labelled pool, with the run1 infrastructure unchanged, evaluated
+   held-out-only as run1 finally was.
+
+No training was started, no retrieval code was touched, and nothing was
+committed this session.
 
 ## Remaining limitations
 
