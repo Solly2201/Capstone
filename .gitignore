@@ -29,3 +29,6 @@ services/ai/finetune/output/
 # here (its own default output_dir when not overridden) -- log noise,
 # not a real artifact.
 services/ai/checkpoints/
+
+# Claude Code local state
+.claude/
