@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export * from "./civic.js";
+
 export const userRoles = ["CITIZEN", "AUTHORITY", "ADMIN"] as const;
 export type UserRole = (typeof userRoles)[number];
 

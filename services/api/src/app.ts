@@ -6,6 +6,7 @@ import pino from "pino";
 import { ZodError } from "zod";
 import { env } from "./config/env.js";
 import { authRouter } from "./routes/auth.js";
+import { civicRouter } from "./routes/civic.js";
 import { corpusRouter } from "./routes/corpus.js";
 import { legalRouter } from "./routes/legal.js";
 
@@ -21,6 +22,7 @@ export const createApp = () => {
 
   app.get("/health", (_request, response) => response.json({ status: "ok", service: "cap-api" }));
   app.use("/api/auth", authRouter);
+  app.use("/api/civic", civicRouter);
   app.use("/api/corpus", corpusRouter);
   app.use("/api/legal", legalRouter);
 

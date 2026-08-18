@@ -8,8 +8,11 @@ import { HomePage } from "./pages/HomePage";
 import { LearnPage } from "./pages/LearnPage";
 import { LegalAssistantPage } from "./pages/LegalAssistantPage";
 import { LoginPage } from "./pages/LoginPage";
+import { MyReportsPage } from "./pages/MyReportsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ReportDetailPage } from "./pages/ReportDetailPage";
+import { ReportPage } from "./pages/ReportPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
 export function App() {
@@ -33,7 +36,31 @@ export function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/report" element={<PlaceholderPage title="Report a civic issue" />} />
+        {/* Civic reporting is tied to an account: a report has an owner. */}
+        <Route
+          path="/report"
+          element={
+            <ProtectedRoute>
+              <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/mine"
+          element={
+            <ProtectedRoute>
+              <MyReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/:id"
+          element={
+            <ProtectedRoute>
+              <ReportDetailPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/petitions" element={<PlaceholderPage title="Community petitions" />} />
         <Route path="*" element={<PlaceholderPage title="Page not found" />} />
       </Routes>

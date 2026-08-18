@@ -31,6 +31,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             {links.map((link) => <NavLink key={link.to} to={link.to} className="nav-link">{link.label}</NavLink>)}
             {signedIn ? (
               <>
+                <NavLink to="/reports/mine" className="nav-link">My reports</NavLink>
                 <NavLink to="/account" className="nav-link">{user.fullName}</NavLink>
                 <button type="button" onClick={logout} className="rounded-lg border border-ink/20 px-4 py-2.5 transition hover:bg-sandstone">Log out</button>
               </>
@@ -51,6 +52,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               {links.map((link) => <NavLink key={link.to} to={link.to} className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>{link.label}</NavLink>)}
               {signedIn ? (
                 <>
+                  <NavLink to="/reports/mine" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>My reports</NavLink>
                   <NavLink to="/account" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>{user.fullName}</NavLink>
                   <button
                     type="button"
