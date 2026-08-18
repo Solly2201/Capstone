@@ -50,6 +50,8 @@ const fakeReport = (overrides: Record<string, unknown> = {}) => ({
   status: "SUBMITTED",
   priority: "MEDIUM",
   media: [],
+  history: [],
+  dueAt: new Date("2026-08-23T10:00:00Z"),
   createdAt: new Date("2026-08-18T10:00:00Z"),
   updatedAt: new Date("2026-08-18T10:00:00Z"),
   ...overrides

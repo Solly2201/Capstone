@@ -10,6 +10,7 @@ import {
 import { AuthedImage } from "../components/AuthedImage";
 import { SiteShell } from "../components/SiteShell";
 import { StatusBadge } from "../components/StatusBadge";
+import { DueBadge, StatusHistory } from "../components/StatusHistory";
 import { api, apiErrorMessage, apiErrorStatus } from "../lib/api";
 
 type Status = "loading" | "ready" | "missing" | "error";
@@ -83,6 +84,7 @@ export function ReportDetailPage() {
           <article className="mt-8">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={report.status} />
+              <DueBadge report={report} />
               <span className="text-xs font-semibold uppercase tracking-wide text-clay">
                 {civicCategoryLabels[report.category]}
               </span>
@@ -132,11 +134,24 @@ export function ReportDetailPage() {
                 <dt className="text-xs font-bold uppercase tracking-wide text-clay">Last updated</dt>
                 <dd className="mt-1 text-sm text-ink/80">{new Date(report.updatedAt).toLocaleString()}</dd>
               </div>
+              {report.dueAt && (
+                <div>
+                  <dt className="text-xs font-bold uppercase tracking-wide text-clay">Target date</dt>
+                  <dd className="mt-1 text-sm text-ink/80">{new Date(report.dueAt).toLocaleDateString()}</dd>
+                </div>
+              )}
             </dl>
 
+            <section className="mt-10 border-t border-ink/10 pt-6">
+              <h2 className="font-serif text-xl font-semibold">What has happened so far</h2>
+              <div className="mt-4">
+                <StatusHistory history={report.history} />
+              </div>
+            </section>
+
             <p className="mt-8 text-xs leading-5 text-ink/55">
-              Status changes are made by the responsible authority. This milestone records and tracks
-              reports; the authority review workflow is not built yet.
+              Status changes are made by the responsible civic authority. Any reason they record is shown
+              above.
             </p>
           </article>
         )}

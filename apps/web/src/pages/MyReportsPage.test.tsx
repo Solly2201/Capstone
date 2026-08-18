@@ -25,6 +25,9 @@ const report: CivicReport = {
   status: "UNDER_REVIEW",
   priority: "MEDIUM",
   media: [],
+  dueAt: "2026-08-23T10:00:00.000Z",
+  isOverdue: false,
+  history: [],
   createdAt: "2026-08-18T10:00:00.000Z",
   updatedAt: "2026-08-18T10:00:00.000Z"
 };

@@ -11,6 +11,7 @@ import {
 import { AuthedImage } from "../components/AuthedImage";
 import { SiteShell } from "../components/SiteShell";
 import { StatusBadge } from "../components/StatusBadge";
+import { DueBadge } from "../components/StatusHistory";
 import { api, apiErrorMessage } from "../lib/api";
 
 type Status = "loading" | "ready" | "error";
@@ -106,6 +107,7 @@ export function MyReportsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={report.status} />
+                      <DueBadge report={report} />
                       <span className="text-xs font-semibold uppercase tracking-wide text-clay">
                         {civicCategoryLabels[report.category]}
                       </span>

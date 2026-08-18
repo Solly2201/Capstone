@@ -3,6 +3,8 @@ import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AccountPage } from "./pages/AccountPage";
 import { ArticlePage } from "./pages/ArticlePage";
+import { AuthorityDashboardPage } from "./pages/AuthorityDashboardPage";
+import { AuthorityReportPage } from "./pages/AuthorityReportPage";
 import { DocumentBrowserPage } from "./pages/DocumentBrowserPage";
 import { HomePage } from "./pages/HomePage";
 import { LearnPage } from "./pages/LearnPage";
@@ -58,6 +60,24 @@ export function App() {
           element={
             <ProtectedRoute>
               <ReportDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        {/* Authority workspace. The role check here hides the UI; the API
+            independently authorises every action behind it. */}
+        <Route
+          path="/authority"
+          element={
+            <ProtectedRoute roles={["AUTHORITY", "ADMIN"]}>
+              <AuthorityDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/authority/reports/:id"
+          element={
+            <ProtectedRoute roles={["AUTHORITY", "ADMIN"]}>
+              <AuthorityReportPage />
             </ProtectedRoute>
           }
         />
