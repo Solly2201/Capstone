@@ -1,4 +1,4 @@
-import { BookOpen, Search } from "lucide-react";
+import { BookOpen, MessagesSquare, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { disclaimerText } from "@cap/contracts";
 import { SiteShell } from "../components/SiteShell";
@@ -36,13 +36,22 @@ export function LearnPage() {
           ))}
         </div>
 
-        <Link
-          to="/learn/browse"
-          className="mt-10 inline-flex items-center gap-2 rounded-lg border border-ink/15 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-clay/50 hover:text-clay"
-        >
-          <Search size={17} aria-hidden="true" />
-          Search the source documents directly
-        </Link>
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <Link
+            to="/legal-assistant"
+            className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-parchment transition hover:bg-coal"
+          >
+            <MessagesSquare size={17} aria-hidden="true" />
+            Ask a legal question
+          </Link>
+          <Link
+            to="/learn/browse"
+            className="inline-flex items-center gap-2 rounded-lg border border-ink/15 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-clay/50 hover:text-clay"
+          >
+            <Search size={17} aria-hidden="true" />
+            Search the source documents directly
+          </Link>
+        </div>
       </section>
     </SiteShell>
   );

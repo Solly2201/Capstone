@@ -1,23 +1,37 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, LockKeyhole } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { loginSchema, type LoginInput } from "@cap/contracts";
-import { api } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
+import { apiErrorMessage, apiErrorReason } from "../lib/api";
 
 export function LoginPage() {
-  const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+  const { login, status } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError
+  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+
+  // Where the user was headed before ProtectedRoute intercepted them.
+  const from = (location.state as { from?: string } | null)?.from ?? "/account";
+
+  if (status === "authenticated") return <Navigate to={from} replace />;
 
   const onSubmit = async (values: LoginInput) => {
+    setNeedsVerification(false);
     try {
-      const response = await api.post("/auth/login", values);
-      localStorage.setItem("cap.accessToken", response.data.token);
-      setError("root", { message: `Signed in as ${response.data.user.fullName}. Dashboards arrive in the next increment.` });
-    } catch (error: unknown) {
-      const message = typeof error === "object" && error && "response" in error
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-        : undefined;
-      setError("root", { message: message ?? "We could not sign you in. Try again." });
+      await login(values);
+      navigate(from, { replace: true });
+    } catch (error) {
+      if (apiErrorReason(error) === "email_not_verified") setNeedsVerification(true);
+      setError("root", { message: apiErrorMessage(error, "We could not sign you in. Try again.") });
     }
   };
 
@@ -47,10 +61,29 @@ export function LoginPage() {
               <input className="field" type="password" autoComplete="current-password" {...register("password")} />
               {errors.password && <span className="error-text">{errors.password.message}</span>}
             </label>
-            {errors.root && <p className="rounded-lg border border-clay/30 bg-sandstone/50 px-4 py-3 text-sm leading-6 text-ink">{errors.root.message}</p>}
+            {errors.root && (
+              <p role="alert" className="rounded-lg border border-clay/30 bg-sandstone/50 px-4 py-3 text-sm leading-6 text-ink">
+                {errors.root.message}
+                {needsVerification && (
+                  <>
+                    {" "}
+                    <Link to="/verify-email" className="font-semibold text-clay underline underline-offset-4">
+                      Verify your email
+                    </Link>
+                    .
+                  </>
+                )}
+              </p>
+            )}
             <button className="w-full rounded-lg bg-ink px-5 py-3.5 text-sm font-bold text-parchment transition hover:bg-coal disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting}>{isSubmitting ? "Signing in…" : "Log in"}</button>
           </form>
-          <p className="mt-8 text-xs leading-5 text-ink/60">Demo accounts are documented in the project README. New accounts will require email verification and acceptance of the legal-information disclaimer.</p>
+          <p className="mt-8 text-sm text-ink/70">
+            New here?{" "}
+            <Link to="/register" className="font-semibold text-clay underline underline-offset-4">
+              Create an account
+            </Link>
+          </p>
+          <p className="mt-4 text-xs leading-5 text-ink/60">Demo accounts are documented in the project README. New accounts require email verification and acceptance of the legal-information disclaimer.</p>
         </div>
       </section>
     </main>

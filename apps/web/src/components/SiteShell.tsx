@@ -2,15 +2,19 @@ import { Landmark, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { disclaimerText } from "@cap/contracts";
+import { useAuth } from "../auth/AuthContext";
 
 const links = [
   { to: "/learn", label: "Learn" },
+  { to: "/legal-assistant", label: "Legal assistant" },
   { to: "/report", label: "Civic report" },
   { to: "/petitions", label: "Petitions" }
 ];
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, status, logout } = useAuth();
+  const signedIn = status === "authenticated" && user !== null;
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
@@ -25,7 +29,17 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-semibold md:flex" aria-label="Primary navigation">
             {links.map((link) => <NavLink key={link.to} to={link.to} className="nav-link">{link.label}</NavLink>)}
-            <Link to="/login" className="rounded-lg bg-ink px-4 py-2.5 text-parchment transition hover:bg-coal">Log in</Link>
+            {signedIn ? (
+              <>
+                <NavLink to="/account" className="nav-link">{user.fullName}</NavLink>
+                <button type="button" onClick={logout} className="rounded-lg border border-ink/20 px-4 py-2.5 transition hover:bg-sandstone">Log out</button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/register" className="nav-link">Register</NavLink>
+                <Link to="/login" className="rounded-lg bg-ink px-4 py-2.5 text-parchment transition hover:bg-coal">Log in</Link>
+              </>
+            )}
           </nav>
           <button className="rounded-lg p-2 md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
             {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
@@ -35,7 +49,26 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           <nav className="border-t border-ink/10 bg-parchment px-5 py-4 md:hidden" aria-label="Mobile navigation">
             <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm font-semibold">
               {links.map((link) => <NavLink key={link.to} to={link.to} className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>{link.label}</NavLink>)}
-              <Link to="/login" className="rounded-md bg-ink px-3 py-2 text-center text-parchment" onClick={() => setMenuOpen(false)}>Log in</Link>
+              {signedIn ? (
+                <>
+                  <NavLink to="/account" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>{user.fullName}</NavLink>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      logout();
+                    }}
+                    className="rounded-md border border-ink/20 px-3 py-2 text-center"
+                  >
+                    Log out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <NavLink to="/register" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>Register</NavLink>
+                  <Link to="/login" className="rounded-md bg-ink px-3 py-2 text-center text-parchment" onClick={() => setMenuOpen(false)}>Log in</Link>
+                </>
+              )}
             </div>
           </nav>
         )}

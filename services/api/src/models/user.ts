@@ -8,6 +8,16 @@ export type UserDocument = {
   profilePhotoUrl?: string;
   role: UserRole;
   emailVerified: boolean;
+  /**
+   * Pending email-verification challenge. Only the SHA-256 hash of the
+   * token is stored, so a database read cannot be replayed to verify
+   * somebody else's account (same reasoning as never storing the raw
+   * password). Cleared once the account is verified.
+   */
+  emailVerification?: {
+    tokenHash: string;
+    expiresAt: Date;
+  };
   disclaimerAcceptance: {
     version: string;
     acceptedAt: Date;
@@ -24,6 +34,17 @@ const userSchema = new Schema<UserDocument>(
     profilePhotoUrl: { type: String },
     role: { type: String, required: true, enum: ["CITIZEN", "AUTHORITY", "ADMIN"] },
     emailVerified: { type: Boolean, required: true, default: false },
+    emailVerification: {
+      type: new Schema(
+        {
+          tokenHash: { type: String, required: true },
+          expiresAt: { type: Date, required: true }
+        },
+        { _id: false }
+      ),
+      required: false,
+      select: false
+    },
     disclaimerAcceptance: {
       version: { type: String, required: true },
       acceptedAt: { type: Date, required: true }
