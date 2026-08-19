@@ -34,6 +34,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: local-development-secret-change-before-production
       WEB_ORIGIN: http://localhost:5173
+      AI_SERVICE_URL: http://ai:8000
       LOCAL_STORAGE_ROOT: /data/uploads
     ports:
       - "4000:4000"
@@ -48,6 +49,11 @@ services:
   ai:
     build:
       context: ./services/ai
+    volumes:
+      # data/index and data/legal-corpus are build artifacts (gitignored,
+      # rebuilt by scripts/ingest_corpus.py), so they are mounted rather
+      # than baked into the image.
+      - ./services/ai/data:/app/data:ro
     ports:
       - "8000:8000"
 
