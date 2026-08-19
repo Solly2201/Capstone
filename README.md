@@ -21,9 +21,17 @@ docs/                     Architecture, workflow, source inventory
 infra/                    Docker and local infrastructure configuration
 ```
 
-## Increment 1
+## Current status
 
-This increment establishes the monorepo, UI foundation, landing page, authentication/RBAC boundary, local-storage abstraction, Docker configuration, CI, seed accounts, and formal AI workflow. Legal RAG, civic reporting, petitions, and model inference are intentionally deferred to later increments.
+Increments 1-4 are complete and Increment 5 is partially complete. `docs/PROJECT_STATE.md` is the authoritative record, including the full list of known gaps.
+
+- **Foundation** (Increment 1): monorepo, UI foundation, landing page, authentication/RBAC boundary, local-storage abstraction, Docker configuration, CI and seed accounts.
+- **Learn** (Increment 2 / Module 1A): official-source ingestion and hybrid retrieval (BM25 + local dense embeddings, RRF-fused), document browser and grounded learning articles. The FIR-vs-NCR and bail-procedure articles are not yet written, and the RTI Act 2005 is the one source still un-ingested.
+- **Legal answers** (Module 1B): `POST /api/legal/answer` runs deterministic Risk/UPL checks, hybrid retrieval and a confidence gate, then returns the exact retrieved text with citations or abstains. **No generative LLM is used anywhere in this path** — a standing project decision, not a temporary state.
+- **Civic report** (Module 2): citizen reporting with metadata stripping before storage, plus the authority workflow — a declared transition table, server-controlled status history, staff-assigned priority with SLA deadlines, and an authority queue.
+- **Petitions** (Module 3): petition lifecycle, one signature per account enforced by a unique database index, public browse and detail, and an authority moderation queue.
+
+Not built: duplicate detection, civic vision/ML, automatic categorisation or priority prediction, the petition recommendation agent, notifications, analytics, and the observability/deployment preparation of Increment 6. Email verification is development-mode only (no mail transport), and there is no token refresh.
 
 ## Prerequisites
 
