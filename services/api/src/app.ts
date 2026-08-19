@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth.js";
 import { civicRouter } from "./routes/civic.js";
 import { corpusRouter } from "./routes/corpus.js";
 import { legalRouter } from "./routes/legal.js";
+import { petitionRouter } from "./routes/petitions.js";
 
 const logger = pino({ level: env.NODE_ENV === "production" ? "info" : "debug" });
 
@@ -25,6 +26,7 @@ export const createApp = () => {
   app.use("/api/civic", civicRouter);
   app.use("/api/corpus", corpusRouter);
   app.use("/api/legal", legalRouter);
+  app.use("/api/petitions", petitionRouter);
 
   app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
     if (error instanceof ZodError) return response.status(400).json({ message: "Invalid request data.", issues: error.flatten() });

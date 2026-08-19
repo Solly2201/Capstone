@@ -6,7 +6,7 @@ CAP is an India-focused citizen platform with three planned modules:
 
 - **Learn:** plain-language legal awareness, sourced only from approved official material.
 - **Civic report:** privacy-aware civic issue reporting with a simulated authority workflow.
-- **Petitions:** public, community-led petitions and signatures.
+- **Petitions:** public, community-led petitions with one signature per account and a simulated authority moderation workflow.
 
 CAP provides public awareness and information only. It is not legal advice or legal representation. For real-world legal implications, contact a qualified legal adviser. In an immediate emergency, call **112**.
 

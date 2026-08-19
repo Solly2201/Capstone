@@ -32,3 +32,8 @@ services/ai/checkpoints/
 
 # Claude Code local state
 .claude/
+
+# TypeScript incremental build state, written by `tsc -b` / `tsc -p`
+# whenever the workspaces are typechecked or built. Regenerated on
+# demand and machine-specific, so it is never committed.
+*.tsbuildinfo

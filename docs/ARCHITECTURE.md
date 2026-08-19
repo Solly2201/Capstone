@@ -55,7 +55,7 @@ flowchart TD
 | 2 | Legal learning paths and official-source ingestion — **in progress**: ingestion pipeline (raw.txt or raw.pdf, including a coordinate-based extractor for two-column India Code gazette PDFs — see `docs/LEGAL_SOURCES.md`), hybrid retrieval (BM25 + local dense embeddings, RRF-fused, evaluated against a BM25 baseline — see `docs/RETRIEVAL_EVALUATION.md`), document browser, and 3 grounded learning articles are built and tested; BNS/BNSS/BSA are now fully ingested (FIR, bail, and offences-against-property chapters included) but FIR-vs-NCR and bail-procedure learning articles are not yet written |
 | 3 | Deterministic legal answers, UPL/risk guardrails, evaluation harness — **done**: `POST /legal/answer` / `POST /api/legal/answer` implements Risk/UPL → hybrid retrieval → confidence gate → deterministic structured response (exact retrieved excerpts + citations, no generative LLM anywhere in the path — see "No-generation principle" below); the retrieval evaluation harness (`services/ai/eval/`, Recall@K, Precision@K, MRR, nDCG, top-1 citation correctness, abstention accuracy) is built and was used to choose hybrid over BM25-only, and to tune its fusion/gate parameters, with real measured results. The browser-facing half landed in the M1 usability milestone: `/legal-assistant` renders this endpoint's response verbatim, and the auth/email-verification frontend integration shipped alongside it (see "Authentication and account activation" below) |
 | 4 | Civic reporting, image privacy processing, duplicates, SLA and Authority UI — **citizen core done** (M2): report creation with optional photo, ownership-scoped retrieval, metadata stripping and local media storage (see "Civic reporting" below); the authority workflow is now built too (M3): a declared transition table, server-controlled status history, staff-assigned priority with SLA deadlines, and an authority queue/detail UI. Duplicate detection, vision and notifications are not built |
-| 5 | Petitions, signatures, moderation and recommendation agent |
+| 5 | Petitions, signatures, moderation and recommendation agent — **petitions, signatures and moderation done** (M4): a capability-keyed transition table, a separate `Signature` collection whose unique compound index enforces one signature per citizen per petition, a public browse/detail surface, and an authority moderation queue (see "Petitions and public participation" below). **The recommendation agent is not built**, and no AI of any kind is involved in this module |
 | 6 | Evaluation, observability and deployment preparation |
 
 ## Legal corpus ingestion (Increment 2)
@@ -236,6 +236,86 @@ This simulation has **one authority**. An AUTHORITY user sees every report in ev
 The queue is declared before `/reports/:id` so "authority" is never parsed as a report id, and its filters are validated against a shared Zod contract so only known fields reach the database. A transition is modelled as *creating a transition* rather than PATCHing a status field, because that is what actually happens: an actor performs a reviewable act that appends to the report's history.
 
 Authorisation is enforced twice on purpose — `requireRole` keeps citizens out of the route, and the transition table independently decides whether this actor's role may make this particular move. Neither check is trusted alone.
+
+## Petitions and public participation (Module 3 — M4)
+
+A petition is citizen-authored public content that gathers signatures and is then answered, closed or removed by the authority. Structurally it is the civic report's sibling — a Mongo document moved through a declared state machine by an authenticated actor — and it deliberately reuses that shape rather than inventing a second one. Two things genuinely differ, and both are described below: a petition has a **creator** whose relationship to it outranks their role, and it has **signatures**, whose integrity is the only thing the feature actually asserts.
+
+**No AI is involved.** There is no petition recommendation, no clustering, no classification and no generated petition text, so nothing here is routed through the Python service — the browser talks to Node and Node talks to MongoDB. The recommendation agent named in the increment table is not built.
+
+### Lifecycle
+
+Five statuses: `OPEN`, `UNDER_REVIEW`, `ANSWERED`, `CLOSED`, `REJECTED`. `OPEN` is the only state in which signatures are accepted, `ANSWERED` is the only terminal state (the authority has formally responded), and `REJECTED` is the only state that is not public. `petitionTransitions` in `packages/contracts/src/petitions.ts` declares the eight legal moves; the API enforces the table and the UI renders its action list from the same table, so route handlers carry no status `if`-statements of their own.
+
+| From | To | Who | Reason required |
+| --- | --- | --- | --- |
+| `OPEN` | `CLOSED` | CREATOR, AUTHORITY, ADMIN | yes |
+| `OPEN` | `UNDER_REVIEW` | AUTHORITY, ADMIN | no |
+| `OPEN` | `REJECTED` | AUTHORITY, ADMIN | yes |
+| `UNDER_REVIEW` | `ANSWERED` | AUTHORITY, ADMIN | yes |
+| `UNDER_REVIEW` | `CLOSED` | AUTHORITY, ADMIN | yes |
+| `UNDER_REVIEW` | `REJECTED` | AUTHORITY, ADMIN | yes |
+| `CLOSED` | `OPEN` | ADMIN | yes |
+| `REJECTED` | `OPEN` | ADMIN | yes |
+
+### Capability, not role
+
+Unlike the civic table, this one is keyed by an **actor capability** — `CREATOR`, `AUTHORITY` or `ADMIN` — rather than by a raw role, because a petition has a relationship a report does not. `petitionCapabilityFor(role, isCreator)` derives it server-side, and `isCreator` is always computed by comparing the authenticated user id against the *stored* `creatorId`; it is never read from a request. A citizen who is not the creator maps to no capability at all, so they appear in no rule and can move nothing — a property of the table itself, not of a middleware check a future route could forget.
+
+Creatorship is tested **first**, deliberately: nobody adjudicates their own petition. Creation is CITIZEN-only, so the only way to be both a creator and staff today is for an account to be promoted after publishing something; when that happens the account keeps the creator's single power (closing its own petition) and loses its staff powers *over that one petition* — it cannot review, answer or remove it, while any colleague still can. The rule costs nothing and closes a real conflict of interest.
+
+### Signature integrity
+
+Signatures live in their own collection (`services/api/src/models/signature.ts`), not in an array on the petition. MongoDB cannot enforce uniqueness *within* an array, so "one signature per citizen per petition" would otherwise rest on application logic; a separate collection gets a real unique compound index on `{ petitionId, citizenId }`, and **that index is the security control**. A successful petition's signer list is also unbounded against the 16 MB document ceiling, and embedding it would drag every signer into listing reads that only want a count.
+
+The signing path treats everything except that index as untrusted:
+
+- The signer is always the JWT subject. No code path anywhere reads a signer identity from a request body.
+- "Have you signed already?" is never asked as a precondition and then acted on — that is check-then-act, and two simultaneous requests both read "no" and both insert. The insert is simply attempted and the database rejects the loser with a duplicate-key error, so exactly one of N racing requests wins, whatever N is.
+- The cached `Petition.signatureCount` is adjusted with `$inc`, which is atomic, so concurrent signers cannot lose each other's updates. The `Signature` collection remains the source of truth; the count exists so a listing does not have to count rows per petition.
+
+**Why no transaction.** `docker-compose.yml` runs a standalone `mongod`, and MongoDB multi-document transactions require a replica set — so a transaction was unavailable rather than passed over, and the consequences are handled explicitly instead. Signing inserts the signature first and increments second, which makes the common failure (the same citizen signing twice — a double-clicked button, a replayed request) fail atomically at the index with nothing to undo; the rarer race, the petition closing mid-request, is caught by making the increment conditional on the petition still being `OPEN` and deleting the just-inserted row if it matches nothing. Withdrawal mirrors this: decrement first, delete second, and give the count back if the delete removed nothing. The residual risk is bounded and **one-directional** — a crash between insert and increment leaves the count lower than the row count, never higher — so a recount repairs it and an inflated tally is impossible by construction.
+
+### Visibility
+
+Every status except `REJECTED` is public, because an archive of what the authority answered or closed is the point of having one. A removed petition stays readable by its creator (so they can read why) and by staff (so the decision stays auditable), and by nobody else. A viewer who may not see one is answered **404, not 403**, so the endpoint cannot be used to confirm that a particular removed petition ever existed — the same rule the civic report routes follow. The public list excludes them structurally by intersecting the requested status with the public set, and the "signed by me" list applies the same rule so that signing something never becomes a second route to content moderation removed.
+
+Reading is public and acting is not: `optionalAuth` (`services/api/src/middleware/auth.ts`) populates `request.auth` when a valid token is present and continues either way, so the list and detail pages can tell a signer from a stranger without putting a login wall in front of public content. An invalid or expired token is treated as anonymous rather than as an error. It grants no access on its own, and every privileged branch behind it re-checks the identity it finds.
+
+### Endpoints
+
+| Method | Path | Who |
+| --- | --- | --- |
+| `POST` | `/api/petitions` | CITIZEN |
+| `GET` | `/api/petitions` | public (`optionalAuth`) |
+| `GET` | `/api/petitions/mine` | any signed-in account (`created` \| `signed`) |
+| `GET` | `/api/petitions/authority` | AUTHORITY, ADMIN |
+| `GET` | `/api/petitions/:id` | public (`optionalAuth`) |
+| `POST` | `/api/petitions/:id/signatures` | CITIZEN |
+| `DELETE` | `/api/petitions/:id/signatures/me` | CITIZEN |
+| `POST` | `/api/petitions/:id/transitions` | any signed-in account — the transition table decides |
+
+`/mine` and `/authority` are declared before `/:id` so neither literal segment is ever parsed as a petition id, and every id goes through one `objectIdParam` narrowing helper so a malformed value never reaches a database call. Staff are refused both creation and signing **by role**, because the authority is the body being petitioned and its own petitions or signatures would corrupt exactly the signal it is meant to read.
+
+The transitions route is the one place the pattern differs from civic: it carries `requireAuth` but **not** `requireRole`, because a creator closing their own petition is a legitimate citizen action. Authorisation therefore happens where it can actually be decided — in `petition-workflow.ts`, which derives the capability from the token's subject against the stored `creatorId` and hands it to the shared table. Withdrawal takes no signature id and no citizen id, because there is exactly one signature the request could mean and the server already knows which, which removes the whole "delete someone else's signature" class of bug by construction rather than by an ownership check.
+
+### What the client never controls
+
+`creatorId` comes from the verified JWT and `creatorName` is read from that account's own record. `status`, `signatureCount`, `history` and both timestamps are server-set. None appear in any input schema, and both input schemas are `.strict()`, so a client-supplied `creatorId`, `status`, `signatureCount`, `history`, `actorId` or `at` is a **400 rather than a silently dropped field**. History entries are constructed from the derived capability and the server clock; nothing from a request body reaches one except the note. The only client-chosen number is `signatureGoal` — the creator's own target, which grants no privilege and is bounded at both ends.
+
+Transitions use the same conditional `findOneAndUpdate` as the civic workflow, filtered on the status the decision was made against, so a petition someone else moved in between produces a **409** instead of a silently overwritten action.
+
+### Frontend
+
+`/petitions` (public browse, server-side filters, pagination), `/petitions/:id` (public detail, signing, withdrawal, action panel, history), `/petitions/new` (CITIZEN-gated), `/petitions/mine` (created and signed tabs) and `/authority/petitions` (AUTHORITY/ADMIN-gated queue, with a "reached its goal" triage filter evaluated in the database as a comparison of two stored fields).
+
+There is **one** petition detail page rather than a public one plus a near-identical staff one: the difference between them is entirely "which actions are available", and the shared table already answers that. Rendering `petitionTransitionsFor(status, capability)` means the buttons on screen are exactly the moves the API will accept, and a reader with no capability sees no action panel at all. None of this is a security boundary — the API independently re-derives the same capability and re-authorises every action behind it.
+
+There is deliberately **no edit and no delete endpoint**. People sign a specific text, so allowing it to be rewritten afterwards would misrepresent what they supported; removal is moderation (`REJECTED`, with a published reason and a reversible ADMIN reinstate) rather than destruction.
+
+### Known limits
+
+One signature per *account*, which is exactly as strong as account identity — there is no address, constituency or identity check, so a count means "distinct verified accounts", not "distinct people". Signatures cannot be withdrawn once a petition leaves `OPEN`, and taking a petition up for review stops collection. There is no search, no notification and no reconciliation job for a drifted count. `docs/PROJECT_STATE.md` carries the full list.
 
 ## Authentication and account activation
 

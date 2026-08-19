@@ -4,13 +4,18 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AccountPage } from "./pages/AccountPage";
 import { ArticlePage } from "./pages/ArticlePage";
 import { AuthorityDashboardPage } from "./pages/AuthorityDashboardPage";
+import { AuthorityPetitionsPage } from "./pages/AuthorityPetitionsPage";
 import { AuthorityReportPage } from "./pages/AuthorityReportPage";
+import { CreatePetitionPage } from "./pages/CreatePetitionPage";
 import { DocumentBrowserPage } from "./pages/DocumentBrowserPage";
 import { HomePage } from "./pages/HomePage";
 import { LearnPage } from "./pages/LearnPage";
 import { LegalAssistantPage } from "./pages/LegalAssistantPage";
 import { LoginPage } from "./pages/LoginPage";
+import { MyPetitionsPage } from "./pages/MyPetitionsPage";
 import { MyReportsPage } from "./pages/MyReportsPage";
+import { PetitionDetailPage } from "./pages/PetitionDetailPage";
+import { PetitionsPage } from "./pages/PetitionsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ReportDetailPage } from "./pages/ReportDetailPage";
@@ -81,7 +86,34 @@ export function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/petitions" element={<PlaceholderPage title="Community petitions" />} />
+        {/* Petitions are public content: reading one needs no account,
+            matching the API. Publishing, signing and moderating do. */}
+        <Route path="/petitions" element={<PetitionsPage />} />
+        <Route
+          path="/petitions/new"
+          element={
+            <ProtectedRoute roles={["CITIZEN"]}>
+              <CreatePetitionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petitions/mine"
+          element={
+            <ProtectedRoute>
+              <MyPetitionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/petitions/:id" element={<PetitionDetailPage />} />
+        <Route
+          path="/authority/petitions"
+          element={
+            <ProtectedRoute roles={["AUTHORITY", "ADMIN"]}>
+              <AuthorityPetitionsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<PlaceholderPage title="Page not found" />} />
       </Routes>
     </AuthProvider>
