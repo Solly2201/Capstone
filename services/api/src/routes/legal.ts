@@ -27,10 +27,15 @@ legalRouter.post("/answer", answerRateLimiter, async (request, response) => {
   }
 
   try {
+    // Bounded, because node's fetch is not. A refused connection throws
+    // immediately and was already handled; a service that accepts the
+    // socket and then never answers was not, and would hold this request
+    // open indefinitely while the citizen waited on a blank screen.
     const aiResponse = await fetch(`${env.AI_SERVICE_URL}/legal/answer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question })
+      body: JSON.stringify({ question }),
+      signal: AbortSignal.timeout(env.AI_SERVICE_TIMEOUT_MS)
     });
     const body = await aiResponse.json().catch(() => ({ message: "AI service returned a non-JSON response." }));
     if (!aiResponse.ok) {
@@ -40,7 +45,19 @@ legalRouter.post("/answer", answerRateLimiter, async (request, response) => {
   } catch (error) {
     // The question itself is never logged: it can describe a citizen's
     // own legal situation.
-    request.log.error({ err: error }, "AI service unreachable for /legal/answer");
-    response.status(503).json({ message: "AI service is unreachable." });
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
+    request.log.error(
+      { err: error, timedOut, timeoutMs: env.AI_SERVICE_TIMEOUT_MS },
+      timedOut
+        ? "AI service did not respond in time for /legal/answer"
+        : "AI service unreachable for /legal/answer"
+    );
+    // 504 and 503 say different things to a caller and to a monitor: one
+    // is a slow dependency, the other is an absent one.
+    response.status(timedOut ? 504 : 503).json({
+      message: timedOut
+        ? "The legal information service took too long to respond. Please try again."
+        : "AI service is unreachable."
+    });
   }
 });

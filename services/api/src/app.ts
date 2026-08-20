@@ -46,7 +46,24 @@ export const createApp = () => {
     })
   );
 
-  app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: "draft-8", legacyHeaders: false }));
+  // Health checks are registered BEFORE the rate limiter, deliberately.
+  //
+  // The limiter allows 100 requests per 15 minutes per IP. The container
+  // healthcheck polls /health every 15 seconds from 127.0.0.1, which is
+  // 60 requests per window from a single address -- 60% of the budget
+  // before a single citizen has done anything. Once the window fills,
+  // /health starts returning 429, Docker reads that as unhealthy and
+  // restarts a container that was working perfectly. Behind a reverse
+  // proxy the same collapse happens sooner, because without a trust
+  // proxy setting every caller shares the proxy's address.
+  //
+  // Verified: with the limiter in front, /health returned 429 from the
+  // 101st request onward.
+  //
+  // Neither endpoint reveals anything or costs anything -- liveness is a
+  // constant and readiness reads an in-process connection flag -- so
+  // exempting them removes a self-inflicted outage without opening an
+  // abuse surface.
 
   // Liveness: the process is up. Kept dependency-free so a database
   // outage does not make the container look dead and get restarted.
@@ -61,6 +78,8 @@ export const createApp = () => {
       dependencies: { mongodb: ready ? "up" : "down" }
     });
   });
+
+  app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: "draft-8", legacyHeaders: false }));
 
   app.use("/api/auth", authRouter);
   app.use("/api/civic", civicRouter);

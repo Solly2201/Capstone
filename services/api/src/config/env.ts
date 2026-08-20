@@ -15,7 +15,17 @@ const envSchema = z
     JWT_SECRET: z.string().min(32).default(DEV_JWT_SECRET),
     WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
     LOCAL_STORAGE_ROOT: z.string().default("../../data/uploads"),
-    AI_SERVICE_URL: z.string().url().default("http://localhost:8000")
+    AI_SERVICE_URL: z.string().url().default("http://localhost:8000"),
+    // How long the API waits for the AI service before giving up.
+    //
+    // Without a bound, a hung AI service holds the Express request open
+    // forever: node's fetch has no default timeout, and the existing
+    // catch only sees a refused connection, not a silent one. 15s is
+    // deliberately generous -- warm retrieval answers in about 20ms, and
+    // the slowest legitimate case is a cold sentence-transformer load of
+    // roughly 13s, which the AI service's startup warm-up already
+    // covers. Anything past 15s is a fault, not slowness.
+    AI_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(15000)
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV !== "production") return;
