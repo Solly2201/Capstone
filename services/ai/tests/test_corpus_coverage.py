@@ -58,12 +58,55 @@ def test_measured_wrong_act_failures_abstain_end_to_end():
         assert answer.excerpts == [], text
 
 
-def test_rti_is_caught_by_name():
-    """RTI is the one source registered but never ingested (the supplied
-    PDF has an unresolved font-encoding defect), so it is a permanent
-    coverage gap rather than a scoping decision."""
-    assert classify_coverage_gap("How do I file an RTI application?") == "right_to_information"
-    assert classify_coverage_gap("what does the right to information act say") == "right_to_information"
+def test_rti_is_no_longer_a_coverage_gap():
+    """RTI was the one registered-but-un-ingested source, and this guard
+    used to abstain on it. It is now ingested (27 sections), so the guard
+    must stand aside and let retrieval answer -- keeping the old rule
+    would make the corpus unreachable."""
+    for text in (
+        "How do I file an RTI application?",
+        "what does the right to information act say",
+        "how do I get information from a government department",
+        "who is a public information officer",
+        "can I appeal if my information request is refused",
+    ):
+        assert classify_coverage_gap(text) is None, text
+
+
+def test_rti_questions_are_answered_from_the_rti_act():
+    """The end-to-end contract: an information-access question must come
+    back citing the RTI Act, not a lexically-similar section of BNSS,
+    BSA or PWDVA -- the substitution measured before ingestion."""
+    for text in (
+        "how do I get information from a government department",
+        "how long does the government have to reply",
+        "can I appeal an information refusal",
+        "can an officer be penalized for not providing information",
+        "how do I file an RTI application",
+    ):
+        answer = handle_legal_query(text)
+        assert not answer.abstained, text
+        assert answer.excerpts, text
+        assert answer.excerpts[0].chunk_id.startswith("rti:"), (
+            f"{text!r} answered from {answer.excerpts[0].chunk_id}"
+        )
+
+
+def test_amended_institutional_sections_are_not_served():
+    """ss.13, 16 and 27 were replaced by the RTI (Amendment) Act 2019 and
+    the ingested copy predates it, so they are excluded at ingestion.
+    Nothing anywhere may surface them as current law."""
+    import json as _json
+    import os as _os
+    path = _os.path.join(_os.path.dirname(__file__), "..", "data", "index", "chunk_manifest.jsonl")
+    rti_units = set()
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            row = _json.loads(line)
+            if row["source_id"] == "rti":
+                rti_units.add(row["unit_number"])
+    assert rti_units, "no RTI chunks indexed"
+    assert {"13", "16", "27"}.isdisjoint(rti_units), sorted(rti_units & {"13", "16", "27"})
 
 
 # --- must NOT block anything the corpus genuinely answers -----------------
@@ -162,3 +205,80 @@ def test_message_does_not_name_the_act_governing_the_question():
     for act in ("Motor Vehicles Act", "Hindu Marriage Act", "POCSO",
                 "Prevention of Atrocities", "Court Fees Act"):
         assert act not in NOT_IN_CORPUS_MESSAGE, act
+
+
+# --- described, not named: the composed concept rules ---------------------
+# The guard's phrase list only catches a query that *names* an
+# un-ingested Act. These are the same subjects described in citizen
+# language, which a 24-question probe found being answered confidently
+# from unrelated Acts. Each pair records the domain it belongs to.
+
+DESCRIBED_OUT_OF_CORPUS = [
+    # Prevention of Corruption Act 1988 -- a public servant demanding
+    # payment for official work. Still not in the corpus, so still
+    # guarded. The right-to-information entries that lived here were
+    # removed when the RTI Act was ingested; see the two tests above.
+    ("a government officer is demanding a bribe to process my file", "public_corruption"),
+    ("how do I complain about a corrupt official", "public_corruption"),
+    ("where do I report bribery by a clerk", "public_corruption"),
+    ("the clerk wants money to release my certificate", "public_corruption"),
+    ("a public servant asked me for a bribe", "public_corruption"),
+]
+
+
+def test_described_out_of_corpus_subjects_are_caught():
+    for text, expected_category in DESCRIBED_OUT_OF_CORPUS:
+        assert classify_coverage_gap(text) == expected_category, text
+
+
+def test_described_out_of_corpus_subjects_abstain_end_to_end():
+    """As with the named failures, classification alone is not the
+    contract -- the pipeline must actually abstain and cite nothing."""
+    for text, expected_category in DESCRIBED_OUT_OF_CORPUS:
+        answer = handle_legal_query(text)
+        assert answer.abstained is True, text
+        assert answer.reason == f"not_in_corpus_{expected_category}", text
+        assert answer.excerpts == [], text
+
+
+# --- the bribery that IS in the corpus ------------------------------------
+# "bribe" is not a safe bare discriminator: BNS punishes electoral
+# bribery and gratification taken to screen an offender, and BSA lets a
+# witness's credit be impeached by proof of bribery. Only a public
+# servant demanding payment for official work is out of corpus.
+
+COVERED_BRIBERY = [
+    "what is the offence of bribery at an election",
+    "what is bribery by treating",
+    "what happens if a witness is bribed to give evidence",
+    "what is the punishment for taking a gratification to screen an offender",
+    "is it an offence to accept a gratification to recover stolen property",
+]
+
+
+def test_corpus_covered_bribery_is_not_blocked():
+    for text in COVERED_BRIBERY:
+        assert classify_coverage_gap(text) is None, text
+
+
+# --- the record access that IS in the corpus ------------------------------
+# BNSS gives the informant a free copy of the FIR and the accused copies
+# of the police report, judgments are supplied as certified copies, the
+# Constitution and BNSS require grounds of arrest to be communicated, and
+# CPA 2019 gives consumers a right to be informed.
+
+COVERED_RECORD_ACCESS = [
+    "how do I get a free copy of my FIR",
+    "can I get a copy of the police report before my trial",
+    "am I entitled to a copy of the judgment against me",
+    "must the police tell me the grounds of my arrest",
+    "what information must a product label give a consumer",
+    "how do I file a consumer complaint",
+    "how do I file an FIR",
+    "can I inspect the documents filed in my case",
+]
+
+
+def test_corpus_covered_record_access_is_not_blocked():
+    for text in COVERED_RECORD_ACCESS:
+        assert classify_coverage_gap(text) is None, text

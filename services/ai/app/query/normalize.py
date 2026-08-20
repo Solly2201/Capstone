@@ -310,6 +310,114 @@ _RULES: list[tuple[re.Pattern[str], str, str, str]] = [
         "CONTEXT-GATED",
         "h024 - requires a domestic-relationship signal to reach pwdva",
     ),
+    # ---------------- Right to Information ----------------
+    # Added alongside the RTI Act's ingestion. Measured need: with RTI
+    # in the corpus but no rules here, 20 RTI citizen-language probes
+    # put the right Act on top only 13 times and the right section 8,
+    # because citizens describe this Act almost entirely in words it
+    # never uses. "RTI" itself appears nowhere in the statute's text, so
+    # "how do I file an RTI application" retrieved it_act chunks at
+    # dense 0.25 and abstained outright. Every expansion below targets
+    # one of the Act's own section titles, which are part of the indexed
+    # text (index_build._index_text).
+    (
+        re.compile(r"\brti\b|\bright to information\b", re.IGNORECASE),
+        "request for obtaining information public information officer",
+        "HIGH",
+        "the abbreviation appears nowhere in the Act's text; titles rti:5, rti:6",
+    ),
+    (
+        re.compile(r"\b(public|state|central) information officer\b|\b(c?pio|spio)\b(?!\s*card)",
+                   re.IGNORECASE),
+        "designation of Public Information Officers",
+        "HIGH",
+        "title rti:5",
+    ),
+    (
+        re.compile(r"\b(get|obtain|access|see|request|ask for|apply for|application for|file|submit|copy of)\b"
+                   r"[^.?!]{0,40}\b(information|records?|documents?|files?|papers?)\b"
+                   r"[^.?!]{0,40}\b(government|govt\.?|public authority|department|office|ministry|municipal|sarkari)\b"
+                   r"|\b(government|govt\.?|public authority|department|office)\b[^.?!]{0,30}"
+                   r"\b(information|records?|documents?|files?)\b[^.?!]{0,30}"
+                   r"\b(get|obtain|access|request|ask|apply|copy)\b"
+                   # "get a government file" -- access, body, record.
+                   r"|\b(get|getting|obtain|access|see|request|copy of)\b[^.?!]{0,30}"
+                   r"\b(government|govt\.?|public authority|department|office|municipal|sarkari)\b"
+                   r"[^.?!]{0,25}\b(information|records?|documents?|files?|papers?)\b",
+                   re.IGNORECASE),
+        "request for obtaining information",
+        "CONTEXT-GATED",
+        "title rti:6; needs an access act AND a record AND a government body",
+    ),
+    (
+        re.compile(r"\b(how long|how many days|time limit|deadline|by when)\b[^.?!]{0,50}"
+                   r"\b(repl(y|ies)|respond|response|answer|decide|dispose|provide)\b"
+                   r"|\b(not|never|didn'?t|doesn'?t|failed to)\b[^.?!]{0,25}"
+                   r"\b(repl(y|ied)|respond(ed)?|answer(ed)?)\b[^.?!]{0,40}"
+                   r"\b(information|request|application|officer|department)\b"
+                   # "the officer does not respond" -- the body comes first.
+                   r"|\b(officer|pio|department|office|government|public authority|they)\b"
+                   r"[^.?!]{0,25}\b(not|never|didn'?t|doesn'?t|hasn'?t|haven'?t|failed to|no)\b"
+                   r"[^.?!]{0,20}\b(repl(y|ied|ying)?|respond(ed|ing)?|answer(ed|ing)?|response)\b",
+                   re.IGNORECASE),
+        "disposal of request thirty days",
+        "CONTEXT-GATED",
+        "title rti:7; the thirty-day limit is the most asked RTI fact",
+    ),
+    (
+        re.compile(r"\b(life|liberty)\b[^.?!]{0,30}\b(information|request|urgent|immediately)\b"
+                   r"|\b(information|request)\b[^.?!]{0,30}\b(life|liberty)\b"
+                   r"|\b(urgent\w*|immediate\w*)\b[^.?!]{0,30}\b(information|request)\b"
+                   r"[^.?!]{0,40}\b(life|liberty|danger)\b",
+                   re.IGNORECASE),
+        "forty-eight hours life or liberty of a person",
+        "CONTEXT-GATED",
+        "rti:7 proviso; a distinct entitlement citizens rarely know exists",
+    ),
+    (
+        re.compile(r"\b(refus\w*|reject\w*|den(y|ied|ial)|withheld|not given)\b[^.?!]{0,45}"
+                   r"\b(information|records?|documents?|files?|request|application)\b"
+                   r"|\b(information|request|application)\b[^.?!]{0,30}"
+                   r"\b(refus\w*|reject\w*|den(y|ied)|turned down)\b",
+                   re.IGNORECASE),
+        "exemption from disclosure of information grounds for rejection",
+        "CONTEXT-GATED",
+        "titles rti:8, rti:9",
+    ),
+    (
+        re.compile(r"\bappeal\b[^.?!]{0,45}\b(information|records?|refus\w*|reject\w*|rti)\b"
+                   r"|\b(information|rti)\b[^.?!]{0,30}\bappeal\b",
+                   re.IGNORECASE),
+        # Deliberately NOT "appeal to the Central Information Commission":
+        # that phrasing matched s.18's title ("Powers and functions of
+        # Information Commissions") harder than s.19's one-word title
+        # "Appeal", and sent every appeal question to the complaints
+        # section. These are s.19's own distinctive words instead.
+        "appeal officer senior in rank thirty days second appeal",
+        "CONTEXT-GATED",
+        "title rti:19; needs an information signal so criminal appeals are untouched",
+    ),
+    (
+        re.compile(r"\b(penal\w*|punish\w*|fine[sd]?|action against)\b[^.?!]{0,50}"
+                   r"\b(information officer|pio)\b"
+                   r"|\b(information officer|pio)\b[^.?!]{0,45}\b(penal\w*|punish\w*|fine[sd]?)\b"
+                   r"|\b(penal\w*|punish\w*|fine[sd]?)\b[^.?!]{0,45}"
+                   r"\b(not (provid\w*|giv\w*|suppl\w*)|refus\w* to (provide|give))\b"
+                   r"[^.?!]{0,25}\binformation\b",
+                   re.IGNORECASE),
+        "penalties two hundred and fifty rupees each day",
+        "CONTEXT-GATED",
+        "title rti:20; needs an information-officer signal, not any officer",
+    ),
+    (
+        re.compile(r"\b(complain\w*|complaint)\b[^.?!]{0,45}"
+                   r"\b(information officer|pio|information commission|public authority)\b"
+                   r"|\binformation commission\b[^.?!]{0,30}\b(power|function|complain\w*)\b",
+                   re.IGNORECASE),
+        "powers and functions of Information Commissions",
+        "CONTEXT-GATED",
+        "title rti:18; distinguishes a s.18 complaint from a s.19 appeal",
+    ),
 ]
 
 

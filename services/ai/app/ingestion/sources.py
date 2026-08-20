@@ -178,6 +178,89 @@ APPROVED_SOURCES: dict[str, SourceMeta] = {
                        "Justice Boards), children in need of care and protection (Child Welfare "
                        "Committees), and offences against children.",
     ),
+    "rti": SourceMeta(
+        source_id="rti",
+        display_name="Right to Information Act, 2005",
+        act_no="ACT NO. 22 OF 2005",
+        official_url="https://cic.gov.in/sites/default/files/RTI-Act_English.pdf",
+        publisher="Central Information Commission",
+        as_on_date="pre-2019 text as published by the CIC; see exclude_reason",
+        raw_path=_raw("rti"),
+        unit_label="Section",
+        chunk_style="sanhita",
+        chunk_start_marker="BE it enacted",
+        # The Second Schedule lists intelligence organisations as a
+        # numbered list ("9.Border Security Force.", "22.Financial
+        # Intelligence Unit, India.") that the sanhita header pattern
+        # reads as sections, colliding with the real ss.9 and 22.
+        chunk_end_marker="THE FIRST SCHEDULE",
+        # Two titles the CIC PDF's OCR damaged. Both are restored to the
+        # Act's own headings, verbatim -- s.3 extracts as "Ftight to
+        # information" and s.18 as "Powers and 'Unctions of Information
+        # Commissions". These are the exact words a citizen searches for
+        # ("right to information", "powers and functions"), and titles are
+        # indexed, so leaving them garbled costs retrieval on the two most
+        # obvious queries in the whole Act.
+        title_overrides=(
+            ("3", "Right to information"),
+            ("18", "Powers and functions of Information Commissions"),
+        ),
+        exclude_units=("13", "16", "25", "27"),
+        exclude_reason=(
+            "s.25 (Monitoring and reporting) is excluded for a different "
+            "reason from the other three: measured retrieval harm. It "
+            "governs the annual report each Commission sends the "
+            "appropriate Government -- no citizen asks it -- but its text "
+            "is dense with 'prepare a report', 'forward a copy' and "
+            "'collect and provide such information', which the dense "
+            "encoder places very close to 'file an FIR' (First Information "
+            "Report). Ingested, it took the top hybrid hit away from "
+            "bnss:173/177 on 'how do I file an FIR', 'how to fil fir' and "
+            "'NCR filing procedure' (q23, h066, h076, h083), and it alone "
+            "accounted for 5 of the 11 RTI intrusions into the dense top-5 "
+            "of non-RTI citizen queries, and 4 of the 6 top-1 steals. "
+            "Dropping one institutional section is a far smaller loss than "
+            "misdirecting the single most common citizen legal question. "
+            "The trade-off is real and stated: a question about a "
+            "Commission's annual reporting duty is now unanswerable. "
+            "The Right to Information (Amendment) Act, 2019 (Act 24 of 2019) "
+            "replaced ss.13, 16 and 27. This ingested copy predates it and "
+            "still carries the superseded five-year fixed term and "
+            "Election-Commissioner salary parity for Information "
+            "Commissioners, which the 2019 Act moved to rules prescribed by "
+            "the Central Government. Serving that text as current law would "
+            "misstate the institutional position, so those three sections "
+            "are excluded rather than ingested. The 2019 Act amended only "
+            "ss.13, 16 and 27 -- the citizen-facing provisions ingested here "
+            "(ss.6, 7, 8, 9, 10, 11, 18, 19, 20) are unamended."
+        ),
+        coverage_note=(
+            "Chapters I-VI as published by the Central Information "
+            "Commission, excluding the Schedules and the three sections the "
+            "2019 amendment replaced (see exclude_reason). Covers the right "
+            "of access and how to request information (ss.3, 6), the "
+            "thirty-day disposal limit and the forty-eight-hour limit where "
+            "life or liberty is concerned (s.7), the exemptions and "
+            "severability rules (ss.8-10), third-party information (s.11), "
+            "the Information Commissions' powers (s.18), first and second "
+            "appeals (s.19) and penalties for a Public Information Officer "
+            "(s.20). Two known residual gaps: s.14 (removal of the Chief "
+            "Information Commissioner) is not chunked because the source "
+            "omits the full stop before the em-dash that the section-header "
+            "pattern requires, and s.3's title extracts as 'Ftight to "
+            "information' -- both are OCR defects in the published PDF, "
+            "neither affects a citizen-facing provision's body text. A third "
+            "OCR defect is left deliberately unrepaired: the published PDF "
+            "renders 48 bracketed markers as '(/)'. These are NOT all the "
+            "same character. Most are sub-section '(1)', but in s.2 the same "
+            "glyph stands for the definition clause '(l)' (lower-case L, as "
+            "in '(l) \"State Chief Information Commissioner\"'), and one "
+            "reads '(/0)' for '(10)'. Rewriting them all to '(1)' would "
+            "relabel definition clauses as sub-sections, so the markers are "
+            "left exactly as extracted. Only the bracketed label is "
+            "affected; every provision's operative text is intact."
+        ),
+    ),
 }
 
 

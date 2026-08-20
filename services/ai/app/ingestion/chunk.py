@@ -41,9 +41,18 @@ _FOOTNOTE_TITLE = re.compile(
 )
 
 
-def chunk_sanhita(source_id: str, text: str, start_marker: str = "BE it enacted") -> list[Chunk]:
+def chunk_sanhita(
+    source_id: str,
+    text: str,
+    start_marker: str = "BE it enacted",
+    end_marker: str = "",
+) -> list[Chunk]:
     idx = text.find(start_marker)
     body = text[idx:] if idx != -1 else text
+    if end_marker:
+        end = body.find(end_marker)
+        if end != -1:
+            body = body[:end]
     matches = list(_SANHITA_HEADER.finditer(body))
     chunks: list[Chunk] = []
     for i, m in enumerate(matches):
@@ -110,9 +119,18 @@ _KNOWN_ARTICLE_TITLES: dict[str, str] = {
 }
 
 
-def chunk_constitution(source_id: str, text: str, start_marker: str = "PART I") -> list[Chunk]:
+def chunk_constitution(
+    source_id: str,
+    text: str,
+    start_marker: str = "PART I",
+    end_marker: str = "",
+) -> list[Chunk]:
     idx = text.find(start_marker)
     body = text[idx:] if idx != -1 else text
+    if end_marker:
+        end = body.find(end_marker)
+        if end != -1:
+            body = body[:end]
     matches = list(_CONSTITUTION_HEADER.finditer(body))
     chunks: list[Chunk] = []
     for i, m in enumerate(matches):

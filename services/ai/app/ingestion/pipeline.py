@@ -77,10 +77,62 @@ def ingest_source(source_id: str) -> dict:
 
     cleaned = clean_extracted_text(raw)
     chunker = CHUNKERS[source.chunk_style]
+    kwargs = {}
     if source.chunk_start_marker:
-        chunks = chunker(source_id, cleaned, start_marker=source.chunk_start_marker)
-    else:
-        chunks = chunker(source_id, cleaned)
+        kwargs["start_marker"] = source.chunk_start_marker
+    if source.chunk_end_marker:
+        kwargs["end_marker"] = source.chunk_end_marker
+    chunks = chunker(source_id, cleaned, **kwargs)
+
+    # Restore titles the source PDF mis-rendered. Asserted, not assumed:
+    # an override for a unit the chunker never produced, or one whose
+    # title already matches, means the source changed and the override is
+    # stale -- silently keeping a wrong title is what this prevents.
+    if source.title_overrides:
+        by_unit = {c.unit_number: c for c in chunks}
+        for unit, correct in source.title_overrides:
+            chunk = by_unit.get(unit)
+            if chunk is None:
+                raise ValueError(
+                    f"'{source_id}' has a title override for unit {unit!r}, "
+                    f"which the chunker did not produce."
+                )
+            if chunk.title == correct:
+                raise ValueError(
+                    f"'{source_id}' unit {unit!r} already extracts the correct "
+                    f"title {correct!r}; drop the stale override."
+                )
+            chunk.title = correct
+
+    # Drop superseded provisions before anything downstream can see them.
+    # Done here rather than in the chunker so it stays source-agnostic,
+    # and asserted rather than assumed: a unit listed for exclusion that
+    # the chunker never produced means the section numbering shifted
+    # under us, and silently excluding nothing would be the worst
+    # outcome -- the stale text would stay in the corpus.
+    if source.exclude_units:
+        present = {c.unit_number for c in chunks}
+        missing = [u for u in source.exclude_units if u not in present]
+        if missing:
+            raise ValueError(
+                f"'{source_id}' lists units {missing} for exclusion but the "
+                f"chunker did not produce them. Refusing to ingest: the "
+                f"source layout has changed and the exclusion is no longer "
+                f"doing what it claims."
+            )
+        chunks = [c for c in chunks if c.unit_number not in source.exclude_units]
+
+    # A chunk_id must identify exactly one provision -- citations are
+    # built from it. Schedules that reuse the section-header layout can
+    # silently produce a second chunk with an existing number.
+    ids = [c.chunk_id for c in chunks]
+    duplicates = sorted({i for i in ids if ids.count(i) > 1})
+    if duplicates:
+        raise ValueError(
+            f"'{source_id}' produced duplicate chunk_ids {duplicates}. Two "
+            f"different texts would share one citation. Set chunk_end_marker "
+            f"to stop before the schedules, or fix the chunker."
+        )
 
     if not chunks:
         raise ValueError(
@@ -118,6 +170,8 @@ def ingest_source(source_id: str) -> dict:
         "publisher": source.publisher,
         "as_on_date": source.as_on_date,
         "coverage_note": source.coverage_note,
+        "excluded_units": list(source.exclude_units),
+        "exclude_reason": source.exclude_reason,
         "unit_label": source.unit_label,
         "checksum": _checksum(cleaned),
         "chunk_count": len(chunks),
