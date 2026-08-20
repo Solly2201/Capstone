@@ -152,18 +152,69 @@ export const articleSourceIds = (article: LearningArticle): LegalSourceId[] => {
 };
 
 /** Case-insensitive match over title, summary and citation labels. */
-export const matchesQuery = (article: LearningArticle, query: string): boolean => {
+/**
+ * Words carrying no search signal. Dropped from a multi-word query so
+ * that "no reply from office" is not required to contain "from".
+ */
+const searchStopwords = new Set([
+  "a", "an", "and", "are", "as", "at", "be", "by", "can", "did", "do",
+  "does", "for", "from", "get", "has", "have", "how", "i", "if", "in",
+  "is", "it", "me", "my", "of", "on", "or", "that", "the", "to", "was",
+  "what", "when", "where", "which", "who", "will", "with", "you", "your"
+]);
+
+/** Lowercase, strip apostrophes so "won't" and "wont" agree, split on non-letters. */
+const searchTokens = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+/**
+ * Does `haystack` match `query`?
+ *
+ * An exact phrase match wins outright, which keeps every previous
+ * result working. Failing that, every meaningful word in the query must
+ * appear somewhere in the content -- an AND, not an OR, so the result
+ * stays precise and unranked.
+ *
+ * The phrase-only version this replaces meant a multi-word citizen
+ * phrasing found nothing unless it was a contiguous substring: "cops
+ * won't file my complaint" returned zero results even though an FAQ
+ * carries the tag "cops won't file", and "no reply from office"
+ * returned zero against an FAQ tagged "no reply". That defeated the
+ * point of the citizen-language tags, which exist precisely so people
+ * can search in their own words.
+ */
+const contentMatches = (haystack: string, query: string): boolean => {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  const haystack = [
-    article.title,
-    article.summary,
-    ...article.paragraphs.map((paragraph) => paragraph.citation?.label ?? "")
-  ]
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(needle);
+  const hay = haystack.toLowerCase();
+  if (hay.includes(needle)) return true;
+
+  const hayTokens = new Set(searchTokens(hay));
+  const wanted = searchTokens(needle).filter((t) => !searchStopwords.has(t));
+  if (wanted.length === 0) return false;
+  return wanted.every((token) => hayTokens.has(token));
 };
+
+export const matchesQuery = (article: LearningArticle, query: string): boolean =>
+  contentMatches(
+    [
+      article.title,
+      article.summary,
+      article.scopeNote ?? "",
+      // The body too. Searching only title and summary meant a whole
+      // natural-language question could match nothing at all: "what is
+      // the punishment for theft" found no article, because "punishment"
+      // never appears in the title or summary of the article that
+      // answers it.
+      ...article.paragraphs.map((paragraph) => paragraph.text),
+      ...article.paragraphs.map((paragraph) => paragraph.citation?.label ?? "")
+    ].join(" "),
+    query
+  );
 
 export const sourceLabel = (citation: Citation): string => legalSources[citation.sourceId].label;
 
@@ -247,17 +298,15 @@ export const faqSourceIds = (faq: Faq): LegalSourceId[] => {
  * register my FIR" -- the same gap the retrieval normalisation layer
  * exists to close, solved here by indexing the words people use.
  */
-export const faqMatchesQuery = (faq: Faq, query: string): boolean => {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return true;
-  const haystack = [
-    faq.question,
-    faq.shortAnswer,
-    ...faq.tags,
-    ...(faq.whatYouCanDo ?? []),
-    ...faq.legalBasis.map((paragraph) => paragraph.citation?.label ?? "")
-  ]
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(needle);
-};
+export const faqMatchesQuery = (faq: Faq, query: string): boolean =>
+  contentMatches(
+    [
+      faq.question,
+      faq.shortAnswer,
+      ...faq.tags,
+      ...(faq.whatYouCanDo ?? []),
+      ...faq.legalBasis.map((paragraph) => paragraph.text),
+      ...faq.legalBasis.map((paragraph) => paragraph.citation?.label ?? "")
+    ].join(" "),
+    query
+  );

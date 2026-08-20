@@ -144,3 +144,55 @@ describe("Right to Information content", () => {
     }
   });
 });
+
+describe("Learn search", () => {
+  // Search was a whole-phrase substring match, so a multi-word citizen
+  // phrasing found nothing unless it appeared verbatim: "cops won't
+  // file my complaint" returned zero results against an FAQ tagged
+  // "cops won't file". That defeated the point of the citizen-language
+  // tags, which exist so people can search in their own words.
+  const citizenPhrases: [string, "article" | "faq" | "either"][] = [
+    ["cops won't file my complaint", "faq"],
+    ["no reply from office", "faq"],
+    ["free lawyer", "faq"],
+    ["government file", "faq"],
+    ["public information officer", "either"],
+    ["what is the punishment for theft", "article"],
+    ["how do I file a consumer complaint about a refund", "either"],
+    ["right to information", "either"]
+  ];
+
+  it.each(citizenPhrases)("finds material for %j", (phrase, where) => {
+    const articles = learningArticles.filter((a) => matchesQuery(a, phrase)).length;
+    const matched = faqs.filter((f) => faqMatchesQuery(f, phrase)).length;
+    if (where === "article") expect(articles).toBeGreaterThan(0);
+    else if (where === "faq") expect(matched).toBeGreaterThan(0);
+    else expect(articles + matched).toBeGreaterThan(0);
+  });
+
+  it("still matches an exact phrase, and an exact title", () => {
+    expect(learningArticles.filter((a) => matchesQuery(a, "What Is an FIR?")).length).toBeGreaterThan(0);
+    expect(learningArticles.filter((a) => matchesQuery(a, "anticipatory bail")).length).toBeGreaterThan(0);
+  });
+
+  it("returns nothing for a query the corpus has no words for", () => {
+    // An AND over meaningful words, not an OR: unrelated queries must
+    // still come back empty rather than matching on one stray token.
+    for (const phrase of ["xyzzy", "quantum physics", "zzz nothing matches here"]) {
+      expect(learningArticles.filter((a) => matchesQuery(a, phrase)).length, phrase).toBe(0);
+      expect(faqs.filter((f) => faqMatchesQuery(f, phrase)).length, phrase).toBe(0);
+    }
+  });
+
+  it("treats an apostrophe as optional", () => {
+    const withApostrophe = faqs.filter((f) => faqMatchesQuery(f, "cops won't file")).length;
+    const without = faqs.filter((f) => faqMatchesQuery(f, "cops wont file")).length;
+    expect(withApostrophe).toBeGreaterThan(0);
+    expect(without).toBe(withApostrophe);
+  });
+
+  it("an empty query matches everything, as before", () => {
+    expect(learningArticles.filter((a) => matchesQuery(a, "   ")).length).toBe(learningArticles.length);
+    expect(faqs.filter((f) => faqMatchesQuery(f, "")).length).toBe(faqs.length);
+  });
+});
