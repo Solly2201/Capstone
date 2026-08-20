@@ -135,6 +135,76 @@ Multiple or differing sources are never merged into one synthesized paragraph --
 
 The severity and an `authority_guidance` flag are carried on the API response, so the frontend frames a redirect from structured fields rather than by parsing the message string. Only official national numbers are named (112, 181, 1098, 1930) -- the contact routes are fixed configuration data, never generated. The policy is deliberately conservative where a miss risks physical harm and permissive where a false positive would block ordinary legal education; the matrix in `services/ai/tests/test_safety.py` pins both directions, including a false-positive group of heavy-subject-word questions that must stay `normal`.
 
+**Citizen-language normalisation (`app/query/normalize.py`):** runs after
+the safety policy and both guards, and rewrites only the text handed to
+retrieval. It lives in its own package, deliberately outside
+`app/retrieval/`: it changes no retrieval parameter, index, threshold or
+ranking rule, and the answer is still assembled verbatim from retrieved
+chunks, so it cannot invent or colour legal content.
+
+It exists because citizens do not use statutory words. On the 313-query
+citizen-language set, recall@5 was 0.958 for `direct_lexical` phrasing but
+0.477 for `colloquial` and 0.483 for `vague_answerable`. The layer appends
+the statutory vocabulary a query is *about* — "they took my stuff and
+roughed me up" gains "robbery", which is the title of `bns:309`.
+
+Three measurements shaped the design, all on the 281 non-abstain queries:
+
+| Experiment | recall@5 | vs baseline |
+| --- | --- | --- |
+| baseline | 0.6246 | — |
+| oracle: inject the target section's own **title** | 0.9253 | **+0.28** |
+| oracle: inject only the **Act name** | 0.4057 | **-0.24** |
+| oracle: title + Act name | 0.8221 | +0.18 |
+
+Narrow vocabulary wins decisively and broad vocabulary actively harms:
+every chunk of an Act shares that Act's name, so injecting it flattens
+discrimination and floods the candidate pool with same-Act siblings. Rules
+therefore target **section-title vocabulary**, append rather than
+substitute (the raw query keeps its own signal), and are capped at
+`MAX_EXPANSIONS`, because a second measurement showed appended vocabulary
+helps at one or two additions and hurts as it accumulates.
+
+Rules carry a confidence tier and name the evaluation query that
+justified them. `HIGH` means the target is a real section title **and** a
+Legal Glossary 2026 headword with the same statutory citation; `MEDIUM`
+means the corpus confirms it but the glossary is silent; `CONTEXT-GATED`
+means the rule fires only on a discriminating signal, because most
+wrong-Act failures are general-concept queries whose answer lives in a
+special statute — a 10-year-old who steals is the Juvenile Justice Act,
+not BNS theft, and bail on a cyber charge is IT Act s.77B, not BNSS s.480.
+
+Genuinely ambiguous phrasings have **no rule at all**, by design: "took my
+phone" is theft if a thief took it and police seizure if the police did;
+"complaint", "court" and "case" each span several statutes. Where no
+discriminating signal is present retrieval sees the raw query, which is
+the honest outcome — guessing would move the query confidently toward one
+wrong Act.
+
+**A separate citizen-language retrieval index was measured and rejected.**
+The proposal was to retrieve concepts from a NALSA/DAKSH-derived index and
+feed them into authoritative retrieval. Built as a prototype with the same
+embedding model, it scored -0.082 at top-1 concept, -0.157 at top-2 and
+-0.246 at top-3, and collapsed `hard_negative` recall from 0.966 to 0.724
+— the same failure mode that got the cross-encoder reranker rejected, and
+one that would also weaken abstention by making out-of-domain queries look
+answerable. The value is in the mapping, not in retrieving it: a curated
+rule carries the same information deterministically, at no latency, and
+narrow enough to reach a section title. Do not re-propose this without a
+mechanism that addresses the measured cause.
+
+**Result of the change**, harness metrics, mode=hybrid:
+
+| Set | recall@5 | recall@1 | abstention |
+| --- | --- | --- | --- |
+| control (49) | 0.8370 → **0.8593** | 0.6222 → **0.6444** | 0.9796 → 0.9796 |
+| citizen-language (313) | 0.6246 → **0.7171** | 0.3879 → **0.4342** | 0.7827 → **0.8243** |
+
+`hard_negative` recall is unchanged at 0.966, the wrong-Act rate improved
+from 0.1957 to 0.1886, and `direct_lexical` and `ambiguous` are both
+unchanged — the layer helps the phrasings it was built for and leaves the
+rest alone.
+
 **Topic-relevance guard (`app/safety/topic_relevance.py`):** runs after Risk/UPL and before retrieval, same placement and same deterministic-rules-only design. It exists because the confidence gate's bounded dense-score threshold cannot separate every out-of-domain query from a genuine low-confidence legal paraphrase — both can land in the same ~0.42-0.49 band on this corpus (see `docs/RETRIEVAL_EVALUATION.md`'s "Remaining limitations"). Rather than raising that single global threshold (which would cost genuine coverage), a small curated set of phrase patterns for well-known non-legal-information subjects (company/business registration, income tax, driving licence/vehicle registration, identity documents, everyday non-civic topics) is checked first; a match aborts before spending a retrieval call. Anything it doesn't recognize still falls through unchanged to the existing confidence gate — this guard is deliberately narrow (extend only when evaluation names a specific new gap, same rule as `app/retrieval/query_expand.py`'s abbreviation dict), not a general topic classifier.
 
 `POST /legal/answer` (AI service) and its proxy `POST /api/legal/answer` (Node) implement this end to end. The endpoint is intentionally public (no login) for v1, so every response — including redirects and abstentions — carries the current disclaimer text/version. No retrieval call happens for a message the safety policy hard-stops (an emergency or a harmful request) or the topic-relevance guard catches; a `serious` query does reach retrieval, so the law that governs it can still be cited under the caution. See `services/ai/app/generation/pipeline.py` (`handle_legal_query`, `build_legal_answer`) for the exact call order and `services/ai/app/safety/` for the rule sets.
@@ -492,6 +562,19 @@ image, so recreating the container does not re-download it while the
 image stays small. Verified by recreating the container rather than
 restarting it — confirmed by a changed container id — and then loading
 the model with `HF_HUB_OFFLINE=1` set, which can only succeed from cache.
+
+**Startup warm-up.** Loading that model costs ~12.1s of a ~15.4s cold
+first query; BM25 (23ms) and the dense vectors (4ms) are negligible and a
+warm query is ~31ms. Left alone the whole cost landed on whichever citizen
+asked the first question after a deploy. `app/main.py` now issues one
+throwaway query during FastAPI's lifespan startup, which populates the
+existing process-lifetime caches in `app/retrieval/search.py`. Measured:
+first query after startup **15.36s → 0.028s**, warm queries unchanged.
+This changes *when* the model loads, never what loads or how it is used.
+A warm-up failure is logged and reported on `/health`
+(`retrieval_warm`, `warmup_error`) rather than raised, so a missing index
+degrades the service instead of preventing it from booting; `AI_SKIP_WARMUP`
+opts out for tests and fast boots.
 
 ### CI
 

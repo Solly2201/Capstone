@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from ..query.normalize import normalize_for_retrieval
 from ..retrieval.search import search as _search
 from ..safety.corpus_coverage import NOT_IN_CORPUS_MESSAGE, classify_coverage_gap
 from ..safety.risk import (
@@ -218,6 +219,12 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
     because "try a government services portal" is the wrong advice for
     someone asking a real legal question.
 
+    Citizen-language normalisation (app.query.normalize) runs last, after
+    every gate has inspected the raw question, and rewrites only the text
+    passed to retrieval -- appending statutory vocabulary so a question
+    phrased in ordinary words can reach the provision it is about. It
+    cannot influence safety, abstention, citations or the answer text.
+
     Nothing below changes retrieval, its thresholds, or the abstention
     logic. The safety layer only decides whether retrieval runs at all
     and how its result is framed.
@@ -264,7 +271,17 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             severity=assessment.severity,
         )
 
-    results = _search(question, top_k=top_k)
+    # Citizen-language normalisation, applied to the retrieval text only.
+    #
+    # Placement matters and is deliberate. The safety policy above and both
+    # guards have already run against the *raw* question, so nothing this
+    # appends can talk retrieval past a safety decision or past an
+    # abstention -- and the guards keep the exact behaviour their measured
+    # baseline was established with. From here the raw question is no
+    # longer needed: `build_legal_answer` assembles the response from the
+    # retrieved chunks themselves, so the normalised text cannot reach the
+    # answer, the citations, or the user.
+    results = _search(normalize_for_retrieval(question), top_k=top_k)
     answer = build_legal_answer(results)
 
     if assessment.severity == SEVERITY_SERIOUS:

@@ -182,3 +182,64 @@ def test_no_matching_content_abstains(monkeypatch):
     assert result.abstained is True
     assert result.reason == "no_matching_content"
     assert calls == ["What is a bailable offence?"]
+
+
+# --- Citizen-language normalisation, at the pipeline level --------------
+# Normalisation is a retrieval aid. These pin the two properties that make
+# that claim true: safety sees the raw query, and the answer never sees
+# the normalised one.
+
+
+def test_safety_classifies_the_raw_query_not_the_normalised_one(monkeypatch):
+    """Normalisation must not be able to talk a query past the safety gate.
+
+    The emergency phrasing here also matches a normalisation rule (police
+    plus taking property), so if the order were reversed the appended
+    statutory vocabulary would be what safety saw.
+    """
+    seen = []
+    monkeypatch.setattr(
+        pipeline_module, "normalize_for_retrieval", lambda q: seen.append(q) or q
+    )
+    fake_search, _ = _tracking_search([BNSS_RESULT])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("Someone is breaking into my house right now")
+
+    assert result.policy_decision == "redirect_emergency"
+    assert result.severity == "emergency"
+    # Hard-stopped before retrieval, so normalisation never even ran.
+    assert seen == []
+
+
+def test_normalised_text_reaches_retrieval_but_not_the_answer(monkeypatch):
+    fake_search, calls = _tracking_search([BNSS_RESULT])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    question = "they took my stuff and roughed me up while doing it"
+    result = handle_legal_query(question)
+
+    # Retrieval saw the statutory vocabulary...
+    assert calls and calls[0] != question
+    assert "robbery" in calls[0].lower()
+    assert calls[0].startswith(question)
+
+    # ...and the answer is still assembled purely from the retrieved chunk.
+    assert result.policy_decision == "answered"
+    assert [e.text for e in result.excerpts] == [BNSS_RESULT["text"]]
+    assert "robbery" not in result.excerpts[0].text.lower()
+    assert result.message is None
+
+
+def test_guards_still_inspect_the_raw_query(monkeypatch):
+    """The topic and coverage guards keep the behaviour their measured
+    baseline was established with, so an out-of-domain query still
+    short-circuits before retrieval."""
+    fake_search, calls = _tracking_search([BNSS_RESULT])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("How do I get a driving licence?")
+
+    assert result.policy_decision == "abstained"
+    assert result.reason == "out_of_domain_driving_licence"
+    assert calls == []

@@ -284,6 +284,76 @@ Assistant pages was performed. The HTTP path those pages use was
 verified instead, including the CORS preflight that is the part most
 likely to break.
 
+### M7 — citizen-language query normalisation (uncommitted)
+
+Closes part of the measured gap between how citizens describe legal
+problems and how statutes express them. **The frozen RAG system was not
+touched**: retrieval, ingestion, the corpus, the index, the thresholds,
+the confidence gate, the evaluation datasets and fine-tuning are all
+byte-identical, and the new layer lives in its own package outside
+`app/retrieval/`.
+
+- **`app/query/normalize.py`** — 25 deterministic rules appending
+  statutory vocabulary to the *retrieval text only*. Every rule was probed
+  against real retrieval and kept only if it moved the target chunk into
+  the top-5; none was added for completeness. Each carries a confidence
+  tier (`HIGH` = corpus section title **and** Legal Glossary headword with
+  the same citation; `MEDIUM` = corpus only; `CONTEXT-GATED` = fires only
+  on a discriminating signal) and names the evaluation query that
+  justified it.
+- **Ambiguity is preserved, not resolved.** No rule exists for "took my
+  phone" (theft vs police seizure), "complaint", "court" or "case". Where
+  the discriminating signal is absent, retrieval sees the raw query.
+- **Safety is unaffected.** Normalisation runs after the safety policy and
+  both guards, all of which still inspect the raw question, so nothing it
+  appends can move a query past a safety decision or an abstention. The
+  answer is assembled from retrieved chunks, so the normalised text never
+  reaches the user, the citations or the response.
+
+**Measured result** (frozen harness, mode=hybrid, both arms on the same
+metric definitions):
+
+| Set | recall@5 | recall@1 | abstention accuracy |
+| --- | --- | --- | --- |
+| control (49) | 0.8370 → **0.8593** | 0.6222 → **0.6444** | 0.9796 → 0.9796 |
+| citizen-language (313) | 0.6246 → **0.7171** | 0.3879 → **0.4342** | 0.7827 → **0.8243** |
+
+Also measured: `hard_negative` recall unchanged at 0.966, wrong-Act rate
+0.1957 → 0.1886, `direct_lexical` and `ambiguous` unchanged, retrieval
+latency unchanged (~17ms median). Gains are concentrated exactly where the
+gap was: colloquial +0.159, vague_answerable +0.138, misspelling +0.136,
+ordinary_citizen +0.127, abbreviation +0.111, paraphrase +0.088.
+
+**A separate citizen-language retrieval index was measured and rejected.**
+Retrieving concepts from a NALSA/DAKSH-derived index and feeding them into
+authoritative retrieval scored -0.082 / -0.157 / -0.246 at top-1/2/3
+concepts and collapsed `hard_negative` recall 0.966 → 0.724. Broad concept
+vocabulary dilutes section-level discrimination; an oracle injecting only
+the Act name cost 0.24 recall on its own. The value is in the mapping, not
+in retrieving it. Do not re-propose without addressing that cause.
+
+- **Startup warm-up** (`app/main.py`). ~12.1s of a ~15.4s cold first query
+  was the sentence-transformer load. FastAPI's lifespan now issues one
+  throwaway query at startup: **first query 15.36s → 0.028s**, warm queries
+  unchanged. Failure is logged and surfaced on `/health`
+  (`retrieval_warm`, `warmup_error`) rather than raised, so a missing index
+  degrades the service instead of blocking boot. `AI_SKIP_WARMUP` opts out.
+- **Legal Glossary 2026** (Ministry of Law and Justice, Legislative
+  Department, Official Languages Wing) is used as a **terminology
+  validation** resource only, never as answer evidence. The 20.6 MB PDF is
+  **not committed and not ingested**. It maps English legal term → Hindi
+  with the statutory citation attached, which corroborated 21 of 34
+  candidate targets (e.g. `robbery : [s. 309, B.N.S.]` matches `bns:309`).
+  Two cautions: it carries some legacy IPC numbering
+  (`cheating by personation : [s. 416, B.N.S.]` is the IPC number, not the
+  BNS one), and its two-column bilingual text extracts interleaved, so it
+  corroborates rather than decides.
+
+**Known limitation found while doing this:** `app/retrieval/query_expand.py`
+expands `FIR` to "First Information Report", a phrase appearing in only 4
+of 1,801 chunks; the statute says "information relating to the commission
+of a cognizable offence". Reported, not changed — that file is frozen.
+
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core and the authority workflow are built** (see M2 and M3 above). Do not build duplicate detection, DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
