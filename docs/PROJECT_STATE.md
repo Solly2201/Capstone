@@ -516,6 +516,101 @@ confidence gate although BNSS s.173 answers it — a retrieval-recall
 miss, untouched because retrieval and the gate are frozen. The bare
 "someone is following me" is a stated non-fire.
 
+### M9 — evaluation reconciliation, safety hardening, three audits
+
+**Three stale evaluation labels reconciled.** Each was checked
+individually and only what was genuinely obsolete changed; every edited
+row keeps its original expectation in a new `superseded_expectation`
+field so the change is auditable from the file rather than from git
+history. `q35` and `h286` both asserted "the RTI Act is not ingested",
+which stopped being true; both now expect `rti:6`, the provision that
+governs making a request, chosen from the Act rather than from what the
+system returns. `h029` ("a stranger grabbed my daughter off the
+street") expected `bns:137`; it now routes to the child-safety
+emergency. Marking it `expect_abstain=true` alone would have said
+withholding an answer is correct without saying why, so the harness
+gained two optional keys, `expect_severity` and `expect_reason`, letting
+a row require the *route* and not merely the silence — a
+child-abduction query that abstains because the corpus lacks the law
+has still failed. Verified non-vacuous with stubs.
+
+Result: control false_answer `['q35']` → `[]`, abstention 0.9592 →
+0.9796; citizen false_answer `['h286']` → `[]`, abstention 0.8243 →
+0.8307, recall@5 0.6238 → 0.6274, MRR 0.4876 → 0.4912, nDCG 0.5154 →
+0.5190. No other query changed.
+
+**A measurement defect worth knowing about.** Control recall@5 moved
+0.8370 → 0.8188, and it is not a regression: `q35` is now scored, and
+it scores 0 because `evaluate_retrieval` calls `search()` directly and
+skips `app.query.normalize`, the layer production uses. Raw search
+returns it_act chunks for that query; normalised search returns `rti:6`
+at rank 1, which is what a citizen actually receives. **The harness
+measures a path the product does not use.** Left alone because changing
+it would shift every historical retrieval number in the project at
+once.
+
+**Emergency tier hardened.** A 40-case probe matrix (stalking, threats,
+child safety, domestic violence) found four defects, two in each
+direction; the matrix now scores 40/40 with zero false emergencies and
+zero missed. Missed: "a man follows me to the bus stop every evening"
+(only the literal "every day" counted as repetition) and "my child was
+taken" (every pattern required a grammatical subject, so passive voice
+was missed). Escalated wrongly: the tier had **no notion of tense at
+all**, so "my husband used to beat me years ago, what are my options"
+got a helpline instead of the law on protection orders. Immediacy
+always defeats the new historical stand-down — reading a live
+emergency as history costs far more than the reverse.
+
+The matrix also exposed an asymmetry nobody had listed: "my husband
+beats me" was an emergency and "he beats me" was normal, the same
+situation graded by the pronoun the person happened to use.
+`_UNNAMED_ABUSER_SUBJECTS` closes it, routed to `threat_to_life` since
+no relationship is stated. One false positive was introduced and caught
+by the full evaluation before commit — `h059`, "my kid got picked up by
+the cops", is a lawful apprehension under the JJ Act, not an abduction.
+
+**A self-inflicted coverage gap closed.** Excluding ss.13/16/27 as
+pre-2019 text meant no correct answer to a tenure question existed —
+and retrieval answered anyway: 7 of 8 tenure/salary questions came back
+from Definitions, Designation of PIOs, Constitution of the Commissions
+and Removal. Real sections, correctly cited, none containing the
+answer. A new `rti_amended_service_provisions` category catches an
+Information Commissioner concept AND a service-terms concept, with its
+own message, because `NOT_IN_CORPUS_MESSAGE` would be false here: the
+Act *is* held. 9 abstain, 9 still answer.
+
+**Learn search fixed.** `matchesQuery`/`faqMatchesQuery` were a
+whole-phrase substring test, so "cops won't file my complaint" found
+nothing against an FAQ tagged "cops won't file". Matching is now exact
+phrase first, then an AND over meaningful words; the article haystack
+gained the body text, since searching only title and summary meant
+"what is the punishment for theft" matched no article at all.
+
+**Two API reliability defects fixed.** Health checks sat behind the
+global rate limiter — verified 429 from the 101st request, with the
+container healthcheck alone consuming 60 of 100 per window, so Docker
+would restart a working container. And the AI service call had no
+timeout: node's fetch imposes none, the existing catch saw refused
+connections but not silent ones, so a hung AI service held requests
+open indefinitely. Now bounded at 15s, answering 504 rather than 503.
+
+**Audited, correct, unchanged:** citation integrity (33 probes, 100
+excerpts, nine properties, zero findings — mutation-tested so zero
+means something); Learn content integrity (no duplicate ids or slugs,
+no broken references, no citation to an excluded section, every FAQ
+carrying a legal basis, citation, scope note and tags, none promising
+an outcome); authentication, validation, ownership, file-storage path
+handling and security middleware.
+
+**Deployment decisions documented rather than taken:** no `trust proxy`
+setting (behind a proxy the rate limiter would bucket every user
+together, but setting it wrongly lets clients spoof X-Forwarded-For),
+and auth endpoints sharing the global limit rather than a stricter
+login-specific one.
+
+Retrieval parameters, embedding model, RRF weights, candidate pool and
+confidence thresholds were not touched anywhere in this increment.
+
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core and the authority workflow are built** (see M2 and M3 above). Do not build duplicate detection, DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
