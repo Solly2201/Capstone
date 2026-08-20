@@ -184,6 +184,26 @@ _CHILD_SAFETY_SUBJECTS = _compile([
     r"\b(went missing|is missing|has gone missing|never came home|"
     r"(did|does) ?n[o']?t come (home|back)|has ?n[o']?t come home|"
     r"did ?n[o']?t come back|has ?n[o']?t returned|never returned)\b",
+    # Passive voice, with no actor named: "my child was taken". The
+    # active patterns above all require someone to be the subject, so
+    # the plainest phrasing a panicking parent uses was missed. The
+    # trailing exclusion keeps ordinary, non-abduction uses out --
+    # "my child was taken to hospital" is a medical or accident
+    # question, and answering it with Childline would be useless.
+    # "picked up" is deliberately NOT in this list. On its own it is
+    # ordinary ("my child was picked up from school"), and the colloquial
+    # "my kid got picked up by the cops" is a question about a lawful
+    # apprehension under the Juvenile Justice Act, not an abduction --
+    # routing that to Childline both alarms the parent and withholds the
+    # law they asked for. An explicitly-named taker is still covered by
+    # the active patterns above.
+    r"\b(my|our) (child|daughter|son|kid|baby|boy|girl)\b[^.?!]{0,20}"
+    r"\b(was|were|has been|have been|got) "
+    r"(taken|grabbed|snatched|abducted|lured|carried off)\b"
+    # Not an abduction when the taker or the destination is a lawful one.
+    r"(?![^.?!]{0,25}\b(to (the |a )?(hospital|doctor|clinic|school|"
+    r"police station|shelter|relative)|by (the )?(police|cops|cbi|"
+    r"authorities|school|hospital|ambulance))\b)",
 ])
 
 # Being followed or watched. Never sufficient on its own -- see
@@ -203,7 +223,12 @@ _FEAR_OR_PERSISTENCE = _compile([
     r"\b(scared|afraid|frightened|terrified|petrified|unsafe|"
     r"not safe|in danger|threatened|worried for my safety)\b",
     r"\b(keeps?|kept|constantly|repeatedly|again and again|all the time|"
-    r"every ?day|each day|for (days|weeks|months)|since (last|\w+ ?day))\b",
+    r"every ?day|each day|daily|for (days|weeks|months)|since (last|\w+ ?day))\b",
+    # "every evening", "every night", "every morning", "every week".
+    # A recurring time of day is the same repetition signal as "every
+    # day" -- "a man follows me to the bus stop every evening" was
+    # graded normal because only the literal "every day" was matched.
+    r"\bevery (evening|night|morning|afternoon|week|time)\b",
     r"\bfollow\w*\b[^.?!]{0,15}\b(me )?(home|to my (house|home|office|work))\b",
 ])
 
@@ -230,6 +255,27 @@ _THREAT_TO_LIFE_SUBJECTS = _compile([
     r"\b(has|have|is|was) (been )?(kidnapped|abducted|taken away)\b",
 ])
 
+# Ongoing violence by someone the speaker does not name a relationship
+# for. _DOMESTIC_ABUSE_SUBJECTS requires a relationship noun (husband,
+# in-laws, ...), so the policy graded "my husband beats me" as an
+# emergency and the identical "he beats me" as normal -- an asymmetry
+# that penalised people for the pronoun they happened to use, in the
+# highest-stakes category there is. The present-progressive form ("he is
+# beating me") was already caught below; the simple present was not.
+#
+# Routed to threat_to_life rather than domestic_violence on purpose: no
+# relationship is stated, so the response should not assume a home
+# setting the way the domestic-violence message does. The violence must
+# be directed at the speaker -- "the police beat him" and "what is the
+# punishment for beating someone" carry no "me"/"us" and stay untouched.
+_UNNAMED_ABUSER_SUBJECTS = _compile([
+    r"\b(he|she|they|my (partner|ex|boyfriend|girlfriend|abuser|roommate|flatmate))\b"
+    r"[^.?!]{0,25}"
+    r"\b(beats?|beating|hits?|hitting|slaps?|slapping|kicks?|kicking|punch\w*|"
+    r"chok\w+|strangl\w+|burns?|burning|tortur\w+|abus\w+|threaten\w*)\b"
+    r"[^.?!]{0,15}\b(me|us)\b",
+])
+
 _ACTIVE_CRIME_SUBJECTS = _compile([
     r"\b(witness(ing)?|watching|seeing) a (crime|robbery|murder|assault|stabbing|shooting)\b",
     r"\b(robbery|assault|shooting|stabbing|murder|riot|attack|break[- ]in) (is )?(happening|in progress|going on)\b",
@@ -241,6 +287,7 @@ _LIFE_THREATENING_SUBJECTS = (
     + _MEDICAL_EMERGENCY_SUBJECTS
     + _CHILD_SAFETY_SUBJECTS
     + _THREAT_TO_LIFE_SUBJECTS
+    + _UNNAMED_ABUSER_SUBJECTS
     + _ACTIVE_CRIME_SUBJECTS
 )
 
@@ -581,6 +628,41 @@ def _requests_harmful_assistance(text: str) -> bool:
     return _any(_HARMFUL_ACTS, text) and _is_instructional(text)
 
 
+# The situation is described as over. Until this existed the emergency
+# tier had no notion of tense at all, and that hurt exactly the people
+# it was meant to protect: "my husband used to beat me years ago, what
+# are my options" was answered with a helpline redirect instead of the
+# law on protection and residence orders, and "my child was kidnapped in
+# 2019 and the case is still going on" was treated as a live abduction.
+# Both are people seeking legal information about something that already
+# happened, and an emergency redirect denies it to them.
+_HISTORICAL_FRAME = _compile([
+    r"\b(used to|no longer|not any ?more|since then|back then|back in)\b",
+    r"\b(years?|months?|weeks?|decades?) ago\b",
+    r"\bin (19|20)\d{2}\b",
+    r"\b(at that time|at the time|in those days|those days)\b",
+    r"\bwhen (i|he|she|they) (was|were) (a )?(child|kid|young|small|minor)\b",
+    r"\b(case|matter|trial|appeal|complaint|fir) (is|has been) "
+    r"(still )?(going on|ongoing|pending|in court|filed)\b",
+    r"\b(it|that|this) (happened|was) (a )?(long time ago|years ago|in the past)\b",
+])
+
+
+def _is_historical(text: str) -> bool:
+    """True when the person is describing something that is over.
+
+    Immediacy always wins. "He beat me for years and he is outside right
+    now" is not a historical account whatever else it contains, so an
+    immediacy marker disables this entirely rather than being weighed
+    against it. That ordering is the whole safety property here: the
+    cost of reading a live emergency as history is far higher than the
+    cost of reading history as an emergency.
+    """
+    if _any(_IMMEDIACY, text):
+        return False
+    return _any(_HISTORICAL_FRAME, text)
+
+
 def _stalking_emergency(text: str) -> bool:
     """True when the query describes being followed AND something that
     makes it dangerous rather than merely observed.
@@ -620,7 +702,7 @@ def _emergency_category(text: str) -> str | None:
     # service is the more useful one to name first.
     if _any(_DOMESTIC_ABUSE_SUBJECTS, text):
         return "domestic_violence"
-    if _any(_THREAT_TO_LIFE_SUBJECTS, text):
+    if _any(_THREAT_TO_LIFE_SUBJECTS, text) or _any(_UNNAMED_ABUSER_SUBJECTS, text):
         return "threat_to_life"
     if _any(_ACTIVE_CRIME_SUBJECTS, text):
         return "active_crime"
@@ -676,8 +758,14 @@ def assess_query(text: str) -> SafetyAssessment:
         )
 
     educational = _is_purely_educational(text)
+    # A settled account of something that is over routes like an
+    # ordinary legal question, so the person actually gets the law they
+    # came for. Immediacy defeats it (see _is_historical).
+    historical = _is_historical(text)
 
-    if (_life_threatening_subject(text) or _any(_DOMESTIC_ABUSE_SUBJECTS, text)) and not educational:
+    if (_life_threatening_subject(text) or _any(_DOMESTIC_ABUSE_SUBJECTS, text)) and not (
+        educational or historical
+    ):
         category = _emergency_category(text) or "active_crime"
         return SafetyAssessment(
             severity=SEVERITY_EMERGENCY,
@@ -686,7 +774,7 @@ def assess_query(text: str) -> SafetyAssessment:
             authority_guidance=True,
         )
 
-    if _any(_CYBER_FRAUD_SUBJECTS, text) and not educational:
+    if _any(_CYBER_FRAUD_SUBJECTS, text) and not (educational or historical):
         return SafetyAssessment(
             severity=SEVERITY_EMERGENCY,
             category="cyber_fraud",

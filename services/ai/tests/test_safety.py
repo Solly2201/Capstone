@@ -503,3 +503,131 @@ def test_learning_about_these_offences_stays_educational(text):
     """The whole point of the compositional policy: a heavy subject word
     must never be enough on its own to block legal education."""
     assert assess_query(text).severity == SEVERITY_NORMAL, text
+
+
+# --- N. Tense: a settled account is not an emergency -------------------
+# Until this existed the emergency tier had no notion of tense, and that
+# hurt exactly the people it was meant to protect. Someone asking what
+# their options are about abuse that ended years ago was handed a
+# helpline instead of the law on protection and residence orders.
+
+HISTORICAL_NOT_EMERGENCY = [
+    "my husband used to beat me years ago, what are my options",
+    "he used to hit me years ago, what are my options",
+    "my child was kidnapped in 2019 and the case is still going on",
+    "i was threatened back in 2018, can I still file a complaint",
+    "he abused me when I was a child, what can I do now",
+    "money was taken from my account in 2019, is it too late to complain",
+    "my husband no longer lives with me, can I still get a protection order",
+]
+
+
+@pytest.mark.parametrize("text", HISTORICAL_NOT_EMERGENCY)
+def test_a_settled_account_routes_to_the_law_not_a_helpline(text):
+    assert assess_query(text).severity == SEVERITY_NORMAL, text
+
+
+IMMEDIACY_BEATS_HISTORY = [
+    "he beat me years ago and he is outside right now",
+    "my husband used to beat me and he is threatening to kill me tonight",
+    "he used to hit me, please help me, he is here",
+    "i am scared, he used to beat me and he is coming",
+    "years ago he threatened me, today he said he will kill me",
+    "urgent - he used to abuse me and is attacking me",
+    "my child was kidnapped in 2019 and now someone is trying to take my other child right now",
+]
+
+
+@pytest.mark.parametrize("text", IMMEDIACY_BEATS_HISTORY)
+def test_a_live_danger_is_never_read_as_history(text):
+    """The ordering that makes the tense rule safe: any immediacy marker
+    disables the historical stand-down outright rather than being
+    weighed against it. Reading a live emergency as history costs far
+    more than the reverse."""
+    assert assess_query(text).severity == SEVERITY_EMERGENCY, text
+
+
+# --- O. The abuser named only by a pronoun -----------------------------
+# _DOMESTIC_ABUSE_SUBJECTS requires a relationship noun, so "my husband
+# beats me" was an emergency and "he beats me" was normal -- the same
+# situation graded differently by the pronoun the person happened to
+# use, in the highest-stakes category there is.
+
+UNNAMED_ABUSER = [
+    "he beats me",
+    "he beats me every day",
+    "he hits me",
+    "they beat me",
+    "he threatens me",
+    "he slaps me when he is angry",
+    "my ex threatens me",
+]
+
+
+@pytest.mark.parametrize("text", UNNAMED_ABUSER)
+def test_violence_by_an_unnamed_person_is_still_an_emergency(text):
+    assessment = assess_query(text)
+    assert assessment.severity == SEVERITY_EMERGENCY, text
+    # threat_to_life, not domestic_violence: no relationship is stated,
+    # so the reply must not assume a home setting.
+    assert assessment.category == "threat_to_life", text
+
+
+def test_the_named_and_unnamed_forms_grade_the_same():
+    """The defect was an inconsistency, so assert the property."""
+    for named, unnamed in [
+        ("my husband beats me", "he beats me"),
+        ("my husband hits me", "he hits me"),
+    ]:
+        assert assess_query(named).severity == assess_query(unnamed).severity
+
+
+VIOLENCE_NOT_DIRECTED_AT_THE_SPEAKER = [
+    "what is the punishment for beating someone",
+    "if a man beats a woman what is the offence",
+    "explain what counts as hitting under the law",
+    "he beat the accused in the video",
+    "the police beat him",
+    "what happens if someone hits another person",
+]
+
+
+@pytest.mark.parametrize("text", VIOLENCE_NOT_DIRECTED_AT_THE_SPEAKER)
+def test_violence_that_is_not_aimed_at_the_speaker_stays_normal(text):
+    assert assess_query(text).severity == SEVERITY_NORMAL, text
+
+
+# --- P. Two recall gaps found by the group A-D probe matrix ------------
+
+def test_a_recurring_time_of_day_counts_as_persistence():
+    """"every day" was matched but "every evening" was not, so "a man
+    follows me to the bus stop every evening" graded normal."""
+    for text in [
+        "a man follows me to the bus stop every evening",
+        "someone follows me every night",
+        "a man follows me every morning",
+    ]:
+        assert assess_query(text).severity == SEVERITY_EMERGENCY, text
+
+
+def test_a_child_taken_in_the_passive_voice_is_an_emergency():
+    """Every child-taken pattern required someone to be the subject, so
+    the plainest phrasing a panicking parent uses was missed."""
+    for text in ["my child was taken", "my daughter was grabbed", "our son was snatched"]:
+        assessment = assess_query(text)
+        assert assessment.severity == SEVERITY_EMERGENCY, text
+        assert assessment.category == "child_safety", text
+
+
+def test_a_child_taken_somewhere_ordinary_is_not_an_abduction():
+    for text in [
+        "my child was taken to hospital after an accident",
+        "my son was taken to the police station for questioning",
+        # A lawful apprehension, not an abduction. h059 in the citizen
+        # evaluation set: colloquial wording for a child apprehended
+        # under the Juvenile Justice Act, whose answer is jj2015:10.
+        "my kid got picked up by the cops, is that even legal",
+        "my child was picked up from school by his uncle",
+        "my daughter was taken by the police for questioning",
+    ]:
+        assert assess_query(text).severity == SEVERITY_NORMAL, text
