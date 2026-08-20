@@ -311,6 +311,48 @@ _PAYMENT_DEMAND = (
 
 _CORRUPTION_WORD = r"\bcorrupt(ion|ly)?\b"
 
+# --- provisions this project deliberately does not hold ----------------
+#
+# A different kind of gap from the ones above. The RTI Act IS in the
+# corpus, but ss.13, 16 and 27 are excluded at ingestion: they govern the
+# term of office, salary and conditions of service of Information
+# Commissioners, and the ingested copy predates the RTI (Amendment) Act
+# 2019 that replaced them. Serving that text would state repealed
+# institutional law as current.
+#
+# Excluding them created a second-order problem this rule fixes.
+# Measured: 7 of 8 tenure/salary questions were answered confidently from
+# rti:2 (Definitions), rti:5 (Designation of PIOs), rti:12 and rti:15
+# (Constitution of the Commissions) and rti:17 (Removal) -- real
+# sections, correctly cited, none of which contains the answer. The
+# provisions that do are precisely the ones we removed, so retrieval can
+# only ever return neighbours here.
+#
+# Deliberately narrow. Questions about what the Commissions DO (s.18),
+# how they are constituted and who appoints them (ss.12, 15), how a
+# Commissioner is removed (s.17) and how to complain to them (s.18) are
+# all genuinely answerable and must not be caught -- so this keys on
+# service *terms* only, never on the Commissioner concept alone.
+#
+# Central-Government rule-making (s.27, also excluded) is deliberately
+# NOT included: s.28 covers rule-making by a competent authority and is
+# in the corpus, so a rules question has a real partial answer and
+# guarding it would over-block.
+_INFORMATION_COMMISSIONER = (
+    r"\b(chief |state |central )*information commissioners?\b"
+    r"|\b(cic|sic)\b(?!\s*card)"
+)
+
+_SERVICE_TERMS = (
+    r"\b(term of office|tenure|how long\b[^.?!]{0,45}\b(serve|serves|"
+    r"hold office|in office|stay|last)|length of (the )?term|"
+    r"salary|salaries|pay|allowances|emoluments|pension|"
+    r"conditions of service|service conditions|terms of service|"
+    r"re[- ]?appoint(ed|ment)?|reappointment|"
+    r"retire(ment|s|d)?|retiring age|age of retirement|"
+    r"how many years)\b"
+)
+
 # Who is taking it -- a public official acting in an official capacity.
 _PUBLIC_OFFICIAL = (
     r"\b(public servant|public official|government (officer|official|"
@@ -360,6 +402,14 @@ _COMPOSED_RULES: list[tuple[str, list[str], str | None]] = [
         [_CORRUPTION_WORD, _PUBLIC_OFFICIAL],
         _COVERED_BRIBERY_CONTEXT,
     ),
+    # An Information Commissioner's service terms -- ss.13/16, excluded
+    # as pre-2019 text. Requires both concepts, so questions about what
+    # the Commissions do or how they are constituted still answer.
+    (
+        "rti_amended_service_provisions",
+        [_INFORMATION_COMMISSIONER, _SERVICE_TERMS],
+        None,
+    ),
 ]
 
 _COMPILED = [
@@ -393,6 +443,35 @@ NOT_IN_CORPUS_MESSAGE = (
     "actual Act at indiacode.nic.in, or contact India's free legal aid "
     "services -- Tele-Law or Nyaya Bandhu."
 )
+
+
+# A different statement from NOT_IN_CORPUS_MESSAGE, and the difference
+# matters to the reader: the Act IS held, so "I don't have that law"
+# would be false. What is missing is three specific sections, for a
+# stated reason, and the honest thing is to say which and why.
+EXCLUDED_PROVISION_MESSAGE = (
+    "I do hold the Right to Information Act 2005, but not the part your "
+    "question turns on. Sections 13, 16 and 27 -- the term of office, "
+    "salary and conditions of service of Information Commissioners, and "
+    "the Central Government's rule-making power -- were replaced by the "
+    "Right to Information (Amendment) Act 2019, and the copy I have "
+    "predates that amendment. Rather than quote you a version of those "
+    "sections that is no longer the law, I've left them out. Everything "
+    "else in the Act is here, including how to make a request, the time "
+    "limits, the exemptions, appeals and penalties. For the current text "
+    "of those three sections, read the amended Act at indiacode.nic.in."
+)
+
+#: Categories whose gap is a deliberately excluded provision rather than
+#: an Act this project does not hold at all.
+EXCLUDED_PROVISION_CATEGORIES = {"rti_amended_service_provisions"}
+
+
+def coverage_message(category: str) -> str:
+    """The message that matches the kind of gap `category` describes."""
+    if category in EXCLUDED_PROVISION_CATEGORIES:
+        return EXCLUDED_PROVISION_MESSAGE
+    return NOT_IN_CORPUS_MESSAGE
 
 
 def classify_coverage_gap(text: str) -> str | None:

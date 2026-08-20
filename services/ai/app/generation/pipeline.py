@@ -25,7 +25,11 @@ from dataclasses import dataclass, field
 
 from ..query.normalize import normalize_for_retrieval
 from ..retrieval.search import search as _search
-from ..safety.corpus_coverage import NOT_IN_CORPUS_MESSAGE, classify_coverage_gap
+from ..safety.corpus_coverage import (
+    NOT_IN_CORPUS_MESSAGE,
+    classify_coverage_gap,
+    coverage_message,
+)
 from ..safety.risk import (
     SEVERITY_EMERGENCY,
     SEVERITY_HARMFUL_REQUEST,
@@ -264,7 +268,7 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
     coverage_category = classify_coverage_gap(question)
     if coverage_category is not None:
         return LegalAnswer(
-            message=NOT_IN_CORPUS_MESSAGE,
+            message=coverage_message(coverage_category),
             abstained=True,
             reason=f"not_in_corpus_{coverage_category}",
             policy_decision="abstained",

@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.generation.pipeline import handle_legal_query  # noqa: E402
 from app.safety.corpus_coverage import (  # noqa: E402
+    EXCLUDED_PROVISION_MESSAGE,
     NOT_IN_CORPUS_MESSAGE,
     classify_coverage_gap,
 )
@@ -315,3 +316,69 @@ COVERED_RECORD_ACCESS = [
 def test_corpus_covered_record_access_is_not_blocked():
     for text in COVERED_RECORD_ACCESS:
         assert classify_coverage_gap(text) is None, text
+
+
+# --- a provision this project holds the Act for, but excluded ----------
+# A different kind of gap: the RTI Act IS in the corpus, but ss.13, 16
+# and 27 are excluded at ingestion as pre-2019 text. Excluding them left
+# tenure and salary questions with no correct answer available, and
+# retrieval answered 7 of 8 of them from real, correctly-cited sections
+# that do not contain the answer (Definitions, Designation of PIOs,
+# Constitution of the Commissions, Removal).
+
+EXCLUDED_PROVISION_QUESTIONS = [
+    "how long does an information commissioner serve",
+    "what is the term of office of a chief information commissioner",
+    "what is the salary of an information commissioner",
+    "can an information commissioner be reappointed",
+    "what are the conditions of service of a state information commissioner",
+    "at what age does an information commissioner retire",
+    "who decides the tenure of information commissioners",
+    "how many years does a CIC serve",
+    "what allowances does a state information commissioner get",
+]
+
+
+@pytest.mark.parametrize("text", EXCLUDED_PROVISION_QUESTIONS)
+def test_excluded_service_provisions_are_caught(text):
+    assert classify_coverage_gap(text) == "rti_amended_service_provisions", text
+
+
+@pytest.mark.parametrize("text", EXCLUDED_PROVISION_QUESTIONS)
+def test_excluded_service_provisions_say_the_act_is_held(text):
+    """The message must not claim the Act is missing -- it is not. It
+    has to say which sections are absent and why, or it is simply a
+    different false statement."""
+    answer = handle_legal_query(text)
+    assert answer.abstained is True, text
+    assert answer.reason == "not_in_corpus_rti_amended_service_provisions", text
+    assert answer.excerpts == [], text
+    assert answer.message == EXCLUDED_PROVISION_MESSAGE, text
+    assert "I do hold the Right to Information Act" in answer.message
+    assert "2019" in answer.message
+    assert answer.message != NOT_IN_CORPUS_MESSAGE
+
+
+COMMISSION_QUESTIONS_THE_CORPUS_ANSWERS = [
+    # ss.12/15 constitute the Commissions and cover appointment; s.17 is
+    # removal; s.18 is powers and functions; s.19 is appeals. All held.
+    "what are the powers of the information commission",
+    "who appoints the chief information commissioner",
+    "how is the central information commission constituted",
+    "how can a state information commissioner be removed",
+    "how do I complain to the information commission",
+    "can I appeal to the information commission",
+    "what is the central information commission",
+    "how many information commissioners are there",
+    # s.28 (rule-making by a competent authority) is in the corpus, so a
+    # rules question has a real answer and is deliberately not guarded.
+    "what rules can be made under the rti act",
+]
+
+
+@pytest.mark.parametrize("text", COMMISSION_QUESTIONS_THE_CORPUS_ANSWERS)
+def test_commission_questions_the_corpus_answers_are_not_blocked(text):
+    """The guard keys on service *terms*, never on the Commissioner
+    concept alone -- otherwise it would swallow everything the Act does
+    say about the Commissions."""
+    assert classify_coverage_gap(text) is None, text
