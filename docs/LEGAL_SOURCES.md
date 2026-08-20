@@ -15,6 +15,7 @@ CAP accepts legal RAG evidence only from an Admin-approved official-source allow
 | Legal Services Authorities Act, 1987 (Act No. 39 of 1987) | [India Code](https://www.indiacode.nic.in/handle/123456789/1925) | Free legal aid entitlement, Lok Adalats |
 | Consumer Protection Act, 2019 (Act No. 35 of 2019) | [India Code](https://www.indiacode.nic.in/handle/123456789/18964) | Consumer complaints, District/State/National Commissions |
 | Juvenile Justice (Care and Protection of Children) Act, 2015 (Act No. 2 of 2016) | [India Code](https://www.indiacode.nic.in/handle/123456789/2148) | Children in conflict with law, children in need of care and protection |
+| Right to Information Act, 2005 (Act No. 22 of 2005) | [Central Information Commission PDF](https://cic.gov.in/sites/default/files/RTI-Act_English.pdf) | Access to information held by public authorities, response time limits, exemptions, appeals and penalties |
 | India Code | [Official catalogue](https://www.indiacode.nic.in/) | Later approved Acts and official amendments |
 | Supreme Court of India | [Official site](https://www.sci.gov.in/) | Official judgments when explicitly approved and versioned |
 
@@ -37,7 +38,7 @@ Run `python services/ai/scripts/ingest_corpus.py` to regenerate this from source
 | Legal Services Authorities Act, 1987 | 32 sections | Full text as supplied. |
 | Consumer Protection Act, 2019 | 107 sections | **Full**, single-column source, titles recovered for all 107 sections (100%). |
 | Juvenile Justice (Care and Protection of Children) Act, 2015 | 110 sections | **Full**, single-column source, titles recovered for 110 of 112 sections (98.2%) — see "New single-column PDFs" for the two-section residual gap. |
-| Right to Information Act, 2005 | 0 sections | **Not ingested** — see below. |
+| Right to Information Act, 2005 | 26 sections | Chapters I–VI from the Central Information Commission's published copy, excluding the Schedules. Four sections are deliberately excluded: **ss.13, 16 and 27**, which the RTI (Amendment) Act 2019 replaced and which this pre-2019 copy still states in superseded form, and **s.25** (Monitoring and reporting), dropped for measured retrieval harm — see below. s.14 is not chunked (the source omits the full stop before the em-dash the section-header pattern needs). |
 
 Coverage gaps are also surfaced live via each source's `coverage_note` field on `/corpus/sources` and on every search/section result, so the UI never implies more coverage than actually exists.
 
@@ -143,16 +144,46 @@ cleaner single-column source PDFs exist for them (see above).
 - Recorded in each affected source's `coverage_note` and surfaced live
   via `/corpus/sources`, not just in this doc.
 
-The **Right to Information Act, 2005** PDF has a different, unrelated
-problem: its embedded font maps the digit "1" to "/" for the large
-majority of "(1)" subsection markers (56 of 62 occurrences checked in
-the originally-supplied PDF) — a font-encoding defect in that specific
-file, not a layout issue. A replacement PDF was placed in the corpus
-folder, but byte-for-byte and extracted-text comparison against the
-original found it identical (same SHA-256, same corruption pattern) —
-the swap did not actually take effect. RTI remains uningested; it
-needs a PDF that is genuinely different from the one already tried
-(or a hand-extracted `raw.txt`), not a code change.
+The **Right to Information Act, 2005** is ingested from the Central
+Information Commission's own published copy, which is the file in the
+corpus folder. Three things about it are worth recording, because each
+is a deliberate decision rather than an oversight.
+
+**It predates the 2019 amendment.** The RTI (Amendment) Act, 2019 (Act
+24 of 2019) replaced ss.13, 16 and 27, which govern the term of office
+and conditions of service of Information Commissioners and the
+rule-making power. This copy still carries the superseded five-year
+fixed term and Election-Commissioner salary parity. Serving that as
+current law would misstate the institutional position, so those three
+sections are excluded at ingestion (`exclude_units` in
+`app/ingestion/sources.py`) and the reason is recorded in the source
+manifest. The 2019 Act amended only those three; every citizen-facing
+provision ingested here — ss.6, 7, 8, 9, 10, 11, 18, 19, 20 — is
+unamended.
+
+**s.25 is excluded for retrieval reasons, not currency.** "Monitoring
+and reporting" governs the annual report each Commission sends the
+appropriate Government. No citizen asks it, but its text ("prepare a
+report", "forward a copy", "collect and provide such information") sits
+very close in embedding space to "file an FIR" — First *Information
+Report*. Ingested, it took the top hybrid hit away from bnss:173/177 on
+"how do I file an FIR" and three sibling queries, and alone accounted
+for 5 of the 11 RTI intrusions into the dense top-5 of non-RTI citizen
+queries. The trade-off is stated rather than hidden: a question about a
+Commission's annual reporting duty is now unanswerable.
+
+**Its OCR is imperfect, and only the safe repairs were made.** The
+published PDF renders 48 bracketed markers as "(/)". These are *not*
+all the same character: most are sub-section "(1)", but in s.2 the same
+glyph stands for the definitions clause "(l)" (lower-case L, as in
+'(l) "State Chief Information Commissioner"'), and one reads "(/0)"
+for "(10)". Rewriting them all to "(1)" would relabel definition
+clauses as sub-sections, so the markers are left exactly as extracted;
+only the bracketed label is affected and every provision's operative
+text is intact. Two *titles* were restored, because titles are part of
+the indexed text and garbled ones cost retrieval on the most obvious
+queries in the Act: s.3 extracted as "Ftight to information" and s.18
+as "Powers and 'Unctions of Information Commissions".
 
 ## Safety redirect sources
 

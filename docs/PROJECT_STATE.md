@@ -406,6 +406,116 @@ complaint route on this platform is described in the Civic Participation
 article instead, which is honest about being platform behaviour rather
 than law.
 
+### M8 — RTI ingestion, coverage rework, emergency safety
+
+**The false-answer hole, closed first.** A 24-question probe of
+out-of-corpus subjects found **14 answered confidently from unrelated
+Acts**. The worst was "how do I get information from a government
+department", answered from BSA's section on *unpublished official
+records* — the exact opposite of the entitlement asked about.
+`corpus_coverage.py` gained `_COMPOSED_RULES`: a rule fires only when
+every required concept group matches and a stand-down group does not,
+the same SUBJECT × FRAME composition `risk.py` uses, applied to
+coverage. Result **14 → 0 false answers**, with a control set of
+genuinely answerable queries proving it was not bought by abstaining
+more broadly. Every pattern was checked against real indexed text
+first, which changed the design twice: "bribe" is in the corpus four
+times answerably (electoral bribery, screening an offender, bribing a
+witness), and "copy of"/"information" are heavily covered (free FIR
+copy, police-report copies, certified judgments, grounds of arrest,
+consumer right to be informed).
+
+**Safety triage.** The serious tier carried one pattern unlike the rest
+of its group — a bare possessive, "my (fir|case|complaint|...)".
+Because a possessive is inherently personal, `_is_purely_educational`
+could never be true for it, so it fired unconditionally: a pothole
+complaint graded `serious`, and "must the police tell me the grounds of
+my arrest" got a lawyer redirect. Split into `_OWN_LEGAL_MATTER`,
+counted only when no entitlement frame and no bribe solicitation is
+present. "complaint" left the list entirely; the complaint-*against*-me
+pattern was widened so "an FIR has been filed against me" now grades
+serious (it graded normal before). Bribery solicitation now grades
+consistently regardless of possessive.
+
+**RTI ingested — 26 sections.** From the Central Information
+Commission's own published copy (no new download). Ingestion gained
+three general opt-in mechanisms, all defaulting to previous behaviour:
+`chunk_end_marker` (the Second Schedule's numbered organisations were
+being read as sections, colliding with the real ss.9 and 22),
+`exclude_units` with a mandatory reason recorded in the manifest, and
+`title_overrides`. Ingestion now refuses to run on duplicate chunk_ids
+or on a stale exclusion/override.
+
+Four sections excluded. **ss.13, 16, 27** — replaced by the RTI
+(Amendment) Act 2019, and this pre-2019 copy still states the
+superseded five-year term and CEC salary parity. **s.25** — excluded
+for measured retrieval harm, not currency: its "prepare a report /
+collect and provide such information" text sits close in embedding
+space to "file an FIR" (First *Information* Report) and took the top
+hit from bnss:173/177 on four FIR queries, accounting alone for 5 of 11
+RTI intrusions into the dense top-5 of non-RTI queries. Stated
+trade-off: a question about a Commission's annual reporting duty is now
+unanswerable.
+
+One OCR defect was deliberately **not** repaired. 48 markers render as
+"(/)", and they are not all the same character — most are "(1)", but
+in s.2 the same glyph is the definitions clause "(l)". A blanket
+rewrite would relabel definition clauses as sub-sections. Two *titles*
+were restored ("Ftight to information", "Powers and 'Unctions"),
+because titles are indexed and those are the exact words citizens
+search for.
+
+Nine deterministic RTI normalisation rules were added, because citizens
+describe this Act in words it never uses — "RTI" appears nowhere in
+the statute, so "how do I file an RTI application" retrieved it_act
+chunks at dense 0.25 and abstained. **20 RTI probes through the
+production pipeline: answered 19/20 → 20/20, top hit from RTI 13/20
+→ 20/20, right section 8/20 → 18/20, wrong-Act top hits 5 → 0.**
+
+**Emergency tier.** Two gaps found by probing what a frightened person
+actually types. Child cases ("someone took my child", "my child went
+missing", "my son did not come back from school and a stranger took
+him") all graded normal while only the word "kidnapped" worked; they
+now route to `child_safety` so the reply names Childline 1098. Stalking
+had no representation at all and is deliberately a *composition*:
+being followed AND a second signal (fear, repetition, or the person's
+home), standing down entirely on social-media context, because
+"following me" is also what an Instagram account does. Matrix: clear
+emergencies 10/10 unchanged, educational 12/12 unchanged, ambiguous
+0/9 → 8/9, plus a 20-case false-positive probe at 20/20.
+
+**Learn.** 8 RTI articles, 27 questions, 5 FAQs — 71 articles, 216
+questions, 35 FAQs across 12 categories. All 713 Learn citations
+resolve to real ingested sections. No fee amount appears anywhere (the
+Act leaves figures to un-ingested rules) and nothing describes
+Commissioner tenure (the excluded sections); both are asserted by
+tests, and both are declared as `deferredTopics` on the category.
+
+**362-query evaluation, across all of M8:** recall@1 unchanged on both
+sets (0.6222 control / 0.3879 citizen); recall@5 0.8370 unchanged
+control, 0.6246 → 0.6238 citizen; wrong-Act rate unchanged on both
+(0.0667 / 0.1957); hard-negative recall unchanged at 0.9655. The
+single citizen recall change is `h258` ("protection of action taken in
+good faith"), whose gold set names the five Acts that had that section
+when it was written — RTI s.21 carries it too, so a correct sixth
+match displaced one. Citizen abstention 0.8275 → 0.8243, one query:
+`h029` ("a stranger grabbed my daughter off the street"), which now
+routes to the child-safety emergency instead of citing bns:137.
+
+**Three eval labels are now stale and were left untouched**, since
+`eval/` is outside the approved scope and editing them to make changes
+pass would be weakening the criteria: `q35` and `h286` both assert "the
+RTI Act is not ingested" (both now answer from rti:6, the correct
+section), and `h029` encodes retrieval as the desired response to a
+live child abduction.
+
+**Known limitations carried forward.** RTI s.14 is not chunked (the
+source omits the full stop before the em-dash the header pattern
+needs). "how do I get a free copy of my FIR" still abstains at the
+confidence gate although BNSS s.173 answers it — a retrieval-recall
+miss, untouched because retrieval and the gate are frozen. The bare
+"someone is following me" is a stated non-fire.
+
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core and the authority workflow are built** (see M2 and M3 above). Do not build duplicate detection, DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
