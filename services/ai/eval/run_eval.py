@@ -123,19 +123,42 @@ def evaluate_abstention(queries: list[dict], mode: str) -> dict:
         correct = 0
         false_abstain = []  # expected an answer, pipeline abstained
         false_answer = []   # expected abstention, pipeline answered
+        wrong_severity = []  # right about abstaining, wrong about why
         for q in queries:
             answer = handle_legal_query(q["query"])
             got_abstain = answer.abstained
-            if got_abstain == q["expect_abstain"]:
-                correct += 1
-            elif q["expect_abstain"] and not got_abstain:
-                false_answer.append(q["id"])
-            elif not q["expect_abstain"] and got_abstain:
-                false_abstain.append(q["id"])
+            if got_abstain != q["expect_abstain"]:
+                if q["expect_abstain"]:
+                    false_answer.append(q["id"])
+                else:
+                    false_abstain.append(q["id"])
+                continue
+            # `expect_abstain` alone cannot distinguish "abstained
+            # because the corpus lacks the law" from "did not answer
+            # because this is an emergency and the person needs a
+            # helpline". Where a row states the routing it expects, that
+            # routing is part of the expectation, not a free pass -- a
+            # child-abduction query that abstains for the wrong reason
+            # is still wrong. Rows without these keys behave exactly as
+            # before.
+            expected_severity = q.get("expect_severity")
+            expected_reason = q.get("expect_reason")
+            if expected_severity and answer.severity != expected_severity:
+                wrong_severity.append(
+                    f"{q['id']}(severity {answer.severity}!={expected_severity})"
+                )
+                continue
+            if expected_reason and answer.reason != expected_reason:
+                wrong_severity.append(
+                    f"{q['id']}(reason {answer.reason}!={expected_reason})"
+                )
+                continue
+            correct += 1
         return {
             "accuracy": correct / len(queries),
             "false_answer_ids": false_answer,   # should have abstained, didn't (risk: wrong info shown)
             "false_abstain_ids": false_abstain,  # should have answered, abstained (recall loss)
+            "wrong_routing_ids": wrong_severity,  # right call, wrong route
         }
     finally:
         if old_mode is None:
@@ -195,6 +218,7 @@ def main() -> None:
         summary["abstention_accuracy"] = round(abstention["accuracy"], 4)
         summary["abstention_false_answer_ids"] = abstention["false_answer_ids"]
         summary["abstention_false_abstain_ids"] = abstention["false_abstain_ids"]
+        summary["abstention_wrong_routing_ids"] = abstention["wrong_routing_ids"]
         summary_rows.append(summary)
         dump[mode] = {
             "summary": summary,
@@ -226,6 +250,11 @@ def main() -> None:
                 f"\n{row['mode']}: false_answer(should-abstain-but-answered)="
                 f"{row['abstention_false_answer_ids']} "
                 f"false_abstain(should-answer-but-abstained)={row['abstention_false_abstain_ids']}"
+            )
+        if row["abstention_wrong_routing_ids"]:
+            print(
+                f"{row['mode']}: wrong_routing(withheld correctly, wrong route)="
+                f"{row['abstention_wrong_routing_ids']}"
             )
 
     if args.json:
