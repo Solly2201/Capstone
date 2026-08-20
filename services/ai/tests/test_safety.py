@@ -404,3 +404,102 @@ def test_emergencies_stay_emergencies(text, category):
     assessment = assess_query(text)
     assert assessment.severity == SEVERITY_EMERGENCY, text
     assert assessment.category == category, text
+
+
+# --- M. Stalking and child-abduction emergencies ----------------------
+# Two measured gaps. "my daughter has been kidnapped" reached the
+# emergency tier, but only via the word "kidnapped"; the phrasings a
+# frightened person actually types did not. Being followed had no
+# representation in the policy at all.
+
+STALKING_EMERGENCIES = [
+    "someone keeps following me",
+    "I am scared because someone follows me",
+    "a man is following me and I am scared",
+    "a man has been following me home every day and I am frightened",
+    "a man keeps following me home every night and I am scared",
+    "someone has been following me for weeks",
+    "I am terrified, a man follows me to work",
+]
+
+
+@pytest.mark.parametrize("text", STALKING_EMERGENCIES)
+def test_stalking_with_fear_or_persistence_is_an_emergency(text):
+    assessment = assess_query(text)
+    assert assessment.severity == SEVERITY_EMERGENCY, text
+    assert assessment.category == "active_crime", text
+
+
+CHILD_TAKEN_EMERGENCIES = [
+    "someone took my child",
+    "my child went missing",
+    "my child has not come home",
+    "my son did not come back from school and a stranger took him",
+    "someone took my daughter from the playground",
+    "my child never came home from school",
+    "a stranger lured my son away",
+]
+
+
+@pytest.mark.parametrize("text", CHILD_TAKEN_EMERGENCIES)
+def test_child_taken_or_missing_is_a_child_safety_emergency(text):
+    """Routed to child_safety, not threat_to_life, so the response names
+    Childline 1098 alongside 112."""
+    assessment = assess_query(text)
+    assert assessment.severity == SEVERITY_EMERGENCY, text
+    assert assessment.category == "child_safety", text
+
+
+# The false positives these rules were shaped around. "Following" is one
+# of the most overloaded words a citizen can use, and a wrong emergency
+# redirect blocks a legitimate legal question outright -- so these
+# matter as much as the recall cases above.
+
+NOT_STALKING_EMERGENCIES = [
+    # Social media: the single largest false-positive risk.
+    "someone is following me on instagram and I am scared",
+    "a stranger keeps following my profile on facebook",
+    "someone I am scared of keeps following my instagram account",
+    "how do I stop someone following me on social media",
+    "my ex keeps watching my instagram stories every day",
+    # Ordinary uses of the same words.
+    "the police car was following me to the station",
+    "what are the rules following an arrest",
+    "my lawyer is watching the case for me",
+    # Being followed, stated with no fear and no repetition. A deliberate
+    # non-fire: with nothing but "someone is following me" there is not
+    # enough to separate a person in danger from a social-media remark,
+    # and the composition requires a second signal by design.
+    "someone is following me",
+]
+
+
+@pytest.mark.parametrize("text", NOT_STALKING_EMERGENCIES)
+def test_following_without_danger_is_not_an_emergency(text):
+    assert assess_query(text).severity != SEVERITY_EMERGENCY, text
+
+
+EDUCATIONAL_ABOUT_STALKING_AND_CHILDREN = [
+    "what is stalking?",
+    "what is kidnapping?",
+    "explain kidnapping law",
+    "what does the law say about missing children?",
+    "explain criminal intimidation",
+    "what is the punishment for abduction",
+    "what does the law say about stalking a woman",
+    "under which section is kidnapping punishable",
+    "what is the difference between kidnapping and abduction",
+    "what is stalking under the bharatiya nyaya sanhita",
+    "what is the punishment for stalking a woman",
+    "explain the law on kidnapping a child",
+    "what does the law say about a missing child",
+    "what section covers a child who has gone missing",
+    "what happens if someone takes a child without permission",
+]
+
+
+@pytest.mark.parametrize("text", EDUCATIONAL_ABOUT_STALKING_AND_CHILDREN)
+def test_learning_about_these_offences_stays_educational(text):
+    """The whole point of the compositional policy: a heavy subject word
+    must never be enough on its own to block legal education."""
+    assert assess_query(text).severity == SEVERITY_NORMAL, text

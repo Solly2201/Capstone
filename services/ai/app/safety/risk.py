@@ -164,6 +164,55 @@ _CHILD_SAFETY_SUBJECTS = _compile([
     r"\b(is being|are being|being|is|was|were) (abused|beaten|molested|trafficked|hurt|starved|harmed)\b",
     r"\bchild (in danger|traffick\w*|abuse is happening)\b",
     r"\b(abus\w*|molest\w*|hurting|beating)\b[^.?!]{0,20}\b(my|a|the) (child|daughter|son|baby|minor)\b",
+    # A child taken by another person, or missing. "my daughter has been
+    # kidnapped" already reached the emergency tier through
+    # _THREAT_TO_LIFE_SUBJECTS, but only because it used the word
+    # "kidnapped" -- the far more likely phrasings a frightened parent
+    # actually types ("someone took my child", "my son did not come back
+    # from school and a stranger took him", "my child went missing") all
+    # graded normal. Routed here rather than to threat_to_life so the
+    # response names Childline 1098 alongside 112.
+    #
+    # Scoped to the speaker's own child ("my"/"our"), which is what keeps
+    # "what does the law say about missing children?" out: it has no
+    # possessive, and the educational gate in assess_query stands as a
+    # second layer behind that.
+    r"\b(someone|somebody|a man|a woman|a guy|a stranger|he|she|they)\b[^.?!]{0,30}"
+    r"\b(took|taken|grabbed|snatched|picked up|drove off with|walked off with|lured)\b"
+    r"[^.?!]{0,25}\b((my|our) (child|daughter|son|kid|baby|boy|girl)|him|her)\b",
+    r"\b(my|our) (child|daughter|son|kid|baby)\b[^.?!]{0,45}"
+    r"\b(went missing|is missing|has gone missing|never came home|"
+    r"(did|does) ?n[o']?t come (home|back)|has ?n[o']?t come home|"
+    r"did ?n[o']?t come back|has ?n[o']?t returned|never returned)\b",
+])
+
+# Being followed or watched. Never sufficient on its own -- see
+# _stalking_emergency for the second signal it requires and why.
+_STALKING_SUBJECTS = _compile([
+    r"\b(following|follows|followed|stalking|stalks|stalked|watching|"
+    r"tailing|trailing)\b[^.?!]{0,20}\b(me|us)\b",
+    r"\b(someone|somebody|a man|a woman|a guy|a stranger|he|she|they)\b"
+    r"[^.?!]{0,25}\b(keeps?|kept|has been|have been|is|are|been|was)\b"
+    r"[^.?!]{0,15}\b(following|stalking|watching|tailing|trailing)\b",
+])
+
+# The second signal stalking requires: expressed fear, or a pattern of
+# repetition, or the person's home. One of these is what separates a
+# person in danger from a person describing a social-media follower.
+_FEAR_OR_PERSISTENCE = _compile([
+    r"\b(scared|afraid|frightened|terrified|petrified|unsafe|"
+    r"not safe|in danger|threatened|worried for my safety)\b",
+    r"\b(keeps?|kept|constantly|repeatedly|again and again|all the time|"
+    r"every ?day|each day|for (days|weeks|months)|since (last|\w+ ?day))\b",
+    r"\bfollow\w*\b[^.?!]{0,15}\b(me )?(home|to my (house|home|office|work))\b",
+])
+
+# "Following me" is also how people describe social media. A stalking
+# emergency must not fire on "someone is following me on Instagram".
+_ONLINE_FOLLOW_CONTEXT = _compile([
+    r"\b(instagram|insta|facebook|fb|twitter|x\.com|snapchat|tiktok|"
+    r"youtube|linkedin|whatsapp|telegram|threads|account|profile|"
+    r"page|handle|online|social media)\b",
 ])
 
 _THREAT_TO_LIFE_SUBJECTS = _compile([
@@ -502,7 +551,7 @@ def _is_immediate(text: str) -> bool:
 
 
 def _life_threatening_subject(text: str) -> bool:
-    return _any(_LIFE_THREATENING_SUBJECTS, text)
+    return _any(_LIFE_THREATENING_SUBJECTS, text) or _stalking_emergency(text)
 
 
 def _serious_legal_subject(text: str) -> bool:
@@ -532,6 +581,27 @@ def _requests_harmful_assistance(text: str) -> bool:
     return _any(_HARMFUL_ACTS, text) and _is_instructional(text)
 
 
+def _stalking_emergency(text: str) -> bool:
+    """True when the query describes being followed AND something that
+    makes it dangerous rather than merely observed.
+
+    Deliberately a composition, not a subject list. "Following" is one of
+    the most overloaded words a citizen can use -- it is stalking, it is
+    what an Instagram account does, and it is what a car behind you in
+    traffic does. Requiring a second signal (expressed fear, a pattern of
+    repetition, or the person's home) is what makes the emergency route
+    safe to take, and standing down on social-media context removes the
+    largest remaining false positive.
+
+    "What is stalking?" cannot reach here: it has no target pronoun, no
+    fear and no repetition, and assess_query's educational gate sits
+    behind this as a second layer.
+    """
+    if _any(_ONLINE_FOLLOW_CONTEXT, text):
+        return False
+    return _any(_STALKING_SUBJECTS, text) and _any(_FEAR_OR_PERSISTENCE, text)
+
+
 def _emergency_category(text: str) -> str | None:
     """Which emergency route a life-threatening query takes, if any.
 
@@ -553,6 +623,11 @@ def _emergency_category(text: str) -> str | None:
     if _any(_THREAT_TO_LIFE_SUBJECTS, text):
         return "threat_to_life"
     if _any(_ACTIVE_CRIME_SUBJECTS, text):
+        return "active_crime"
+    # Stalking routes to active_crime: its message names 112, tells the
+    # person to get somewhere safe, and does not assume a home setting
+    # the way the domestic-violence message does.
+    if _stalking_emergency(text):
         return "active_crime"
     return None
 
