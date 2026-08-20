@@ -21,19 +21,12 @@ type LoadState = "loading" | "ready" | "error";
 
 const PAGE_SIZE = 20;
 
-/**
- * The public petition list.
- *
- * Readable without an account, matching the endpoint's own design: a
- * petition exists to be seen. Signing still needs an account, and the
- * "you signed this" marker only appears when the API recognised the
- * request, so an anonymous reader simply sees no such marker rather than
- * a wrong one.
- *
- * Filters map one-to-one onto the API's validated query contract, so the
- * server does the filtering and what is on screen is what the database
- * matched rather than a client-side slice of an unbounded list.
- */
+// The public petition list: readable without an account, because a
+// petition exists to be seen. Signing still needs one, and the "you
+// signed this" marker appears only when the API recognised the request.
+//
+// Filters map onto the API's validated query contract, so the server does
+// the filtering and the screen shows what the database matched.
 export function PetitionsPage() {
   const { user } = useAuth();
   const [petitions, setPetitions] = useState<PetitionSummary[]>([]);

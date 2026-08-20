@@ -3,36 +3,25 @@ import { Petition, type PetitionDocument } from "../models/petition.js";
 import { Signature, isDuplicateKeyError } from "../models/signature.js";
 import type { HydratedDocument } from "mongoose";
 
-/**
- * Signature integrity.
- *
- * This is the security-critical part of the petition feature: a
- * signature count is the only thing a petition asserts about the world,
- * so the whole feature is worth nothing if the count can be inflated.
- *
- * The design rests on one database-enforced fact -- the unique index on
- * `{ petitionId, citizenId }` in `models/signature.ts` -- and treats
- * everything else as untrusted:
- *
- * - The citizen id always comes from the verified JWT. There is no code
- *   path anywhere that reads a signer identity from a request.
- * - "Have you already signed?" is never asked as a precondition and then
- *   acted on. That is check-then-act and it loses under concurrency:
- *   two simultaneous requests both read "no" and both insert. Instead
- *   the insert is simply attempted, and the database rejects the loser
- *   with a duplicate-key error. Exactly one of N racing requests can
- *   win, whatever N is.
- * - The count is adjusted with `$inc`, which is atomic in MongoDB, so
- *   concurrent signers cannot lose each other's updates the way a
- *   read-modify-write would.
- *
- * **Why not a transaction.** The deployment target (`docker-compose.yml`)
- * runs a standalone mongod, and MongoDB multi-document transactions
- * require a replica set, so a transaction is not available to be used
- * here rather than being passed over. The consequences are handled
- * explicitly instead, with compensating writes below, and the residual
- * risk is bounded and one-directional: see `signPetition`.
- */
+// Signature integrity -- the security-critical part of the petition
+// feature, since an inflatable count makes a petition assert nothing.
+//
+// The design rests on one database-enforced fact, the unique index on
+// { petitionId, citizenId } in models/signature.ts, and trusts nothing
+// else:
+//   The citizen id always comes from the verified JWT; no code path reads
+//     a signer identity from a request.
+//   "Have you already signed?" is never a precondition that is then acted
+//     on -- that is check-then-act and loses under concurrency. The insert
+//     is attempted and the database rejects the loser, so exactly one of N
+//     racing requests wins.
+//   The count moves by $inc, which is atomic, so concurrent signers cannot
+//     lose each other's updates.
+//
+// No transaction: the deployment target runs a standalone mongod, and
+// multi-document transactions need a replica set. The consequences are
+// handled with the compensating writes below, and the residual risk is
+// one-directional -- see signPetition.
 
 export type SignatureActor = {
   userId: string;
@@ -61,32 +50,20 @@ export const signatureStatusCode: Record<SignatureFailure["code"], number> = {
   CONFLICT: 409
 };
 
-/**
- * Records one citizen's signature.
- *
- * The ordering is deliberate: **insert the signature first, then adjust
- * the count.**
- *
- * Inserting first means the overwhelmingly common failure -- the same
- * citizen signing twice, which is what a double-clicked button or a
- * replayed request produces -- fails atomically at the unique index
- * before anything else has happened, so it needs no compensation at all.
- * Incrementing first would make that common case require an undo.
- *
- * The rarer race is the petition closing between the status check and
- * the increment. That is caught by making the increment itself
- * conditional on the petition still being OPEN: if it matches nothing,
- * the signature that was just inserted is deleted again. Deleting is
- * safe because this request is the one that created that exact row.
- *
- * If the process died between the insert and the increment, the count
- * would be one lower than the number of signature rows. That drift is
- * one-directional by construction -- the count can only ever understate
- * support, never overstate it -- and the Signature collection remains
- * the source of truth, so a recount is a single aggregation. An
- * inflated count would be a correctness failure; a conservative one is
- * a recoverable inaccuracy.
- */
+// Record one citizen's signature: insert the signature first, then adjust
+// the count.
+//
+// Inserting first means the common failure -- the same citizen signing
+// twice from a double-click or a replay -- fails atomically at the unique
+// index before anything else happens, needing no compensation.
+//
+// The rarer race is the petition closing between the status check and the
+// increment, caught by making the increment conditional on OPEN; if it
+// matches nothing the just-inserted signature is deleted again.
+//
+// A crash between the two leaves the count one below the row count. That
+// drift is one-directional -- the count can only understate support --
+// and Signature stays the source of truth, so a recount is one aggregation.
 export const signPetition = async (
   petitionId: string,
   actor: SignatureActor
@@ -108,10 +85,9 @@ export const signPetition = async (
     signatureId = created._id;
   } catch (error) {
     if (isDuplicateKeyError(error)) {
-      // The database refused a second signature from this citizen. This
-      // is a successful outcome for the user's intent ("I support this")
-      // even though nothing changed, so the route answers 409 with the
-      // petition attached rather than treating it as an error page.
+      // The database refused a second signature. The user's intent is
+      // already satisfied, so this is a 409 with the petition attached
+      // rather than an error page.
       return { ok: false, code: "ALREADY_SIGNED", message: "You have already signed this petition." };
     }
     throw error;
@@ -124,9 +100,8 @@ export const signPetition = async (
   );
 
   if (!updated) {
-    // The petition stopped being open while we were inserting. Undo the
-    // signature so a closed petition does not carry one that was never
-    // counted.
+    // Closed mid-insert: undo, so a closed petition does not carry a
+    // signature that was never counted.
     await Signature.deleteOne({ _id: signatureId });
     return {
       ok: false,
@@ -138,24 +113,16 @@ export const signPetition = async (
   return { ok: true, petition: updated, changed: true };
 };
 
-/**
- * Withdraws a citizen's own signature.
- *
- * Included because signing is an act of consent and consent that cannot
- * be taken back is not really consent -- not because the endpoint was
- * easy to add. It is restricted to OPEN petitions: once a petition has
- * been closed, reviewed or answered, its tally is the historical record
- * the authority acted on and editing it afterwards would rewrite that
- * record.
- *
- * The ordering here is the mirror image of signing: **decrement first,
- * then delete.** A withdrawal's common failure is "you had not signed",
- * which is caught by the cheap existence check before any write. What
- * the ordering then protects against is the petition closing mid-request
- * -- the conditional decrement fails, and no signature has been removed
- * yet. If the delete unexpectedly removes nothing (two withdrawals
- * racing), the decrement is compensated back.
- */
+// Withdraw a citizen's own signature: signing is consent, and consent
+// that cannot be taken back is not consent. Restricted to OPEN petitions
+// -- once closed or answered, the tally is the record the authority acted
+// on, and editing it would rewrite that record.
+//
+// The ordering mirrors signing: decrement first, then delete. The common
+// failure ("you had not signed") is caught by the existence check before
+// any write; the ordering then protects against the petition closing
+// mid-request, since the conditional decrement fails before anything is
+// removed. If two withdrawals race, the decrement is compensated back.
 export const withdrawSignature = async (
   petitionId: string,
   actor: SignatureActor
@@ -192,8 +159,7 @@ export const withdrawSignature = async (
 
   const removed = await Signature.deleteOne({ petitionId: petition._id, citizenId: actor.userId });
   if (removed.deletedCount === 0) {
-    // Another request withdrew the same signature first. Give the count
-    // back, because this request removed nothing.
+    // Another request withdrew it first, and this one removed nothing.
     await Petition.updateOne({ _id: petition._id }, { $inc: { signatureCount: 1 } });
     return { ok: false, code: "NOT_SIGNED", message: "You have not signed this petition." };
   }
@@ -201,11 +167,7 @@ export const withdrawSignature = async (
   return { ok: true, petition: updated, changed: true };
 };
 
-/**
- * Whether one citizen has signed one petition.
- *
- * Answers `false` for an anonymous viewer without touching the database.
- */
+// Answers false for an anonymous viewer without touching the database.
 export const hasCitizenSigned = async (
   petitionId: unknown,
   citizenId?: string
@@ -215,12 +177,8 @@ export const hasCitizenSigned = async (
   return found !== null;
 };
 
-/**
- * Which of a page of petitions a citizen has signed.
- *
- * One `$in` query for the whole page rather than one per row: a listing
- * of 50 petitions costs a single indexed lookup, not 50.
- */
+// One $in query for a whole page rather than one per row: a listing of
+// 50 petitions costs a single indexed lookup, not 50.
 export const signedPetitionIds = async (
   petitionIds: unknown[],
   citizenId?: string

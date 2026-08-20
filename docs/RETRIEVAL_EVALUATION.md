@@ -1756,3 +1756,139 @@ fine-tune could also cause, and it would be caught the same way.
   loads -- harmless in environments without TensorFlow installed at
   all, but worth knowing about if dense mode ever fails to import in a
   new environment.
+
+## M6-era RAG research plan (no implementation authorised)
+
+This section is a **plan only**. Nothing in the retrieval implementation,
+the corpus, the embeddings, the thresholds, the safety gates or the
+evaluation sets was changed by the M6 engineering-hardening work, and no
+experiment below has been started. It exists so a later session begins
+from measured evidence rather than from intuition, and so the two
+approaches already tested and rejected are not silently retried.
+
+### The frozen baseline
+
+The production path is BM25 + dense (`all-MiniLM-L6-v2`, 384-dim) fused
+with weighted RRF (dense weight 3.0, k=5), behind the risk/UPL,
+topic-relevance and corpus-coverage guards, with a hybrid confidence
+floor of 0.42. Measured numbers, restated here so an experiment has
+something to beat:
+
+| Metric | 313-query citizen set | 49-query control |
+| --- | --- | --- |
+| Recall@5 | 0.6246 | 0.8370 |
+| Precision@5 | 0.1381 | 0.1822 |
+| MRR | 0.4874 | 0.7096 |
+| nDCG@5 | 0.5160 | 0.7227 |
+| Top-1 citation correctness | 0.3879 | 0.6222 |
+| Abstention accuracy | 0.7572 | 0.9796 |
+| Wrong-Act top-1 rate | 0.196 | — |
+| False accepts / false abstains | 7 / 69 | — |
+
+`hard_negative` recall is 0.966 and is the single most important number
+to protect: it is the measure of not confidently citing a
+superficially-similar but legally wrong provision.
+
+The two headline weaknesses are **top-1 citation correctness (0.3879)**
+and the **wrong-Act rate (0.196)** — the system finds relevant law but
+too often leads with the wrong statute. By elimination, the remaining
+misses concentrate in `representation_gap` (29 of 119) and
+`dense_embedding` (15 of 119), 37.0% combined.
+
+### Reconciling the proposed experiments against work already done
+
+Two of the five commonly-proposed directions are **not open questions
+for this project**, and re-running them as stated would repeat a known
+result:
+
+- **Cross-encoder reranking — tested and rejected, do not re-propose on
+  the candidate-pool argument.** The premise (76.9% of missed chunks are
+  reachable in the fused candidate pool) was verified true, a
+  `ms-marco-MiniLM` cross-encoder was implemented properly, and it still
+  failed on legal-safety grounds: `hard_negative` recall 0.966 → 0.793
+  and abstention accuracy 0.7764 → 0.6677, bought for +1.7pp recall@5.
+  The diagnosis was that a general-purpose reranker has no notion that
+  BNS and BNSS are different statutes and rewards boilerplate naming an
+  Act. A future attempt must answer *that* failure — a legal-domain-tuned
+  cross-encoder — not restate the pool argument.
+- **Hard negatives — already built, not missing.** `hard_negative` is an
+  existing category (29 of the 313 groups). The open work is *expanding*
+  it toward the wrong-Act failure mode, not creating it.
+
+Three directions are genuinely open. They are ordered by expected value
+against the two headline weaknesses:
+
+### Experiment 1 — structured legal chunks (highest expected value)
+
+Carry `act`, `chapter`, `section`, `heading` and `provision text` as
+first-class fields on each chunk rather than flattening them into one
+text blob, and make the Act identity available to scoring.
+
+Rationale: this is the only proposed intervention that targets the
+wrong-Act rate (0.196) at its cause. The reranker failed precisely
+because nothing in the pipeline represents "BNS and BNSS are different
+statutes"; structured chunks put that distinction into the
+representation instead of hoping a model infers it. It also plausibly
+reaches part of `representation_gap`.
+
+Risks to watch: re-chunking changes every embedding, so the whole
+baseline must be re-measured, not spot-checked; and finer chunks can
+raise precision while quietly costing recall.
+
+### Experiment 2 — citizen-language query understanding
+
+Partly explored already: `query_expand.py` carries a deliberately narrow,
+curated abbreviation dictionary, and broader preprocessing was previously
+deferred rather than disproven. Genuinely untested: legal synonym
+mapping, intent/topic detection, and multi-query retrieval (issue several
+reformulations, fuse the results).
+
+**Constraint:** hypothetical-document generation (HyDE) would introduce a
+generative model into the legal path. That collides with the standing
+"no generative LLM in the legal-answer pipeline" decision, and must not
+be attempted without explicit approval, even though it sits in retrieval
+rather than in answer construction. Evaluate the deterministic options
+first — they are cheaper and carry no hallucination surface.
+
+### Experiment 3 — top-1 / top-3 answer shaping
+
+Do not simply lower `top_k` from 5 to 1. The question worth measuring is
+whether retrieving a wide pool, then applying the safety gate, then
+returning the 1–3 provisions that survive, improves top-1 citation
+correctness and the wrong-Act rate **without** costing recall or
+abstention accuracy. Note that this interacts with Experiment 1: if
+structured chunks fix Act identity, top-1 shaping becomes much safer.
+
+### Evaluation methodology
+
+Every experiment reports the same table, on both sets, held-out only:
+
+| System | Recall@5 | Precision@5 | F1 | MRR | nDCG@5 | Top-1 citation | Top-3 recall | Abstention accuracy | False accepts | Wrong-Act rate | `hard_negative` recall |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Baseline (frozen) | | | | | | | | | | | |
+| + structured chunks | | | | | | | | | | | |
+| + query understanding | | | | | | | | | | | |
+| + expanded hard negatives | | | | | | | | | | | |
+| Combined | | | | | | | | | | | |
+
+Promotion rules, unchanged from the standing discipline:
+
+1. No promotion without before/after numbers on **both** eval sets.
+2. **No promotion at all if `hard_negative` recall or the wrong-Act rate
+   degrades**, whatever else improves. This is the rule the reranker
+   failed, and it is what makes the abstention behaviour trustworthy.
+3. A single improved metric is not evidence; recall bought with
+   abstention accuracy is a regression in a legal-information system.
+4. Re-run both sets after any corpus change before comparing anything.
+
+### Observation recorded during M6 verification (not acted on)
+
+Running the frozen pipeline locally to confirm the baseline still
+behaves, `"Someone is breaking into my house right now"` returned
+`policy_decision: answered` rather than an emergency redirect, while
+self-harm and domestic-violence phrasings correctly returned
+`redirect_emergency` and `"Should I plead guilty in my case tomorrow?"`
+correctly returned `redirect_adviser`. Burglary-in-progress is plausibly
+inside the documented "active crime" emergency category. This was **not
+changed** — the safety gates are frozen — but it is a concrete candidate
+for the hard-negative/safety expansion in the work above.

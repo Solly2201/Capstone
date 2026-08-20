@@ -18,6 +18,13 @@ export type UserDocument = {
     tokenHash: string;
     expiresAt: Date;
   };
+  /**
+   * Bumped to invalidate every access token already issued to this
+   * account. Privileged routes compare it against the token's claim, so
+   * a demotion or a compromised session can be revoked without waiting
+   * for the token to expire.
+   */
+  tokenVersion: number;
   disclaimerAcceptance: {
     version: string;
     acceptedAt: Date;
@@ -45,6 +52,7 @@ const userSchema = new Schema<UserDocument>(
       required: false,
       select: false
     },
+    tokenVersion: { type: Number, required: true, default: 0 },
     disclaimerAcceptance: {
       version: { type: String, required: true },
       acceptedAt: { type: Date, required: true }

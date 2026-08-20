@@ -3,12 +3,9 @@ import { toPublicCivicReport } from "./civic-reports.js";
 import type { CivicReportDocument } from "../models/civic-report.js";
 import type { HydratedDocument } from "mongoose";
 
-/**
- * Mapper-level tests. The route tests cover authorisation; these cover
- * what the mapper is uniquely responsible for -- the coordinate
- * inversion, actor-identity visibility, and not falling over on data
- * written before this milestone's fields existed.
- */
+// Mapper-level tests: the coordinate inversion, actor-identity
+// visibility, and surviving documents written before these fields
+// existed. Authorisation is covered by the route tests.
 
 const CREATED_AT = new Date("2026-08-18T10:00:00.000Z");
 

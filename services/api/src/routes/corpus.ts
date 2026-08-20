@@ -1,16 +1,10 @@
 import { Router } from "express";
 import { env } from "../config/env.js";
 
-/**
- * Thin, read-only proxy to the AI service's /corpus/* endpoints.
- *
- * This exists so the browser never talks to the Python service
- * directly (keeping the service boundary from docs/ARCHITECTURE.md
- * intact) and so we have one place to add auth/rate-limit rules once
- * Module 1B's chat is added. Nothing here calls an LLM -- it forwards
- * a search/lookup to the AI service's retrieval layer and passes the
- * cited result straight through.
- */
+// Read-only proxy to the AI service's /corpus/* endpoints, so the browser
+// never talks to the Python service directly and there is one place to
+// add auth or rate limits. Forwards to the retrieval layer and passes the
+// cited result straight through; nothing here calls an LLM.
 export const corpusRouter = Router();
 
 async function proxyGet(path: string): Promise<{ status: number; body: unknown }> {
@@ -19,11 +13,12 @@ async function proxyGet(path: string): Promise<{ status: number; body: unknown }
   return { status: response.status, body };
 }
 
-corpusRouter.get("/sources", async (_request, response) => {
+corpusRouter.get("/sources", async (request, response) => {
   try {
     const { status, body } = await proxyGet("/corpus/sources");
     response.status(status).json(body);
-  } catch {
+  } catch (error) {
+    request.log.error({ err: error }, "AI service unreachable for a corpus request");
     response.status(503).json({ message: "AI service is unreachable." });
   }
 });
@@ -37,7 +32,8 @@ corpusRouter.get("/search", async (request, response) => {
   try {
     const { status, body } = await proxyGet(`/corpus/search?${params.toString()}`);
     response.status(status).json(body);
-  } catch {
+  } catch (error) {
+    request.log.error({ err: error }, "AI service unreachable for a corpus request");
     response.status(503).json({ message: "AI service is unreachable." });
   }
 });
@@ -49,7 +45,8 @@ corpusRouter.get("/sections/:sourceId/:unitNumber", async (request, response) =>
       `/corpus/sections/${encodeURIComponent(sourceId)}/${encodeURIComponent(unitNumber)}`
     );
     response.status(status).json(body);
-  } catch {
+  } catch (error) {
+    request.log.error({ err: error }, "AI service unreachable for a corpus request");
     response.status(503).json({ message: "AI service is unreachable." });
   }
 });

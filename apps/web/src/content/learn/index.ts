@@ -1,0 +1,201 @@
+import { arrestBailArticles } from "./arrest-bail";
+import { childrenArticles } from "./children-and-young-people";
+import { civicParticipationArticles } from "./civic-participation";
+import { constitutionArticles } from "./constitution";
+import { consumerRightsArticles } from "./consumer-rights";
+import { courtsAndEvidenceArticles } from "./courts-and-evidence";
+import { digitalRightsArticles } from "./digital-rights";
+import { everydayRightsArticles } from "./everyday-rights";
+import { legalAidArticles } from "./legal-aid";
+import { policeFirArticles } from "./police-fir";
+import { quizQuestions as allQuizQuestions } from "./questions";
+import { womenAndSafetyArticles } from "./women-and-safety";
+import {
+  legalSources,
+  type Citation,
+  type LearnCategory,
+  type LearnCategoryId,
+  type LearningArticle,
+  type LegalSourceId,
+  type QuizQuestion
+} from "./types";
+
+export * from "./types";
+
+export const learnCategories: LearnCategory[] = [
+  {
+    id: "constitution",
+    title: "Constitution & Fundamental Rights",
+    description:
+      "What Part III of the Constitution guarantees, group by group, and the duties it places on citizens."
+  },
+  {
+    id: "police-fir",
+    title: "Police, FIR & Complaints",
+    description:
+      "How information about an offence is recorded, what a station must give you, and what to do if it refuses."
+  },
+  {
+    id: "arrest-bail",
+    title: "Arrest & Bail",
+    description:
+      "What the law requires during an arrest, the rights that attach in custody, and how bail works."
+  },
+  {
+    id: "courts-and-evidence",
+    title: "Courts, Trials & Evidence",
+    description:
+      "What a court can be shown and by whom: relevance and burden of proof, documents and electronic records, witnesses, confessions, and legal privilege."
+  },
+  {
+    id: "everyday-rights",
+    title: "Everyday Citizen Rights",
+    description:
+      "The offences behind ordinary disputes — cheating and forgery, theft, threats and reputation, and nuisance in your neighbourhood.",
+    deferredTopics: [
+      "Workplace and labour rights — no labour legislation has been ingested into this project's source library, so nothing here would be grounded in an official source.",
+      "Tenancy and rent control — governed by State legislation that is not part of the ingested corpus."
+    ]
+  },
+  {
+    id: "consumer-rights",
+    title: "Consumer Rights",
+    description:
+      "Who counts as a consumer, where a complaint is filed and within what time, how a case proceeds, mediation, product liability, and misleading advertisements."
+  },
+  {
+    id: "digital-rights",
+    title: "Digital & Online Rights",
+    description:
+      "Cybercrime and online fraud, identity theft, privacy in electronic form, harmful content, platform responsibility, and the legal standing of electronic records.",
+    deferredTopics: [
+      "Data protection — India's dedicated data-protection legislation is not part of this project's ingested source library, and sections 43 and 43A of the Information Technology Act are missing from the ingested PDF, so neither is summarised here."
+    ]
+  },
+  {
+    id: "women-and-safety",
+    title: "Women's Safety & Domestic Violence",
+    description:
+      "What the law means by domestic violence, who must tell an aggrieved person her options, the orders a Magistrate can pass, and what happens if one is breached."
+  },
+  {
+    id: "children-and-young-people",
+    title: "Children & Young People",
+    description:
+      "The principles behind juvenile justice, how a child alleged to have broken the law is dealt with, children in need of care and protection, and offences against children.",
+    deferredTopics: [
+      "Sexual offences against children — governed principally by a separate statute that is not part of the ingested corpus."
+    ]
+  },
+  {
+    id: "legal-aid",
+    title: "Legal Aid & Access to Justice",
+    description:
+      "Who is entitled to free legal services, the authorities that provide them, and the Lok Adalat and Permanent Lok Adalat settlement forums."
+  },
+  {
+    id: "civic-participation",
+    title: "Civic Participation",
+    description:
+      "Civic complaints and petitions on this platform, how they differ from a legal case, and how to use them well."
+  }
+];
+
+// Order here is the order categories appear on the Learn page, and it is
+// deliberate: the constitutional and criminal-procedure material first,
+// then the subject areas a citizen is most likely to arrive looking for.
+export const learningArticles: LearningArticle[] = [
+  ...constitutionArticles,
+  ...policeFirArticles,
+  ...arrestBailArticles,
+  ...courtsAndEvidenceArticles,
+  ...everydayRightsArticles,
+  ...consumerRightsArticles,
+  ...digitalRightsArticles,
+  ...womenAndSafetyArticles,
+  ...childrenArticles,
+  ...legalAidArticles,
+  ...civicParticipationArticles
+];
+
+export const findCategory = (id: LearnCategoryId): LearnCategory | undefined =>
+  learnCategories.find((category) => category.id === id);
+
+export const findArticle = (slug: string | undefined): LearningArticle | undefined =>
+  slug ? learningArticles.find((article) => article.slug === slug) : undefined;
+
+export const articlesInCategory = (id: LearnCategoryId): LearningArticle[] =>
+  learningArticles.filter((article) => article.categoryId === id);
+
+/** Distinct sources cited by an article, in first-citation order. */
+export const articleSourceIds = (article: LearningArticle): LegalSourceId[] => {
+  const seen: LegalSourceId[] = [];
+  for (const paragraph of article.paragraphs) {
+    const id = paragraph.citation?.sourceId;
+    if (id && !seen.includes(id)) seen.push(id);
+  }
+  return seen;
+};
+
+/** Case-insensitive match over title, summary and citation labels. */
+export const matchesQuery = (article: LearningArticle, query: string): boolean => {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = [
+    article.title,
+    article.summary,
+    ...article.paragraphs.map((paragraph) => paragraph.citation?.label ?? "")
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(needle);
+};
+
+export const sourceLabel = (citation: Citation): string => legalSources[citation.sourceId].label;
+
+// --- Quiz ---------------------------------------------------------------
+// Questions live alongside the articles they are drawn from, and are
+// looked up by article slug. There is no server round-trip and no stored
+// progress: a quiz attempt is component state that lasts as long as the
+// learner is on the page. That is a deliberate scope decision — a quiz
+// score is not something this project needs to persist, and adding a
+// backend for it would be a new subsystem for no benefit.
+
+export const quizQuestions: QuizQuestion[] = allQuizQuestions;
+
+/** Questions for one article, in the order they were authored. */
+export const questionsForArticle = (slug: string): QuizQuestion[] =>
+  quizQuestions.filter((question) => question.articleSlug === slug);
+
+/** Questions for every article in a category, article order preserved. */
+export const questionsInCategory = (id: LearnCategoryId): QuizQuestion[] =>
+  articlesInCategory(id).flatMap((article) => questionsForArticle(article.slug));
+
+export const findQuestion = (id: string | undefined): QuizQuestion | undefined =>
+  id ? quizQuestions.find((question) => question.id === id) : undefined;
+
+/**
+ * Score an attempt. `answers` maps question id to the option id chosen;
+ * a question with no entry counts as unanswered, which is not the same as
+ * wrong for the purpose of `answered` but does count against `total`.
+ */
+export const scoreAttempt = (
+  questions: QuizQuestion[],
+  answers: Record<string, string>
+): { correct: number; answered: number; total: number; percentage: number } => {
+  let correct = 0;
+  let answered = 0;
+  for (const question of questions) {
+    const choice = answers[question.id];
+    if (choice === undefined) continue;
+    answered += 1;
+    if (choice === question.correctOptionId) correct += 1;
+  }
+  const total = questions.length;
+  return {
+    correct,
+    answered,
+    total,
+    percentage: total === 0 ? 0 : Math.round((correct / total) * 100)
+  };
+};

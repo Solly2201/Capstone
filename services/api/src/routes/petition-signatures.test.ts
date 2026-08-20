@@ -5,17 +5,11 @@ import { Petition } from "../models/petition.js";
 import { Signature } from "../models/signature.js";
 import { signAccessToken } from "../lib/jwt.js";
 
-/**
- * Signature integrity.
- *
- * The mocks in this file deliberately *emulate the database
- * constraints* rather than just recording calls: the signature store
- * enforces the unique `{ petitionId, citizenId }` index by throwing a
- * real duplicate-key error, and the petition store honours the
- * conditional filter on `findOneAndUpdate`. Asserting that the route
- * called `create` proves nothing about what happens when two requests
- * race; making the fake behave like MongoDB does.
- */
+// Signature integrity. The mocks here emulate the database constraints
+// rather than recording calls: the signature store throws a real
+// duplicate-key error and the petition store honours the conditional
+// filter. Asserting that the route called create proves nothing about a
+// race; making the fake behave like MongoDB does.
 
 vi.mock("../models/petition.js", () => ({
   Petition: {
@@ -64,10 +58,8 @@ const ADMIN_ID = "64b7f9c2e1a2b3c4d5e6f704";
 const authorityToken = signAccessToken({ sub: AUTHORITY_ID, role: "AUTHORITY" });
 const adminToken = signAccessToken({ sub: ADMIN_ID, role: "ADMIN" });
 
-/**
- * The signing limiter is keyed by user id and module-scoped, so tests
- * take a fresh citizen each rather than sharing one budget.
- */
+// The signing limiter is keyed by user id and module-scoped, so each test
+// takes a fresh citizen rather than sharing a budget.
 let citizenCounter = 0;
 const nextCitizen = () => {
   citizenCounter += 1;
@@ -240,11 +232,9 @@ describe("POST /api/petitions/:id/signatures", () => {
     expect(signatures.size).toBe(1);
   });
 
-  /**
-   * The race the unique index exists for. Both requests are in flight
-   * before either finishes, so an application-level "have they signed?"
-   * check would let both through.
-   */
+  // The race the unique index exists for: both requests are in flight
+  // before either finishes, so a "have they signed?" check would let both
+  // through.
   it("lets exactly one of two simultaneous signatures from one citizen win", async () => {
     const citizen = nextCitizen();
 
@@ -335,11 +325,8 @@ describe("POST /api/petitions/:id/signatures", () => {
     }
   });
 
-  /**
-   * The narrow window the compensating delete exists for: the petition
-   * stops being open after the signature row is inserted but before the
-   * count is adjusted. The signature must not survive.
-   */
+  // The window the compensating delete exists for: the petition closes
+  // after the row is inserted but before the count moves.
   it("undoes the signature if the petition closes mid-request", async () => {
     const citizen = nextCitizen();
     betweenInsertAndIncrement = () => {

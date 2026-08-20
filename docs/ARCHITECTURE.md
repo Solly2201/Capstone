@@ -52,11 +52,11 @@ flowchart TD
 | Increment | Outcome |
 | --- | --- |
 | 1 | Foundation, public UI, auth/RBAC boundary, CI and operational documentation — **done** |
-| 2 | Legal learning paths and official-source ingestion — **in progress**: ingestion pipeline (raw.txt or raw.pdf, including a coordinate-based extractor for two-column India Code gazette PDFs — see `docs/LEGAL_SOURCES.md`), hybrid retrieval (BM25 + local dense embeddings, RRF-fused, evaluated against a BM25 baseline — see `docs/RETRIEVAL_EVALUATION.md`), document browser, and 3 grounded learning articles are built and tested; BNS/BNSS/BSA are now fully ingested (FIR, bail, and offences-against-property chapters included) but FIR-vs-NCR and bail-procedure learning articles are not yet written |
+| 2 | Legal learning paths and official-source ingestion — **in progress**: ingestion pipeline (raw.txt or raw.pdf, including a coordinate-based extractor for two-column India Code gazette PDFs — see `docs/LEGAL_SOURCES.md`), hybrid retrieval (BM25 + local dense embeddings, RRF-fused, evaluated against a BM25 baseline — see `docs/RETRIEVAL_EVALUATION.md`), document browser, and a categorised Learn module is built and tested; BNS/BNSS/BSA are now fully ingested (FIR, bail, and offences-against-property chapters included), and the Learn module now carries 29 grounded articles across five categories, including the FIR-vs-NCR and bail-procedure topics |
 | 3 | Deterministic legal answers, UPL/risk guardrails, evaluation harness — **done**: `POST /legal/answer` / `POST /api/legal/answer` implements Risk/UPL → hybrid retrieval → confidence gate → deterministic structured response (exact retrieved excerpts + citations, no generative LLM anywhere in the path — see "No-generation principle" below); the retrieval evaluation harness (`services/ai/eval/`, Recall@K, Precision@K, MRR, nDCG, top-1 citation correctness, abstention accuracy) is built and was used to choose hybrid over BM25-only, and to tune its fusion/gate parameters, with real measured results. The browser-facing half landed in the M1 usability milestone: `/legal-assistant` renders this endpoint's response verbatim, and the auth/email-verification frontend integration shipped alongside it (see "Authentication and account activation" below) |
 | 4 | Civic reporting, image privacy processing, duplicates, SLA and Authority UI — **citizen core done** (M2): report creation with optional photo, ownership-scoped retrieval, metadata stripping and local media storage (see "Civic reporting" below); the authority workflow is now built too (M3): a declared transition table, server-controlled status history, staff-assigned priority with SLA deadlines, and an authority queue/detail UI. Duplicate detection, vision and notifications are not built |
 | 5 | Petitions, signatures, moderation and recommendation agent — **petitions, signatures and moderation done** (M4): a capability-keyed transition table, a separate `Signature` collection whose unique compound index enforces one signature per citizen per petition, a public browse/detail surface, and an authority moderation queue (see "Petitions and public participation" below). **The recommendation agent is not built**, and no AI of any kind is involved in this module |
-| 6 | Evaluation, observability and deployment preparation |
+| 6 | Evaluation, observability and deployment preparation — **engineering hardening done** (M6): token-version revocation and stored-role re-checks on privileged routes, production guards on `JWT_SECRET`/`WEB_ORIGIN`, redacted structured request logging, liveness vs readiness health checks, graceful shutdown, CPU-only PyTorch in the AI image, `.dockerignore` for both build contexts, and a separate Docker integration workflow (see "Engineering hardening (M6)" below). Duplicate detection, vision, notifications and the recommendation agent remain unbuilt |
 
 ## Legal corpus ingestion (Increment 2)
 
@@ -109,10 +109,12 @@ rather than added.
 
 ```mermaid
 flowchart LR
-  Q["Citizen question"] --> Risk["Risk/UPL rules\n(7 categories, deterministic)"]
-  Risk -->|emergency/cyber category| Emg["Redirect: 112 / 1930 / 181 / cybercrime.gov.in"]
-  Risk -->|personalised advice| Adv["Redirect: Tele-Law / Nyaya Bandhu / lawyer directory"]
-  Risk -->|informational| Topic["Topic-relevance guard\n(curated out-of-domain phrases, deterministic)"]
+  Q["Citizen question"] --> Risk["Query-safety policy\n(subject x framing x immediacy, deterministic)"]
+  Risk -->|harmful_request| Refuse["Refuse: obstruction/fabrication\n+ lawyer / legal-aid route"]
+  Risk -->|emergency| Emg["Redirect: 112 / 181 / 1098 / 1930 / cybercrime.gov.in"]
+  Risk -->|serious| Adv["Caution + Tele-Law / Nyaya Bandhu / DLSA,\nthen retrieval for the general law"]
+  Adv --> Topic
+  Risk -->|normal| Topic["Topic-relevance guard\n(curated out-of-domain phrases, deterministic)"]
   Topic -->|matches known unrelated topic| Abstain2["Abstain: not covered by this service"]
   Topic -->|no match| Search["app.retrieval.search\n(hybrid BM25+dense, RRF-fused)"]
   Search --> Gate{"Confidence gate\nLEGAL_CHAT_MIN_SCORE, mode-aware"}
@@ -122,9 +124,20 @@ flowchart LR
 
 Multiple or differing sources are never merged into one synthesized paragraph -- each retrieved chunk is returned as its own excerpt with its own citation, so conflicting or overlapping evidence is preserved by construction rather than needing separate reconciliation logic.
 
+**Query-safety policy (`app/safety/risk.py`):** runs first, before every other guard and before retrieval. It replaced a flat keyword list that failed in both directions -- it answered "How can I hide evidence from the police?" as an ordinary legal question, and hard-stopped "Explain what the law says about domestic violence" as an emergency. Both failures had the same cause: a phrase says what a query is *about* and nothing about what the person is *asking for*. The policy therefore reads three independent signals -- **subject** (life-threatening vs. serious-legal), **framing** (informational / instructional / personal) and **immediacy** -- and combines them in one readable decision table (`assess_query`). It assigns one of four severities:
+
+| Severity | Meaning | Retrieval runs? | `policy_decision` |
+| --- | --- | --- | --- |
+| `harmful_request` | Asking to be shown how to destroy evidence, fabricate an alibi, interfere with a witness or evade an investigation. Checked first, so it cannot be smuggled in behind an emergency or an educational framing. | no | `refused` |
+| `emergency` | A life-threatening situation presented as real. Returns the relevant official helpline immediately, with no legal analysis in front of it. | no | `redirect_emergency` |
+| `serious` | A real legal matter affecting the asker (a live accusation, an interrogation, an imminent arrest). The caution and the legal-aid route lead; the general law on the topic still follows, behind the same confidence gate as any other query. What is withheld is personalised procedural coaching, not the text of the law. | **yes** | `redirect_adviser` |
+| `normal` | Ordinary legal education. Straight through to the guards below, unchanged. | yes | `answered` / `abstained` |
+
+The severity and an `authority_guidance` flag are carried on the API response, so the frontend frames a redirect from structured fields rather than by parsing the message string. Only official national numbers are named (112, 181, 1098, 1930) -- the contact routes are fixed configuration data, never generated. The policy is deliberately conservative where a miss risks physical harm and permissive where a false positive would block ordinary legal education; the matrix in `services/ai/tests/test_safety.py` pins both directions, including a false-positive group of heavy-subject-word questions that must stay `normal`.
+
 **Topic-relevance guard (`app/safety/topic_relevance.py`):** runs after Risk/UPL and before retrieval, same placement and same deterministic-rules-only design. It exists because the confidence gate's bounded dense-score threshold cannot separate every out-of-domain query from a genuine low-confidence legal paraphrase — both can land in the same ~0.42-0.49 band on this corpus (see `docs/RETRIEVAL_EVALUATION.md`'s "Remaining limitations"). Rather than raising that single global threshold (which would cost genuine coverage), a small curated set of phrase patterns for well-known non-legal-information subjects (company/business registration, income tax, driving licence/vehicle registration, identity documents, everyday non-civic topics) is checked first; a match aborts before spending a retrieval call. Anything it doesn't recognize still falls through unchanged to the existing confidence gate — this guard is deliberately narrow (extend only when evaluation names a specific new gap, same rule as `app/retrieval/query_expand.py`'s abbreviation dict), not a general topic classifier.
 
-`POST /legal/answer` (AI service) and its proxy `POST /api/legal/answer` (Node) implement this end to end. The endpoint is intentionally public (no login) for v1, so every response — including redirects and abstentions — carries the current disclaimer text/version. No retrieval call happens for a message Risk/UPL or the topic-relevance guard catches. See `services/ai/app/generation/pipeline.py` (`handle_legal_query`, `build_legal_answer`) for the exact call order and `services/ai/app/safety/` for the rule sets.
+`POST /legal/answer` (AI service) and its proxy `POST /api/legal/answer` (Node) implement this end to end. The endpoint is intentionally public (no login) for v1, so every response — including redirects and abstentions — carries the current disclaimer text/version. No retrieval call happens for a message the safety policy hard-stops (an emergency or a harmful request) or the topic-relevance guard catches; a `serious` query does reach retrieval, so the law that governs it can still be cited under the caution. See `services/ai/app/generation/pipeline.py` (`handle_legal_query`, `build_legal_answer`) for the exact call order and `services/ai/app/safety/` for the rule sets.
 
 ## Civic reporting (Module 2 — citizen core)
 
@@ -276,6 +289,21 @@ The signing path treats everything except that index as untrusted:
 
 **Why no transaction.** `docker-compose.yml` runs a standalone `mongod`, and MongoDB multi-document transactions require a replica set — so a transaction was unavailable rather than passed over, and the consequences are handled explicitly instead. Signing inserts the signature first and increments second, which makes the common failure (the same citizen signing twice — a double-clicked button, a replayed request) fail atomically at the index with nothing to undo; the rarer race, the petition closing mid-request, is caught by making the increment conditional on the petition still being `OPEN` and deleting the just-inserted row if it matches nothing. Withdrawal mirrors this: decrement first, delete second, and give the count back if the delete removed nothing. The residual risk is bounded and **one-directional** — a crash between insert and increment leaves the count lower than the row count, never higher — so a recount repairs it and an inflated tally is impossible by construction.
 
+**How the index is proved to exist.** A unique index is a claim about a
+running database, and the unit suite cannot check it: its signature fake
+throws a real E11000, which exercises the handler correctly but would
+behave identically against a schema carrying no index at all.
+`services/api/src/services/petition-signatures.integration.test.ts`
+therefore runs against a real `mongod` and asserts the index is present
+and unique, that a duplicate insert is refused, that twelve concurrent
+`signPetition` calls by one citizen leave exactly one row with
+`signatureCount` 1, and that twelve distinct citizens leave twelve. The
+suite was confirmed non-vacuous by mutation — deleting `unique: true`
+from the schema fails exactly those assertions. It runs in CI against a
+`mongo:7.0` service container, and locally against the Compose instance,
+under its own database name (see `services/api/src/test/mongo.ts` for why
+a real server was preferred over an in-memory one).
+
 ### Visibility
 
 Every status except `REJECTED` is public, because an archive of what the authority answered or closed is the point of having one. A removed petition stays readable by its creator (so they can read why) and by staff (so the decision stays auditable), and by nobody else. A viewer who may not see one is answered **404, not 403**, so the endpoint cannot be used to confirm that a particular removed petition ever existed — the same rule the civic report routes follow. The public list excludes them structurally by intersecting the requested status with the public set, and the "signed by me" list applies the same rule so that signing something never becomes a second route to content moderation removed.
@@ -327,3 +355,150 @@ Bearer-JWT auth, unchanged in design since Increment 1: `POST /api/auth/login` i
 
 The browser calls the Node API only; the Node API is the sole caller of the Python AI service. The Legal Assistant page (`/legal-assistant`) is the frontend for `POST /api/legal/answer` and renders the backend's response verbatim — excerpt text, citation, official-source link, verified-as-on date, and the response's own disclaimer — with no client-side summarising, paraphrasing or merging, so the no-generation guarantee is preserved end to end.
 
+
+## Engineering hardening (M6)
+
+Production-readiness work that changed no product behaviour and no part
+of the frozen RAG system. Each item below is either verified by tests in
+this repository or explicitly marked as needing a Docker rebuild.
+
+### Token freshness and revocation
+
+A signed JWT carries the caller's role, so before this change the API
+honoured that role for the token's remaining lifetime — an account
+demoted from AUTHORITY kept authority powers for up to 15 minutes.
+
+`User.tokenVersion` (default 0) is now embedded in the access token as
+`ver`, and privileged routes run `requireFreshRole(...)`, which re-reads
+`{ role, tokenVersion }` from the database, rejects a token whose version
+the account has moved past, and **replaces `request.auth.role` with the
+stored value** so everything downstream authorises on stored fact rather
+than on the token's claim. Incrementing a user's `tokenVersion`
+therefore revokes every token already issued to them without waiting for
+expiry.
+
+The stateless path is preserved where it costs nothing: ordinary citizen
+requests (`requireAuth`, and `requireRole("CITIZEN")`) still do no
+database read, because roles here only ever gain reach — a stale CITIZEN
+claim grants nothing extra. The routes that pay the extra indexed read
+are the civic authority queue, report transitions, priority changes, the
+petition authority queue, and petition transitions (which accept any
+authenticated caller, so it refreshes the role without restricting it,
+before capability is derived).
+
+Covered by `src/middleware/auth-freshness.test.ts`, including the case
+that motivated it: a validly signed, unexpired AUTHORITY token whose
+account now stores CITIZEN is refused 403.
+
+### Environment and secrets
+
+`config/env.ts` now refuses to start under `NODE_ENV=production` if
+`JWT_SECRET` is still the development placeholder, or if `WEB_ORIGIN` is
+a wildcard. Both would otherwise fail silently in the direction that
+matters: a known signing key, or a CORS policy letting any origin drive
+the API with a user's bearer token. `parseEnv()` is exported so this is
+testable without mutating the process environment.
+
+`docker-compose.yml` reads every secret and service address from the
+environment with a local default (`${JWT_SECRET:-...}`), so a deployment
+supplies its own without editing the file, and `.env.example` documents
+what to set. Local development is unchanged — an absent `.env` still
+works.
+
+### Observability
+
+`lib/logger.ts` is the single pino instance, with redaction applied at
+the logger rather than at call sites: `authorization` headers, cookies,
+`password`, `passwordHash`, `token` and `tokenHash` are censored before
+serialisation, so no future log line can leak a bearer token or a
+credential by accident. Redaction is tested in `lib/logger.test.ts`.
+
+`pino-http` logs one line per request with a request id (honouring an
+inbound `x-request-id`), graded by outcome — 5xx at error, 4xx at warn,
+success at info. Only the path is recorded, never the query string:
+the legal endpoints can carry a description of a citizen's own
+situation. The error handler logs through `request.log` so a 500 can be
+traced back to the request that produced it, and the AI proxy routes log
+unreachable/failed AI calls without logging the question itself.
+
+`/health` stays dependency-free (liveness — a database outage must not
+make the container look dead and get restarted). `/health/ready` reports
+MongoDB connectivity and answers 503 when degraded.
+
+### Lifecycle
+
+`server.ts` handles SIGTERM/SIGINT: it stops accepting connections,
+closes Socket.IO, disconnects Mongoose, and exits — with a 10-second
+backstop so a stuck connection cannot block a deploy. Without this a
+container stop killed the process mid-request, which for a civic
+transition could mean the status update was written but never
+acknowledged. MongoDB `disconnected`/`reconnected`/`error` events are
+logged as their own events, so a connection failure is not misread as an
+application bug.
+
+### MongoDB: transactions deliberately not adopted
+
+A replica set was considered and **not** configured. The two workflows
+that could want a transaction do not need one:
+
+- Petition signing is protected by the unique `{ petitionId, citizenId }`
+  index plus an atomic `$inc`, with compensating writes for the narrow
+  windows. The residual risk is one-directional — the cached count can
+  only ever understate support — and `Signature` remains the source of
+  truth, so a recount is a single aggregation.
+- Civic and petition status changes are single-document conditional
+  updates filtered on the status the decision was made against, which is
+  already atomic in MongoDB; a concurrent mover loses the filter and gets
+  a conflict rather than silently overwriting.
+
+Adding a replica set to gain transactions neither workflow needs would
+add operational surface for no measured correctness gain. Index
+guarantees are enforced at startup instead: `server.ts` awaits `init()`
+on every model whose indexes carry a correctness or security guarantee
+and refuses to serve traffic if one cannot be built.
+
+### Image and build-context hygiene
+
+The AI image installed the default PyPI PyTorch wheel, which bundles the
+CUDA runtime (~2 GB of `nvidia-*` packages) that this service never
+loads: there is no GPU in the compose stack, and `embeddings.py` never
+selects a device. `services/ai/Dockerfile` now installs the CPU-only
+PyTorch build from PyTorch's CPU index before resolving
+`requirements-full.txt`, so the transitive dependency is already
+satisfied and the CUDA wheel is never fetched. This is a packaging change
+only — same model, same embeddings, same index, same retrieval
+behaviour, and the pinned version matches the one the test suite is
+validated against.
+
+`.dockerignore` files were added for both build contexts. The root
+context (API and web images) drops `node_modules`, `.git`, `dist`,
+caches and the whole of `services/ai`, none of which any root Dockerfile
+copies: **330.0 MB → 0.9 MB**. The AI context drops the corpus (mounted
+read-only at runtime, never copied), the fine-tuning outputs, tests and
+caches: **111.6 MB → 0.1 MB**. Excluding `node_modules` is a correctness
+fix as well as a size one — a host `node_modules` carries
+platform-specific binaries that would break a Linux image.
+
+Both changes were measured against a real build rather than projected:
+the AI image went **8.61 GB → 2.07 GB**, and the built images were
+inspected to confirm the exclusions removed nothing the runtime needs
+(the AI image still carries `app/` and its mounted `data/`, the API image
+still carries `packages/contracts`, the web image still carries its
+built assets).
+
+The embedding model is cached in a named volume (`ai_model_cache`
+mounted at `HF_HOME=/cache/huggingface`) rather than baked into the
+image, so recreating the container does not re-download it while the
+image stays small. Verified by recreating the container rather than
+restarting it — confirmed by a changed container id — and then loading
+the model with `HF_HUB_OFFLINE=1` set, which can only succeed from cache.
+
+### CI
+
+The unit pipeline gained pip caching, a concurrency group so a new push
+supersedes an in-flight run, and a `git diff --check` hygiene step. A
+separate `integration.yml` builds the compose stack, reports image sizes,
+and smoke-tests health, readiness, an in-domain legal answer and an
+out-of-domain abstention. It runs on demand and weekly rather than per
+pull request, because building the AI image installs PyTorch. Retrieval
+evaluation stays out of CI: it is an offline research workflow.

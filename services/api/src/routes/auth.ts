@@ -47,14 +47,10 @@ authRouter.post("/register", async (request, response, next) => {
   }
 });
 
-/**
- * Completes the email-verification challenge issued at registration.
- *
- * Deliberately does not sign the user in: verification proves control
- * of the address, login still requires the password. Lookup is by token
- * hash only (the raw token is never stored) and an expired challenge is
- * rejected without distinguishing itself from an unknown one.
- */
+// Completes the verification challenge. Deliberately does not sign the
+// user in: verification proves control of the address, login still needs
+// the password. Lookup is by token hash only, and an expired challenge is
+// rejected without distinguishing itself from an unknown one.
 authRouter.post("/verify-email", async (request, response, next) => {
   try {
     const input = verifyEmailSchema.parse(request.body);
@@ -81,15 +77,9 @@ authRouter.post("/verify-email", async (request, response, next) => {
   }
 });
 
-/**
- * Re-issues a verification challenge.
- *
- * Always answers 200 with the same message regardless of whether the
- * address exists or is already verified, so this endpoint cannot be
- * used to enumerate registered accounts. Outside production the fresh
- * token rides along in the response for the same reason as in
- * /register (see lib/email-verification.ts).
- */
+// Re-issues a verification challenge. Always answers 200 with the same
+// message whether or not the address exists, so it cannot be used to
+// enumerate accounts.
 authRouter.post("/resend-verification", async (request, response, next) => {
   try {
     const input = resendVerificationSchema.parse(request.body);
@@ -124,7 +114,7 @@ authRouter.post("/login", async (request, response, next) => {
     }
 
     return response.json({
-      token: signAccessToken({ sub: user.id, role: user.role }),
+      token: signAccessToken({ sub: user.id, role: user.role, ver: user.tokenVersion ?? 0 }),
       user: toPublicUser(user)
     });
   } catch (error) {

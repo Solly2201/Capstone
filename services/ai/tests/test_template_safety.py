@@ -13,7 +13,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.generation.disclaimer import DISCLAIMER_TEXT  # noqa: E402
 from app.generation.pipeline import ABSTENTION_MESSAGE  # noqa: E402
 from app.safety.fabrication import contains_fabricated_action_claim  # noqa: E402
-from app.safety.risk import EMERGENCY_CONTACTS, PERSONALIZED_ADVICE_MESSAGE  # noqa: E402
+from app.safety.risk import (  # noqa: E402
+    EMERGENCY_CONTACTS,
+    HARMFUL_REQUEST_MESSAGE,
+    PERSONALIZED_ADVICE_MESSAGE,
+    SERIOUS_MATTER_MESSAGE,
+)
 
 
 def test_abstention_message_has_no_fabricated_action_claim():
@@ -31,3 +36,11 @@ def test_personalized_advice_message_has_no_fabricated_action_claim():
 def test_emergency_contact_messages_have_no_fabricated_action_claim():
     for category, message in EMERGENCY_CONTACTS.items():
         assert contains_fabricated_action_claim(message) is False, category
+
+
+def test_serious_matter_message_has_no_fabricated_action_claim():
+    assert contains_fabricated_action_claim(SERIOUS_MATTER_MESSAGE) is False
+
+
+def test_harmful_request_message_has_no_fabricated_action_claim():
+    assert contains_fabricated_action_claim(HARMFUL_REQUEST_MESSAGE) is False

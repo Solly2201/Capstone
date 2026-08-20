@@ -14,32 +14,19 @@ import {
   type UserRole
 } from "@cap/contracts";
 
-/**
- * A citizen-submitted civic issue.
- *
- * Location is stored as GeoJSON (`{ type: "Point", coordinates: [lng, lat] }`)
- * with a 2dsphere index, so "reports near me" and duplicate-clustering
- * queries are possible later without a migration. Note the coordinate
- * ORDER: GeoJSON is [longitude, latitude], the reverse of how the API
- * and UI talk about it -- conversion happens in one place
- * (`toPublicCivicReport`) so the inversion cannot spread.
- *
- * Media is embedded rather than a separate collection: a report owns its
- * files, they are never shared between reports, and the array is capped
- * at one image in this milestone. Only storage references live here --
- * the bytes are on disk via LocalFileStorage.
- *
- * History is embedded for the same reason, after weighing a separate
- * `CivicReportEvent` collection: history is only ever read with its
- * report, is written only by the workflow service, and is bounded in
- * practice (a handful of transitions per report, capped by the state
- * machine's shape). Embedding keeps a report and its audit trail in one
- * atomic document, which is what makes the conditional status update in
- * `civic-workflow.ts` safe without a transaction. If cross-report
- * auditing or unbounded event volume ever arrives, promoting history to
- * its own collection is a contained change: only the workflow service
- * writes it and only the mapper reads it.
- */
+// A citizen-submitted civic issue.
+//
+// Location is GeoJSON with a 2dsphere index so nearby-report and
+// clustering queries need no migration later. Note the coordinate order:
+// GeoJSON is [longitude, latitude], the reverse of how the API and UI
+// talk about it, and the conversion lives only in toPublicCivicReport so
+// the inversion cannot spread.
+//
+// Media and history are embedded: a report owns its files, and its
+// history is only read with the report, only written by the workflow
+// service, and bounded by the state machine. One atomic document is what
+// makes the conditional status update in civic-workflow.ts safe without a
+// transaction. Only storage references live here; bytes are on disk.
 
 export type CivicMediaSubdocument = {
   _id: Types.ObjectId;
@@ -133,13 +120,13 @@ const civicReportSchema = new Schema<CivicReportDocument>(
   { timestamps: true }
 );
 
-// "My reports, newest first" is the citizen list query.
+// My reports, newest first.
 civicReportSchema.index({ reporterId: 1, createdAt: -1 });
 // Supports any date-ordered listing.
 civicReportSchema.index({ createdAt: -1 });
 // The authority queue filters on status and orders by deadline.
 civicReportSchema.index({ status: 1, dueAt: 1 });
-// Geospatial queries (nearby reports, duplicate clustering) later.
+// Reserved for nearby-report and clustering queries.
 civicReportSchema.index({ location: "2dsphere" });
 
 export const CivicReport = model<CivicReportDocument>("CivicReport", civicReportSchema);

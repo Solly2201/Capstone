@@ -1,21 +1,15 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 
-/**
- * Renders a civic report image.
- *
- * Report media is not public -- the API requires a bearer token for it
- * (see services/api/src/routes/civic.ts), and a plain `<img src>` cannot
- * send one. So the bytes are fetched through the shared axios instance,
- * which attaches the token, and turned into a temporary object URL that
- * is revoked when the component unmounts.
- */
+// Report media is not public and a plain <img src> cannot send a bearer
+// token, so the bytes are fetched through the shared axios instance and
+// turned into an object URL that is revoked on unmount.
 export function AuthedImage({ path, alt, className }: { path: string; alt: string; className?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    // Non-browser environments (jsdom in tests) have no object URLs.
+    // jsdom has no object URLs.
     if (typeof URL.createObjectURL !== "function") {
       setFailed(true);
       return;

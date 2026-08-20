@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# A new push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   web-and-api:
     name: Typecheck, test and build
@@ -22,6 +27,39 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Catches whitespace errors and conflict markers that typecheck
+      # and tests both ignore.
+      - name: Check diff hygiene
+        run: git diff --check HEAD
+
+  integration:
+    name: Database integration tests
+    runs-on: ubuntu-latest
+    # The petition signature guarantee is enforced by a unique index in
+    # MongoDB, so it cannot be verified against a mock -- see
+    # services/api/src/test/mongo.ts. A service container pins the suite
+    # to the same server version docker-compose.yml deploys.
+    services:
+      mongo:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Petition signature integrity against a real MongoDB
+        run: npm run test:integration --workspace @cap/api
+        env:
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27017
 
   ai-service:
     name: Validate AI service boundary
@@ -31,7 +69,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: services/ai/requirements-dev.txt
       - run: python -m pip install -r services/ai/requirements-dev.txt
       - run: python -c "from services.ai.app.main import app; assert app.title == 'CAP AI Service'"
+      # Retrieval evaluation is deliberately not run here: it is an
+      # offline research workflow, not a per-commit check.
       - run: python -m pytest tests/ -q
         working-directory: services/ai

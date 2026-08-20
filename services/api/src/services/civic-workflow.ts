@@ -9,28 +9,17 @@ import {
 import { CivicReport, type CivicReportDocument } from "../models/civic-report.js";
 import type { HydratedDocument } from "mongoose";
 
-/**
- * The civic authority workflow.
- *
- * Every status and priority change goes through this module. Routes
- * validate shapes and answer HTTP; the decision about whether a change
- * is allowed lives here and in the shared transition table, so there is
- * exactly one place to audit.
- *
- * Two properties this file is responsible for:
- *
- * 1. **No forged history.** History entries are built here from the
- *    authenticated actor and the server clock. Nothing from a request
- *    body reaches them except the free-text note.
- *
- * 2. **No lost updates.** The write is a conditional update filtered on
- *    the status the decision was made against, so if another authority
- *    moves the report between our read and our write, our update matches
- *    nothing and we report a conflict instead of silently overwriting
- *    their transition. That check-then-act race is the one real
- *    concurrency hazard in this workflow, and an embedded-history
- *    document makes it fixable without a transaction.
- */
+// Every civic status and priority change goes through this module:
+// routes validate shapes and answer HTTP, the decision lives here and in
+// the shared transition table, so there is one place to audit.
+//
+// Two invariants this file owns:
+//   No forged history -- entries are built from the authenticated actor
+//     and the server clock; only the note comes from the request.
+//   No lost updates -- the write is filtered on the status the decision
+//     was made against, so a concurrent transition reports a conflict
+//     instead of being silently overwritten. Embedded history is what
+//     makes that fixable without a transaction.
 
 export type WorkflowActor = {
   userId: string;
@@ -51,12 +40,8 @@ export type WorkflowSuccess = {
 
 export type WorkflowResult = WorkflowSuccess | WorkflowFailure;
 
-/**
- * Applies a status transition.
- *
- * Order matters: the report is loaded, the shared table judges the move
- * for this actor's role, and only then is the conditional write issued.
- */
+// Order matters: load, let the shared table judge the move for this
+// role, then issue the conditional write.
 export const applyStatusTransition = async (
   reportId: string,
   nextStatus: CivicStatus,
@@ -108,17 +93,10 @@ export const applyStatusTransition = async (
   return { ok: true, report: updated };
 };
 
-/**
- * Sets priority, which moves the SLA deadline.
- *
- * The deadline is always re-derived from `createdAt`, never from now, so
- * re-prioritising a week-old report does not hand it a fresh window --
- * the clock runs from when the citizen reported the problem.
- *
- * Priority changes are recorded in the same history as status changes,
- * because "why is this due tomorrow?" is an audit question of exactly
- * the same kind as "why was this rejected?".
- */
+// Set priority, which moves the SLA deadline. The deadline is re-derived
+// from createdAt rather than now, so re-prioritising a week-old report
+// does not hand it a fresh window. Recorded in the same history as status
+// changes, because "why is this due tomorrow?" is the same audit question.
 export const applyPriorityChange = async (
   reportId: string,
   nextPriority: CivicPriority,
@@ -132,9 +110,7 @@ export const applyPriorityChange = async (
   const report = await CivicReport.findById(reportId);
   if (!report) return { ok: false, code: "NOT_FOUND", message: "Report not found." };
 
-  // A closed report has no remaining work to schedule, so moving its
-  // deadline would be meaningless and would append history to something
-  // already finished. Reopen it first if it genuinely needs attention.
+  // A closed report has no work left to schedule; reopen it first.
   if (isTerminalCivicStatus(report.status)) {
     return {
       ok: false,

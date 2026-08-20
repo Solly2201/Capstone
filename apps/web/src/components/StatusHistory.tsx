@@ -9,13 +9,8 @@ import {
 const statusLabel = (value: string) =>
   value in civicStatusLabels ? civicStatusLabels[value as CivicStatus] : value;
 
-/**
- * The report's audit trail, as recorded by the server.
- *
- * Entries are rendered exactly as the API returned them. `actorId` is
- * only present for authority/admin viewers -- a citizen is shown which
- * role acted and why, not which member of staff.
- */
+// The report's audit trail, rendered exactly as the API returned it.
+// actorId is present only for authority/admin viewers.
 export function StatusHistory({ history }: { history: CivicHistoryEntry[] }) {
   if (history.length === 0) {
     return (
@@ -45,10 +40,8 @@ export function StatusHistory({ history }: { history: CivicHistoryEntry[] }) {
   );
 }
 
-/**
- * SLA deadline indicator. `isOverdue` is computed by the server, so the
- * badge cannot disagree with the queue's own overdue filter.
- */
+// SLA deadline indicator. isOverdue is computed by the server, so the
+// badge cannot disagree with the queue's overdue filter.
 export function DueBadge({ report }: { report: Pick<CivicReport, "dueAt" | "isOverdue" | "status"> }) {
   if (!report.dueAt) return null;
 

@@ -1,26 +1,20 @@
-import { AlertTriangle, ExternalLink, Info, MessagesSquare, Phone, Scale } from "lucide-react";
+import { AlertTriangle, ExternalLink, Info, MessagesSquare, Phone, Scale, ShieldAlert } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { disclaimerText, type LegalAnswerResponse } from "@cap/contracts";
 import { SiteShell } from "../components/SiteShell";
 import { api, apiErrorMessage, apiErrorStatus } from "../lib/api";
 
-/**
- * Frontend for the deterministic legal-answer endpoint.
- *
- * This page renders exactly what `POST /api/legal/answer` returns and
- * nothing else. It does not summarise, paraphrase, merge, reorder or
- * explain the retrieved law, and it never composes an answer of its
- * own: every sentence of legal content on screen is the verbatim
- * `text` of a retrieved chunk, shown with the citation the backend
- * attached to it. Where the backend abstains or redirects, its message
- * is displayed as-is.
- *
- * That is the frontend half of the standing project decision that no
- * generative model appears anywhere in the legal-answer path (see
- * docs/ARCHITECTURE.md). The browser calls the Node API, which proxies
- * the Python AI service -- the browser never calls Python directly.
- */
+// Frontend for the deterministic legal-answer endpoint.
+//
+// This page renders exactly what POST /api/legal/answer returns: it never
+// summarises, paraphrases, merges, reorders or composes legal content.
+// Every sentence on screen is the verbatim text of a retrieved chunk with
+// the citation the backend attached, and an abstention or redirect is
+// shown as-is.
+//
+// That is the frontend half of the standing decision that no generative
+// model appears anywhere in the legal-answer path (docs/ARCHITECTURE.md).
 
 const MIN_QUESTION_LENGTH = 2;
 const MAX_QUESTION_LENGTH = 2000;
@@ -137,7 +131,13 @@ export function LegalAssistantPage() {
 }
 
 function AnswerPanel({ answer, question }: { answer: LegalAnswerResponse; question: string }) {
-  const answered = answer.policy_decision === "answered" && answer.excerpts.length > 0;
+  // A serious-matter response leads with the caution and then shows the
+  // general law behind it, so excerpts are rendered for `serious` too —
+  // what the safety layer withholds is case-specific advice, not the
+  // text of the law itself.
+  const cautioned = answer.severity === "serious";
+  const showExcerpts = answer.excerpts.length > 0 && (answer.policy_decision === "answered" || cautioned);
+  const showPolicyMessage = answer.message !== null && (answer.policy_decision !== "answered" || cautioned);
 
   return (
     <div className="mt-10">
@@ -145,15 +145,20 @@ function AnswerPanel({ answer, question }: { answer: LegalAnswerResponse; questi
       <p className="mt-2 text-sm leading-6 text-ink/80">{question}</p>
 
       {/* Non-answer paths: the backend's own message is shown verbatim. */}
-      {!answered && answer.message && <PolicyMessage answer={answer} />}
+      {showPolicyMessage && <PolicyMessage answer={answer} hasSupportingLaw={showExcerpts} />}
 
-      {answered && (
+      {showExcerpts && (
         <>
           <div className="mt-8 flex items-center gap-2">
             <Scale className="text-clay" size={18} aria-hidden="true" />
-            <h2 className="font-serif text-2xl font-semibold">What the law says</h2>
+            <h2 className="font-serif text-2xl font-semibold">
+              {cautioned ? "The general law on this topic" : "What the law says"}
+            </h2>
           </div>
           <p className="mt-2 text-sm leading-6 text-ink/60">
+            {cautioned
+              ? "General legal information, not advice about your own case. "
+              : ""}
             The exact text of {answer.excerpts.length === 1 ? "the matching provision" : "each matching provision"},
             reproduced without alteration.
           </p>
@@ -204,35 +209,55 @@ function AnswerPanel({ answer, question }: { answer: LegalAnswerResponse; questi
   );
 }
 
-/**
- * Abstentions and safety redirects. The message text always comes from
- * the backend policy decision -- only the framing around it differs, so
- * an emergency redirect does not look like a "no results" shrug.
- */
-function PolicyMessage({ answer }: { answer: LegalAnswerResponse }) {
-  const emergency = answer.policy_decision === "redirect_emergency";
-  const adviser = answer.policy_decision === "redirect_adviser";
+// Abstentions and safety redirects. The text always comes from the
+// backend policy decision; only the framing differs, so an emergency
+// redirect does not look like a "no results" shrug, and a refusal does
+// not look like an abstention.
+function PolicyMessage({
+  answer,
+  hasSupportingLaw
+}: {
+  answer: LegalAnswerResponse;
+  hasSupportingLaw: boolean;
+}) {
+  const emergency = answer.severity === "emergency";
+  const refused = answer.severity === "harmful_request";
+  const serious = answer.severity === "serious";
 
-  const Icon = emergency ? Phone : adviser ? Info : AlertTriangle;
+  const Icon = emergency ? Phone : refused ? ShieldAlert : serious ? Info : AlertTriangle;
   const tone = emergency
     ? "border-red-800/30 bg-red-50"
-    : adviser
-      ? "border-clay/40 bg-sandstone/50"
-      : "border-ink/15 bg-white/60";
+    : refused
+      ? "border-red-800/20 bg-white/70"
+      : serious
+        ? "border-clay/40 bg-sandstone/50"
+        : "border-ink/15 bg-white/60";
   const heading = emergency
-    ? "This needs a person, not an AI answer"
-    : adviser
-      ? "This needs a legal adviser"
-      : "No verified answer";
+    ? "This needs help now, not a legal answer"
+    : refused
+      ? "I can't help with this request"
+      : serious
+        ? "This is a serious matter — please talk to a lawyer"
+        : "No verified answer";
 
   return (
     <div className={`mt-8 rounded-xl border p-5 ${tone}`} role={emergency ? "alert" : "status"}>
       <div className="flex items-center gap-2">
-        <Icon className={emergency ? "text-red-800" : "text-clay"} size={18} aria-hidden="true" />
+        <Icon className={emergency || refused ? "text-red-800" : "text-clay"} size={18} aria-hidden="true" />
         <h2 className="font-serif text-xl font-semibold">{heading}</h2>
       </div>
       <p className="mt-3 whitespace-pre-line text-sm leading-6 text-ink/90">{answer.message}</p>
-      {answer.policy_decision === "abstained" && (
+      {serious && !hasSupportingLaw && (
+        <p className="mt-4 text-sm leading-6 text-ink/70">
+          CAP could not find a provision it is confident matches this question, so it is not showing
+          any legal text rather than showing you the wrong section. You can{" "}
+          <Link to="/learn" className="font-semibold text-clay underline underline-offset-4">
+            read the general learning articles
+          </Link>{" "}
+          in the meantime.
+        </p>
+      )}
+      {answer.policy_decision === "abstained" && !serious && (
         <p className="mt-4 text-sm leading-6 text-ink/70">
           CAP only answers from the official sources it has ingested, and it abstains rather than
           guess. You can{" "}

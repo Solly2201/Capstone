@@ -65,12 +65,9 @@ const otherCitizenToken = signAccessToken({ sub: OTHER_CITIZEN_ID, role: "CITIZE
 const authorityToken = signAccessToken({ sub: AUTHORITY_ID, role: "AUTHORITY" });
 const adminToken = signAccessToken({ sub: ADMIN_ID, role: "ADMIN" });
 
-/**
- * The create limiter is keyed by user id and lives for the module's
- * lifetime, so tests that publish share a budget. Each test that creates
- * uses a fresh citizen so one test's volume cannot make another flake;
- * the dedicated rate-limit test below uses a fixed id on purpose.
- */
+// The create limiter is keyed by user id and lives for the module's
+// lifetime, so each publishing test uses a fresh citizen; the rate-limit
+// test below uses a fixed id on purpose.
 let citizenCounter = 0;
 const nextCitizen = () => {
   citizenCounter += 1;
@@ -99,12 +96,9 @@ const fakePetition = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
-/**
- * A thenable stand-in for a Mongoose query. Every chainable method
- * returns the same object, so it satisfies both `find().sort().skip()
- * .limit()` and a bare `find().select()` without the test needing to
- * know which shape the route used.
- */
+// A thenable stand-in for a Mongoose query: every chainable method
+// returns the same object, so it satisfies both find().sort().skip()
+// .limit() and a bare find().select().
 const query = (value: unknown) => {
   const self: Record<string, unknown> = {};
   for (const method of ["sort", "skip", "limit", "select"]) {
@@ -134,7 +128,15 @@ beforeEach(() => {
   signatureModel.find.mockReturnValue(query([]));
   signatureModel.exists.mockResolvedValue(null);
   signatureModel.countDocuments.mockResolvedValue(0);
-  userModel.findById.mockReturnValue(query({ fullName: "Asha Menon" }));
+  // Serves both lookups the routes make: the creator's display name and
+  // the stored role/token version the authority routes re-check.
+  userModel.findById.mockImplementation((id: string) =>
+    query({
+      fullName: "Asha Menon",
+      role: String(id) === ADMIN_ID ? "ADMIN" : String(id) === AUTHORITY_ID ? "AUTHORITY" : "CITIZEN",
+      tokenVersion: 0
+    })
+  );
 });
 
 describe("POST /api/petitions", () => {
@@ -194,11 +196,8 @@ describe("POST /api/petitions", () => {
     expect(document.history).toEqual([]);
   });
 
-  /**
-   * The creator is not silently counted as a signer. Every number the
-   * petition reports has to correspond to a signature row somebody
-   * deliberately created.
-   */
+  // The creator is not silently counted: every number reported must
+  // correspond to a signature row somebody deliberately created.
   it("does not auto-sign the petition on behalf of its creator", async () => {
     const citizen = nextCitizen();
 
@@ -315,11 +314,8 @@ describe("GET /api/petitions", () => {
     expect(filter).toEqual({ status: "ANSWERED", category: "water" });
   });
 
-  /**
-   * The listing must not become a query language. An attacker-supplied
-   * parameter -- including one shaped like a Mongo operator -- has to
-   * vanish rather than reach the filter.
-   */
+  // The listing must not become a query language: a supplied parameter,
+  // including one shaped like a Mongo operator, has to vanish.
   it("drops unknown query parameters instead of forwarding them", async () => {
     await request(createApp()).get(
       "/api/petitions?creatorId=64b7f9c2e1a2b3c4d5e6f702&signatureCount[$gt]=0&__proto__=x"
@@ -542,12 +538,9 @@ describe("GET /api/petitions/mine", () => {
     expect(filter).toEqual({ citizenId: CREATOR_ID });
   });
 
-  /**
-   * Regression: signing a petition must not become a second route to
-   * content moderation removed. Found in the Phase 6 security audit --
-   * this list originally fetched by id alone, bypassing the
-   * removed-petition rule the detail endpoint enforces.
-   */
+  // Regression: signing must not become a second route to content
+  // moderation removed. This list originally fetched by id alone,
+  // bypassing the rule the detail endpoint enforces.
   it("excludes removed petitions from the signed list unless the viewer created them", async () => {
     signatureModel.find.mockReturnValue(query([{ petitionId: PETITION_ID }]));
 
@@ -559,12 +552,9 @@ describe("GET /api/petitions/mine", () => {
     expect(filter.$or).toEqual([{ status: { $ne: "REJECTED" } }, { creatorId: CREATOR_ID }]);
   });
 
-  /**
-   * The signed list paginates over the petitions it can actually show,
-   * not over the raw signature rows. Counting signatures instead would
-   * report a total the page can never reach once moderation has removed
-   * something the citizen signed, and would hand back short pages.
-   */
+  // The signed list paginates over what it can show, not over raw
+  // signature rows: counting signatures would report an unreachable total
+  // and hand back short pages once moderation removed something.
   it("counts only the signed petitions the list can actually show", async () => {
     signatureModel.find.mockReturnValue(
       query([{ petitionId: SIGNED_A }, { petitionId: SIGNED_B }, { petitionId: SIGNED_C }])

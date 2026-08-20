@@ -34,7 +34,9 @@ const answeredResponse: LegalAnswerResponse = {
   reason: null,
   sources: ["Bharatiya Nagarik Suraksha Sanhita, 2023"],
   disclaimer_version: "2026-08-16",
-  disclaimer_text: DISCLAIMER
+  disclaimer_text: DISCLAIMER,
+  severity: "normal",
+  authority_guidance: false
 };
 
 const abstainedResponse: LegalAnswerResponse = {
@@ -45,7 +47,9 @@ const abstainedResponse: LegalAnswerResponse = {
   reason: "insufficient_evidence",
   sources: [],
   disclaimer_version: "2026-08-16",
-  disclaimer_text: DISCLAIMER
+  disclaimer_text: DISCLAIMER,
+  severity: "normal",
+  authority_guidance: false
 };
 
 const emergencyResponse: LegalAnswerResponse = {
@@ -53,10 +57,42 @@ const emergencyResponse: LegalAnswerResponse = {
   message: "If you are in immediate danger, call 112 now.",
   abstained: true,
   policy_decision: "redirect_emergency",
-  reason: "risk_emergency",
+  reason: "risk_threat_to_life",
   sources: [],
   disclaimer_version: "2026-08-16",
-  disclaimer_text: DISCLAIMER
+  disclaimer_text: DISCLAIMER,
+  severity: "emergency",
+  authority_guidance: true
+};
+
+// A serious personal matter: the caution leads, and the general law
+// follows it. This is the case the severity field exists to distinguish
+// from an ordinary answer.
+const seriousResponse: LegalAnswerResponse = {
+  excerpts: answeredResponse.excerpts,
+  message:
+    "This appears to involve a serious legal matter affecting you directly. Please contact a qualified lawyer.",
+  abstained: false,
+  policy_decision: "redirect_adviser",
+  reason: "serious_legal_matter",
+  sources: ["Bharatiya Nagarik Suraksha Sanhita, 2023"],
+  disclaimer_version: "2026-08-16",
+  disclaimer_text: DISCLAIMER,
+  severity: "serious",
+  authority_guidance: true
+};
+
+const refusedResponse: LegalAnswerResponse = {
+  excerpts: [],
+  message: "I can't help with this. Hiding or destroying evidence is itself an offence.",
+  abstained: true,
+  policy_decision: "refused",
+  reason: "harmful_request_obstruction_or_fabrication",
+  sources: [],
+  disclaimer_version: "2026-08-16",
+  disclaimer_text: DISCLAIMER,
+  severity: "harmful_request",
+  authority_guidance: true
 };
 
 const renderPage = () =>
@@ -162,14 +198,47 @@ describe("LegalAssistantPage", () => {
     expect(screen.queryByRole("heading", { name: "What the law says" })).toBeNull();
   });
 
-  it("frames a safety redirect differently from an ordinary abstention", async () => {
+  it("frames an emergency redirect differently from an ordinary abstention", async () => {
     mockApi.post.mockResolvedValue({ data: emergencyResponse });
 
     renderPage();
     ask("Someone is threatening me right now");
 
     await waitFor(() => expect(screen.getByText("If you are in immediate danger, call 112 now.")).toBeTruthy());
-    expect(screen.getByRole("heading", { name: "This needs a person, not an AI answer" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "This needs help now, not a legal answer" })).toBeTruthy();
+    // An emergency is announced, not merely reported.
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /the law/i })).toBeNull();
+  });
+
+  it("leads a serious matter with the caution and shows the cited law underneath", async () => {
+    mockApi.post.mockResolvedValue({ data: seriousResponse });
+
+    renderPage();
+    ask("I was arrested yesterday, what should I do?");
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /This is a serious matter/ })).toBeTruthy()
+    );
+    expect(screen.getByText(/contact a qualified lawyer/)).toBeTruthy();
+    // The law is still shown, framed as general information.
+    expect(screen.getByRole("heading", { name: "The general law on this topic" })).toBeTruthy();
+    expect(screen.getByText(seriousResponse.excerpts[0].text)).toBeTruthy();
+    expect(screen.getByText(/General legal information, not advice about your own case/)).toBeTruthy();
+  });
+
+  it("shows a refusal as a refusal, not as a failure to find anything", async () => {
+    mockApi.post.mockResolvedValue({ data: refusedResponse });
+
+    renderPage();
+    ask("How can I hide evidence from the police?");
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "I can't help with this request" })).toBeTruthy()
+    );
+    expect(screen.getByText(/itself an offence/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "No verified answer" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /the law/i })).toBeNull();
   });
 
   it("handles an unavailable AI service", async () => {

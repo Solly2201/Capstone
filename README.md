@@ -23,15 +23,17 @@ infra/                    Docker and local infrastructure configuration
 
 ## Current status
 
-Increments 1-4 are complete and Increment 5 is partially complete. `docs/PROJECT_STATE.md` is the authoritative record, including the full list of known gaps.
+Increments 1-6 are complete. Increment 6's engineering hardening is verified against the live Docker stack, and the Learn module and the legal safety layer were expanded alongside it. `docs/PROJECT_STATE.md` is the authoritative record, including the full list of known gaps.
 
 - **Foundation** (Increment 1): monorepo, UI foundation, landing page, authentication/RBAC boundary, local-storage abstraction, Docker configuration, CI and seed accounts.
-- **Learn** (Increment 2 / Module 1A): official-source ingestion and hybrid retrieval (BM25 + local dense embeddings, RRF-fused), document browser and grounded learning articles. The FIR-vs-NCR and bail-procedure articles are not yet written, and the RTI Act 2005 is the one source still un-ingested.
-- **Legal answers** (Module 1B): `POST /api/legal/answer` runs deterministic Risk/UPL checks, hybrid retrieval and a confidence gate, then returns the exact retrieved text with citations or abstains. **No generative LLM is used anywhere in this path** — a standing project decision, not a temporary state.
+- **Learn** (Increment 2 / Module 1A): official-source ingestion and hybrid retrieval (BM25 + local dense embeddings, RRF-fused), a document browser, and 63 grounded learning articles across eleven categories (Constitution and fundamental rights; police, FIR and complaints; arrest and bail; courts, trials and evidence; everyday citizen rights; consumer rights; digital and online rights; women's safety and domestic violence; children and young people; legal aid and access to justice; civic participation), each ending in a short grounded quiz — 189 questions in total. Every paragraph cites the exact Article or section it was written against. The RTI Act 2005 is the one source still un-ingested, so nothing is written from it; workplace/labour rights are likewise deferred because no labour legislation is ingested.
+- **Legal answers** (Module 1B): `POST /api/legal/answer` runs a deterministic query-safety policy, hybrid retrieval and a confidence gate, then returns the exact retrieved text with citations or abstains. The safety policy grades a question as `normal`, `serious`, `emergency` or `harmful_request` by combining subject, framing and immediacy rather than matching keywords, so ordinary legal education is not blocked while a live emergency gets an official helpline and a request for help obstructing an investigation is refused. **No generative LLM is used anywhere in this path** — a standing project decision, not a temporary state.
 - **Civic report** (Module 2): citizen reporting with metadata stripping before storage, plus the authority workflow — a declared transition table, server-controlled status history, staff-assigned priority with SLA deadlines, and an authority queue.
 - **Petitions** (Module 3): petition lifecycle, one signature per account enforced by a unique database index, public browse and detail, and an authority moderation queue.
 
-Not built: duplicate detection, civic vision/ML, automatic categorisation or priority prediction, the petition recommendation agent, notifications, analytics, and the observability/deployment preparation of Increment 6. Email verification is development-mode only (no mail transport), and there is no token refresh.
+- **Engineering hardening** (Increment 6): token-version revocation with stored-role re-checks on privileged routes, production guards that refuse to boot with a placeholder `JWT_SECRET` or a wildcard CORS origin, redacted structured request logging, separate liveness and readiness health checks, graceful shutdown, a CPU-only PyTorch AI image, and `.dockerignore` files that cut the build contexts from 330 MB to 0.9 MB and 112 MB to 0.1 MB.
+
+Not built: duplicate detection, civic vision/ML, automatic categorisation or priority prediction, the petition recommendation agent, notifications and analytics. Email verification is development-mode only (no mail transport), and there is no token refresh — access tokens last 15 minutes and can be revoked by bumping the account's `tokenVersion`.
 
 ## Prerequisites
 
@@ -52,16 +54,16 @@ Not built: duplicate detection, civic vision/ML, automatic categorisation or pri
 
 ## Local demo accounts
 
-These accounts are only for the local demonstration. All are pre-verified and have accepted the current legal-information disclaimer.
+**Development only.** These accounts exist so a reviewer can sign in against a local stack; they are created by `npm run seed -w @cap/api`, which refuses to run when `NODE_ENV=production`. All are pre-verified and have accepted the current legal-information disclaimer. Never seed them into a deployed environment.
 
 | Role | Email | Password |
 | --- | --- | --- |
 | Admin | `admin@cap.local` | `CAPAdmin!2026` |
 | Authority | `authority@cap.local` | `CAPAuthority!2026` |
-| Citizen | `citizen.aarav@cap.local` | `CAPCitizen!2026` |
-| Citizen | `citizen.ananya@cap.local` | `CAPCitizen!2026` |
+| Citizen | `shreshtha.bindal26@nmims.in` | `CapStone@22!` |
+| Citizen (test) | `user@test.com` | `CapStone@22!` |
 
-Replace these credentials and the JWT secret before any non-local deployment.
+Replace these credentials and the JWT secret before any non-local deployment. The API enforces the second half of that: under `NODE_ENV=production` it refuses to start while `JWT_SECRET` is still the development placeholder.
 
 ## Safety and source policy
 

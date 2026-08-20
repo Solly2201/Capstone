@@ -22,9 +22,8 @@ export function RegisterPage() {
     try {
       const result = await registerAccount(values);
       if (result.verification) {
-        // Development behaviour: the API returns the verification token
-        // directly because this project has no mail transport. Carry it
-        // straight to the verification screen so the flow is completable.
+        // With no mail transport, the API returns the token directly
+        // outside production; carry it to the verification screen.
         navigate(`/verify-email?token=${encodeURIComponent(result.verification.token)}`, { replace: true });
         return;
       }

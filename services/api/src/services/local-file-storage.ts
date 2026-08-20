@@ -10,17 +10,13 @@ export type StoredFile = {
   storedName: string;
 };
 
-/**
- * A deliberately small storage boundary. Replace this implementation with an S3
- * adapter later without leaking storage details into complaint or petition logic.
- *
- * Storage names are always generated here (`<uuid>-<sanitised hint>`); a
- * client-supplied filename is only ever used as a decorative suffix
- * after `basename()` and character filtering, never as a path. `read()`
- * additionally re-checks that the resolved path is inside the storage
- * root, so a crafted stored name recovered from anywhere else still
- * cannot escape the directory.
- */
+// A small storage boundary, replaceable with an S3 adapter without
+// leaking storage details into report or petition logic.
+//
+// Stored names are always generated here as <uuid>-<sanitised hint>; a
+// client filename is a decorative suffix only, never a path. read()
+// re-checks that the resolved path is inside the storage root, so a
+// crafted stored name still cannot escape the directory.
 export class LocalFileStorage {
   private readonly root = resolve(process.cwd(), env.LOCAL_STORAGE_ROOT);
 

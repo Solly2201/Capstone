@@ -146,6 +146,10 @@ class LegalAnswerResponse(BaseModel):
     sources: list[str]
     disclaimer_version: str
     disclaimer_text: str
+    # Structured safety outcome from app.safety.risk, so the frontend can
+    # frame a redirect without parsing the message string.
+    severity: str
+    authority_guidance: bool
 
 
 @app.post("/legal/answer", response_model=LegalAnswerResponse)
@@ -177,4 +181,6 @@ def legal_answer(payload: LegalQueryRequest) -> LegalAnswerResponse:
         sources=result.sources,
         disclaimer_version=DISCLAIMER_VERSION,
         disclaimer_text=DISCLAIMER_TEXT,
+        severity=result.severity,
+        authority_guidance=result.authority_guidance,
     )

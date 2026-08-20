@@ -6,11 +6,8 @@ export const api = axios.create({
   timeout: 10_000
 });
 
-/**
- * The browser talks only to the Node API (never to the Python AI
- * service directly), so a single interceptor pair here covers every
- * authenticated call in the app.
- */
+// The browser talks only to the Node API, never to the Python service, so
+// one interceptor pair covers every authenticated call in the app.
 api.interceptors.request.use((config) => {
   const token = readToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -27,9 +24,8 @@ export const setUnauthorizedHandler = (handler: (() => void) | null) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Only treat this as a session expiry when we actually presented a
-    // token. A 401 from a login attempt means "wrong password", not
-    // "your session died", and must not clear unrelated state.
+    // Only a session expiry if a token was actually presented: a 401 from
+    // a login attempt means "wrong password", not "your session died".
     const presentedToken = Boolean(error?.config?.headers?.Authorization);
     if (error?.response?.status === 401 && presentedToken) {
       clearToken();

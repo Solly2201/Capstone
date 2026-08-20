@@ -8,31 +8,18 @@ import { isPetitionVisibleTo } from "../lib/petitions.js";
 import { Petition, type PetitionDocument } from "../models/petition.js";
 import type { HydratedDocument } from "mongoose";
 
-/**
- * The petition lifecycle workflow.
- *
- * Every status change goes through this module. Routes validate shapes
- * and answer HTTP; the decision about whether a change is allowed lives
- * here and in the shared transition table, so there is exactly one place
- * to audit -- the same split `civic-workflow.ts` uses.
- *
- * Three properties this file is responsible for:
- *
- * 1. **No forged actor.** The capability that the transition table is
- *    asked about is computed here, from the authenticated user id
- *    against the *stored* `creatorId`. A request cannot claim to be the
- *    creator of a petition it did not create, because nothing in the
- *    request is consulted when deciding that.
- *
- * 2. **No forged history.** Entries are built here from the derived
- *    capability and the server clock. Nothing from a request body
- *    reaches them except the free-text note.
- *
- * 3. **No lost updates.** The write is conditional on the status the
- *    decision was made against, so if somebody else moves the petition
- *    between our read and our write, our update matches nothing and we
- *    report a conflict instead of silently overwriting their action.
- */
+// Every petition status change goes through this module: routes validate
+// shapes and answer HTTP, the decision lives here and in the shared
+// transition table, so there is one place to audit.
+//
+// Three invariants this file owns:
+//   No forged actor -- capability is computed from the authenticated user
+//     id against the stored creatorId, never from the request.
+//   No forged history -- entries are built from that capability and the
+//     server clock; only the note comes from the request.
+//   No lost updates -- the write is conditional on the status the
+//     decision was made against, so a concurrent move reports a conflict
+//     instead of being silently overwritten.
 
 export type PetitionActor = {
   userId: string;
@@ -53,17 +40,8 @@ export type PetitionWorkflowSuccess = {
 
 export type PetitionWorkflowResult = PetitionWorkflowSuccess | PetitionWorkflowFailure;
 
-/**
- * Applies a lifecycle transition.
- *
- * Order matters: the petition is loaded, the actor's capability is
- * derived from stored state, the shared table judges the move, and only
- * then is the conditional write issued.
- *
- * A petition that the actor cannot even see is reported as NOT_FOUND
- * before any transition reasoning happens, so a stranger probing ids
- * cannot tell a removed petition from one that never existed.
- */
+// Order matters: load, derive capability from stored state, let the
+// shared table judge, then issue the conditional write.
 export const applyPetitionTransition = async (
   petitionId: string,
   nextStatus: PetitionStatus,
@@ -73,10 +51,9 @@ export const applyPetitionTransition = async (
   const petition = await Petition.findById(petitionId);
   if (!petition) return { ok: false, code: "NOT_FOUND", message: "Petition not found." };
 
-  // A petition the actor cannot even see must not acknowledge existing,
-  // through this endpoint any more than through the read one -- so the
-  // same `isPetitionVisibleTo` rule decides it, rather than a second
-  // copy of the reasoning that could drift from the first.
+  // Reported before any transition reasoning, and via the same rule the
+  // read path uses, so a stranger probing ids cannot tell a removed
+  // petition from one that never existed.
   if (!isPetitionVisibleTo(petition, actor)) {
     return { ok: false, code: "NOT_FOUND", message: "Petition not found." };
   }
@@ -105,9 +82,8 @@ export const applyPetitionTransition = async (
           from: currentStatus,
           to: nextStatus,
           actorId: actor.userId,
-          // Recorded as the capability the table actually judged, so the
-          // audit trail says "closed by the creator" rather than leaving
-          // a reader to infer it from a role.
+          // The capability the table actually judged, so the trail says
+          // "closed by the creator" rather than leaving it to inference.
           actorCapability: capability,
           ...(note ? { note } : {}),
           at

@@ -9,7 +9,8 @@
     "typecheck": "npx --no-install tsc --noEmit",
     "lint": "npx --no-install tsc --noEmit",
     "test": "npx --no-install vitest run",
-    "seed": "npx --no-install tsx src/scripts/seed.ts"
+    "seed": "npx --no-install tsx src/scripts/seed.ts",
+    "test:integration": "npx --no-install vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@cap/contracts": "*",

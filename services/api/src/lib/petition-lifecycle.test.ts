@@ -15,11 +15,9 @@ import {
   type PetitionStatus
 } from "@cap/contracts";
 
-/**
- * Tests for the shared petition lifecycle rules themselves, independent
- * of HTTP. These are the rules the API enforces and the UI renders from,
- * so they are worth pinning directly rather than only through routes.
- */
+// The shared petition lifecycle rules, independent of HTTP: the API
+// enforces them and the UI renders from them, so they are pinned directly
+// rather than only through routes.
 
 const CAPABILITIES: PetitionActorCapability[] = [...petitionActorCapabilities];
 
@@ -59,12 +57,9 @@ describe("petition transition table", () => {
     }
   });
 
-  /**
-   * The structural guarantee: an actor with no capability -- which is
-   * every citizen who did not create the petition -- can move nothing,
-   * anywhere, ever. This holds because of the table's shape, not because
-   * a route remembered to check.
-   */
+  // The structural guarantee: an actor with no capability can move
+  // nothing, anywhere -- a property of the table's shape, not of a route
+  // remembering to check.
   it("lets a capability-less actor make no move at all, from any state to any state", () => {
     for (const from of petitionStatuses) {
       for (const to of petitionStatuses) {
@@ -147,12 +142,8 @@ describe("petitionCapabilityFor", () => {
     expect(petitionCapabilityFor("CITIZEN", false)).toBeNull();
   });
 
-  /**
-   * Nobody adjudicates their own petition. Creation is CITIZEN-only, so
-   * this can only arise from an account promoted after publishing --
-   * and if it does, that account keeps the creator's single power and
-   * loses the staff powers over that one petition.
-   */
+  // Nobody adjudicates their own petition: a promoted account keeps the
+  // creator's power and loses staff powers over that one petition.
   it("demotes a staff account to CREATOR on a petition it created", () => {
     expect(petitionCapabilityFor("AUTHORITY", true)).toBe("CREATOR");
     expect(petitionCapabilityFor("ADMIN", true)).toBe("CREATOR");
@@ -202,12 +193,9 @@ describe("petition progress helpers", () => {
   });
 });
 
-/**
- * A regression guard on the vocabulary itself. If somebody adds a status
- * later, this fails and forces a decision about where it sits in the
- * table, whether it is public, and whether it is signable -- rather than
- * the new state quietly inheriting whatever the defaults happen to be.
- */
+// Regression guard on the vocabulary: a new status fails here and forces
+// a decision about the table, publicity and signability rather than
+// quietly inheriting defaults.
 describe("petition status vocabulary", () => {
   it("is exactly the five declared states", () => {
     const expected: PetitionStatus[] = ["OPEN", "UNDER_REVIEW", "ANSWERED", "CLOSED", "REJECTED"];

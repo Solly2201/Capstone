@@ -8,24 +8,13 @@ import {
 import type { HydratedDocument } from "mongoose";
 import type { CivicReportDocument } from "../models/civic-report.js";
 
-/**
- * Maps a stored report onto the shared public contract.
- *
- * This is the single place the GeoJSON `[longitude, latitude]` ordering
- * is unpacked into the `latitude`/`longitude` fields the API and UI use,
- * so the inversion cannot leak into route handlers or components.
- *
- * Storage details never cross this boundary: `storedName` and `scope`
- * stay server-side, and the client receives only an API path it must
- * present a token to.
- *
- * The mapper is viewer-aware for one reason: history carries the id of
- * the staff member who acted. Authorities and admins see it, because
- * internal accountability needs it; citizens see only the acting role,
- * which explains the decision without disclosing which individual made
- * it. Defaulting to the narrower view means a new caller leaks nothing
- * unless it deliberately opts in.
- */
+// Maps a stored report onto the shared public contract, and the single
+// place the GeoJSON [longitude, latitude] ordering is unpacked, so the
+// inversion cannot leak into routes or components.
+//
+// Storage details stay server-side: the client gets only an API path it
+// must present a token to. Viewer-aware because history carries the
+// acting staff member's id, which only AUTHORITY and ADMIN see.
 export type CivicReportViewer = {
   role: UserRole;
 };
@@ -41,8 +30,7 @@ export const toPublicCivicReport = (
   const [longitude, latitude] = report.location.coordinates;
   const showActors = canSeeActorIdentity(viewer);
 
-  // Reports created before this milestone have no history array, and a
-  // read of legacy data must not 500 on a field that did not exist yet.
+  // Legacy reports predate these arrays; a read must not 500 on them.
   const media: CivicMedia[] = (report.media ?? []).map((entry) => ({
     id: String(entry._id),
     mimeType: entry.mimeType,

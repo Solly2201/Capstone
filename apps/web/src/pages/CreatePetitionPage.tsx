@@ -18,17 +18,13 @@ import {
 import { SiteShell } from "../components/SiteShell";
 import { api, apiErrorMessage } from "../lib/api";
 
-/**
- * Start a petition.
- *
- * The form validates against the same `createPetitionSchema` the API
- * parses, so the two cannot disagree about what is acceptable. The
- * client check is a convenience; the API is the enforcing side.
- *
- * The warning about text being permanent is not decoration -- there is
- * deliberately no edit endpoint, because people sign a specific text and
- * letting it be rewritten afterwards would invalidate their signatures.
- */
+// Start a petition. The form validates against the same
+// createPetitionSchema the API parses; the client check is a convenience,
+// the API enforces.
+//
+// The warning that the text is permanent is real: there is deliberately
+// no edit endpoint, because people sign a specific text and rewriting it
+// afterwards would invalidate their signatures.
 export function CreatePetitionPage() {
   const navigate = useNavigate();
 

@@ -12,31 +12,17 @@ import {
   type PetitionStatus
 } from "@cap/contracts";
 
-/**
- * A citizen-published petition.
- *
- * Signatures are NOT embedded here -- see `models/signature.ts`. That is
- * the load-bearing decision in this model, so the reasoning is recorded
- * where the alternative would have lived:
- *
- * 1. **Uniqueness.** MongoDB cannot enforce a unique constraint *within*
- *    an array, so "one signature per citizen per petition" would rest on
- *    application logic plus `$addToSet`. A separate collection gets a
- *    real unique index on `{ petitionId, citizenId }`, enforced by the
- *    database itself rather than by remembering to check.
- * 2. **Bounds.** A report's history is bounded by the shape of its state
- *    machine; a successful petition's signature list is bounded only by
- *    the size of the population. A document has a 16 MB ceiling, so an
- *    embedded array turns popularity into a hard write failure.
- * 3. **Read cost.** Embedding drags the whole signer list into every
- *    read, including a listing page that only wants a count.
- *
- * `history` *is* embedded, for exactly the reasons `CivicReport.history`
- * is: it is only ever read with its petition, only ever written by the
- * petition workflow service, and bounded by the state machine's shape.
- * Keeping it in the same document is also what makes the conditional
- * status update in `petition-workflow.ts` correct without a transaction.
- */
+// A citizen-published petition.
+//
+// Signatures are deliberately NOT embedded -- see models/signature.ts.
+// MongoDB cannot enforce uniqueness within an array, a signature list is
+// bounded only by the population against a 16 MB document ceiling, and
+// embedding would drag the signer list into every listing read.
+//
+// history IS embedded: only ever read with its petition, only ever
+// written by the workflow service, and bounded by the state machine. One
+// atomic document is what makes the conditional status update in
+// petition-workflow.ts correct without a transaction.
 
 export type PetitionHistorySubdocument = {
   from: PetitionStatus;
@@ -50,14 +36,10 @@ export type PetitionHistorySubdocument = {
 export type PetitionDocument = {
   creatorId: Types.ObjectId;
   /**
-   * Display name of the creating account, captured at publication time.
-   *
-   * Denormalised on purpose. A petition is a signed public statement, so
-   * its byline is a snapshot of who published it rather than a live view
-   * of an account that may since have been renamed -- and a listing page
-   * would otherwise join against users on every row of every page. The
-   * value is read from the authenticated user's own record server-side,
-   * so it cannot be supplied or forged by a client.
+   * Display name captured at publication time. Denormalised on purpose:
+   * a petition's byline is a snapshot of who published it, and a listing
+   * would otherwise join against users on every row. Read server-side
+   * from the authenticated account, so a client cannot forge it.
    */
   creatorName: string;
   category: PetitionCategory;
@@ -65,11 +47,9 @@ export type PetitionDocument = {
   description: string;
   signatureGoal: number;
   /**
-   * Cached count, maintained only by `$inc` after a signature row has
-   * been successfully inserted or removed. The `Signature` collection is
-   * the source of truth; this field exists so a listing does not have to
-   * count rows per petition. It is never written from a request body and
-   * appears in no input schema.
+   * Cached count, maintained only by $inc after a signature row is
+   * inserted or removed. Signature is the source of truth; this exists so
+   * a listing need not count rows. Never written from a request body.
    */
   signatureCount: number;
   status: PetitionStatus;
@@ -105,7 +85,7 @@ const petitionSchema = new Schema<PetitionDocument>(
   { timestamps: true }
 );
 
-// "Petitions I published, newest first" -- the My petitions query.
+// My petitions, newest first.
 petitionSchema.index({ creatorId: 1, createdAt: -1 });
 // The public browse surface filters on status and orders by date.
 petitionSchema.index({ status: 1, createdAt: -1 });

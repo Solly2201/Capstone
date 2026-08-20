@@ -1,13 +1,8 @@
 import { z } from "zod";
 
-/**
- * Civic reporting contracts, shared by the web app and the Node API.
- *
- * Categories/statuses/priorities are closed enums rather than free
- * strings so the frontend, the API validator and the Mongoose schema
- * cannot drift apart. The report lifecycle further down is the single
- * source of truth for what may happen to a report.
- */
+// Civic reporting contracts shared by the web app and the Node API.
+// Closed enums keep the frontend, the API validator and the Mongoose
+// schema from drifting apart.
 
 export const civicCategories = [
   "pothole",
@@ -46,26 +41,16 @@ export const civicStatusLabels: Record<CivicStatus, string> = {
 export const civicPriorities = ["LOW", "MEDIUM", "HIGH"] as const;
 export type CivicPriority = (typeof civicPriorities)[number];
 
-/**
- * Media limits, shared so the browser can reject an oversized file
- * before uploading it and the API can reject it again on arrival. The
- * API is the enforcing side -- the client check is a convenience only.
- */
+// Shared so the browser can reject an oversized file before upload. The
+// API is the enforcing side; the client check is a convenience.
 export const civicMediaMaxBytes = 5 * 1024 * 1024;
 export const civicMediaAllowedMimeTypes = ["image/jpeg", "image/png"] as const;
 export type CivicMediaMimeType = (typeof civicMediaAllowedMimeTypes)[number];
 
-/**
- * Report creation input.
- *
- * Coordinates use `coerce` because this endpoint accepts
- * multipart/form-data (every field arrives as a string when an image is
- * attached); JSON clients sending real numbers validate identically.
- *
- * `reporterId` is deliberately absent: it is derived from the
- * authenticated JWT server-side and is never accepted from the browser.
- * `status` and `priority` are absent for the same reason.
- */
+// Report creation input. Coordinates use coerce because this endpoint
+// accepts multipart/form-data, where every field arrives as a string.
+// reporterId, status and priority are absent by design: all three come
+// from authenticated server state, never from the browser.
 export const createCivicReportSchema = z.object({
   category: z.enum(civicCategories),
   title: z.string().trim().min(5).max(120),
@@ -77,26 +62,18 @@ export const createCivicReportSchema = z.object({
 
 export type CreateCivicReportInput = z.infer<typeof createCivicReportSchema>;
 
-/**
- * Structural alias for the role names in `userRoles`, declared here so
- * this lifecycle module stays self-contained. Same union as `UserRole`.
- */
+// Same union as UserRole, redeclared so this module stays self-contained.
 export type UserRoleName = "CITIZEN" | "AUTHORITY" | "ADMIN";
 
 // --- Report lifecycle (authority workflow) -----------------------------
 //
-// The transition table below is the single source of truth for what may
-// happen to a report. The API enforces it; the web app uses it to render
-// only the actions that actually exist. Route handlers must not carry
-// their own status if-statements.
+// Single source of truth for what may happen to a report: the API
+// enforces it, the web app renders only the actions it declares.
 //
-// CITIZEN appears in no rule, deliberately: a citizen can never move
-// their own report, and that is a property of the table itself rather
-// than of a middleware check somebody could forget on a future route.
-//
-// ADMIN has strictly more reach than AUTHORITY -- it alone may reopen a
-// closed report -- but it moves through the same table. There is no
-// bypass path that skips these rules.
+// CITIZEN appears in no rule, deliberately -- a citizen can never move
+// their own report, and that is a property of the table rather than of a
+// middleware check a future route could forget. ADMIN has more reach
+// than AUTHORITY but moves through the same table; there is no bypass.
 
 export type CivicTransitionRule = {
   from: CivicStatus;
@@ -188,10 +165,8 @@ export type CivicTransitionCheck =
       message: string;
     };
 
-/**
- * The one place a transition is judged. Both the API and the UI call it;
- * the API's answer is the authoritative one.
- */
+// The one place a transition is judged. The API's answer is
+// authoritative; the UI calls it only to decide what to render.
 export const checkCivicTransition = (
   from: CivicStatus,
   to: CivicStatus,
@@ -227,17 +202,9 @@ export const checkCivicTransition = (
 export const civicHistoryTypes = ["STATUS", "PRIORITY"] as const;
 export type CivicHistoryType = (typeof civicHistoryTypes)[number];
 
-/**
- * One recorded change.
- *
- * Entirely server-constructed: no part of this is accepted from a
- * request body, so a client cannot forge an actor, a timestamp, a
- * previous status, or a change that never happened.
- *
- * `actorId` is included only for AUTHORITY/ADMIN viewers. A citizen sees
- * which role acted and why, not which member of staff -- the least
- * personal information that still explains the decision.
- */
+// One recorded change. Entirely server-constructed, so a client cannot
+// forge an actor, a timestamp or a change that never happened. actorId is
+// exposed only to AUTHORITY/ADMIN viewers.
 export type CivicHistoryEntry = {
   type: CivicHistoryType;
   from: string;
@@ -250,20 +217,15 @@ export type CivicHistoryEntry = {
 
 // --- Priority and SLA --------------------------------------------------
 //
-// Priority is assigned by authority staff, NOT derived automatically
-// from the report. Automatic assignment was considered and rejected for
-// now: the only signals available at submission are category, free text
-// and coordinates, and this project has no evidence base for mapping any
-// of them onto real-world urgency. A category table that silently called
-// every "water" report HIGH would look objective while encoding a guess,
-// and in a queue that ordering decides what gets attention first. Staff
-// assignment is transparent, reviewable and recorded in the history; a
-// measured rule can replace it later without changing the SLA mechanics
-// below, because the deadline is derived from priority rather than from
-// whatever set it.
+// Priority is assigned by authority staff, not derived automatically:
+// the project has no evidence base for mapping category, text or
+// coordinates onto real-world urgency, and in a queue that ordering
+// decides what gets attention first. A measured rule can replace it
+// later without touching the SLA mechanics, because the deadline is
+// derived from priority rather than from whatever set it.
 //
-// SLA durations are simulation values for a capstone project. They are
-// not a service-level commitment by any real authority.
+// SLA durations are simulation values, not a commitment by any real
+// authority.
 
 export const civicSlaHoursByPriority: Record<CivicPriority, number> = {
   HIGH: 48,
@@ -273,31 +235,17 @@ export const civicSlaHoursByPriority: Record<CivicPriority, number> = {
 
 export const civicSlaHours = (priority: CivicPriority): number => civicSlaHoursByPriority[priority];
 
-/**
- * A report's deadline: submission time plus the SLA window for its
- * current priority.
- *
- * Re-derived from `createdAt` whenever priority changes, so the clock
- * runs from when the citizen reported the problem and does not restart
- * when staff touch the record.
- *
- * Pure and absolute: the arithmetic is in epoch milliseconds with no
- * local-timezone component, so the result does not depend on the machine
- * that computes it.
- */
+// Submission time plus the SLA window for the current priority. Always
+// re-derived from createdAt, so the clock runs from when the citizen
+// reported the problem and does not restart when staff touch the record.
+// Epoch-millisecond arithmetic, so the result is timezone-independent.
 export const computeCivicDueAt = (createdAt: Date | string, priority: CivicPriority): Date => {
   const created = typeof createdAt === "string" ? new Date(createdAt) : createdAt;
   return new Date(created.getTime() + civicSlaHours(priority) * 60 * 60 * 1000);
 };
 
-/**
- * Overdue means past the deadline while still open.
- *
- * A closed report is never overdue: once it is resolved or rejected the
- * clock stops, so historical reports do not accumulate a forever-growing
- * breach count. `now` is a parameter so this is testable with controlled
- * dates rather than depending on wall-clock time.
- */
+// Past the deadline while still open. A closed report is never overdue,
+// so history does not accumulate a forever-growing breach count.
 export const isCivicReportOverdue = (
   report: Pick<CivicReport, "status" | "dueAt">,
   now: Date = new Date()

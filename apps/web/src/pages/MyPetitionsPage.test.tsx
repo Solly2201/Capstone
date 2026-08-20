@@ -157,10 +157,8 @@ describe("MyPetitionsPage", () => {
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
   });
 
-  /**
-   * Switching tab shows a different list, so a page offset from the old
-   * one would land the citizen somewhere arbitrary in the new one.
-   */
+  // Switching tab shows a different list, so a stale offset would land
+  // the citizen somewhere arbitrary.
   it("returns to the first page when the tab changes", async () => {
     await renderPage("CITIZEN", {
       data: { petitions: [petition()], total: 45, limit: 20, offset: 0 }

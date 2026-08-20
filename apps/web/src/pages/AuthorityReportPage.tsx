@@ -20,15 +20,9 @@ import { api, apiErrorMessage, apiErrorStatus } from "../lib/api";
 
 type LoadState = "loading" | "ready" | "missing" | "error";
 
-/**
- * Authority view of a single report, with the actions available from its
- * current state.
- *
- * The action list comes from the shared transition table, so the buttons
- * on screen are exactly the moves the API will accept -- there is no
- * separate frontend notion of what is allowed. The API re-checks every
- * one of them regardless.
- */
+// Authority view of one report. The action list comes from the shared
+// transition table, so the buttons are exactly the moves the API accepts
+// -- which it re-checks regardless.
 export function AuthorityReportPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();

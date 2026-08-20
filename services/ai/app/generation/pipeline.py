@@ -25,7 +25,13 @@ from dataclasses import dataclass, field
 
 from ..retrieval.search import search as _search
 from ..safety.corpus_coverage import NOT_IN_CORPUS_MESSAGE, classify_coverage_gap
-from ..safety.risk import EMERGENCY_CONTACTS, PERSONALIZED_ADVICE_MESSAGE, classify_risk
+from ..safety.risk import (
+    SEVERITY_EMERGENCY,
+    SEVERITY_HARMFUL_REQUEST,
+    SEVERITY_NORMAL,
+    SEVERITY_SERIOUS,
+    assess_query,
+)
 from ..safety.topic_relevance import OUT_OF_DOMAIN_MESSAGE, classify_topic
 from .context import distinct_sources
 
@@ -94,13 +100,22 @@ class Excerpt:
 @dataclass
 class LegalAnswer:
     excerpts: list[Excerpt] = field(default_factory=list)
-    # Set for abstention/redirect cases; None when excerpts carry the answer.
+    # Set for abstention/redirect cases, and also alongside excerpts on a
+    # serious-matter response, where the caution comes first and the
+    # retrieved law follows it.
     message: str | None = None
     abstained: bool = False
     reason: str | None = None
-    # "answered" | "abstained" | "redirect_emergency" | "redirect_adviser"
+    # "answered" | "abstained" | "redirect_emergency" | "redirect_adviser" | "refused"
     policy_decision: str = "answered"
     sources: list[str] = field(default_factory=list)
+    # Safety severity from app.safety.risk: "normal" | "serious" |
+    # "emergency" | "harmful_request". Carried through to the API so the
+    # frontend can frame the response without parsing its text.
+    severity: str = SEVERITY_NORMAL
+    # True when the response points at an authority, helpline or legal-aid
+    # service rather than at legal text alone.
+    authority_guidance: bool = False
 
 
 def _passes_confidence_gate(results: list[dict]) -> bool:
@@ -153,16 +168,42 @@ def build_legal_answer(results: list[dict]) -> LegalAnswer:
 
 
 def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
-    """Full Module 1B entry point: Risk/UPL -> topic guard ->
+    """Full Module 1 entry point: safety policy -> topic guard ->
     corpus-coverage guard -> retrieval -> deterministic answer.
 
-    Risk/UPL runs first and, if triggered, returns immediately -- no
-    retrieval call happens for a message that hard-stops here. The
-    topic-relevance guard runs next, same reasoning: a query matching a
-    known out-of-domain subject (see app.safety.topic_relevance) is
-    rejected before spending a retrieval call on it, since no score
-    from that retrieval could be trusted as a real confidence signal
-    for a topic this corpus was never meant to answer.
+    The safety policy (app.safety.risk.assess_query) runs first and
+    decides one of four severities:
+
+    ``harmful_request``
+        A request to be shown how to destroy evidence, fabricate an
+        alibi, interfere with a witness or evade an investigation.
+        Refused outright; no retrieval happens.
+
+    ``emergency``
+        A life-threatening situation the person presents as real and
+        current. Returns the relevant official helpline immediately, with
+        no legal analysis in front of it -- a long explanation is the
+        wrong response when someone is in danger. No retrieval happens.
+
+    ``serious``
+        A real legal matter affecting the person directly (a live
+        accusation, an interrogation, an imminent arrest). Retrieval
+        *does* run: the caution goes first, and the general law on the
+        topic follows it behind the same confidence gate as any other
+        query. What is withheld is personalised procedural coaching, not
+        the text of the law -- someone facing an accusation is entitled
+        to read the provision that governs it. The response is marked
+        ``redirect_adviser`` with ``authority_guidance`` set, so the
+        frontend leads with the caution rather than the excerpts.
+
+    ``normal``
+        Straight through to the guards below, unchanged.
+
+    The topic-relevance guard runs next: a query matching a known
+    out-of-domain subject (see app.safety.topic_relevance) is rejected
+    before spending a retrieval call on it, since no score from that
+    retrieval could be trusted as a real confidence signal for a topic
+    this corpus was never meant to answer.
 
     The corpus-coverage guard runs third and handles the harder case the
     313-query evaluation exposed: a query that genuinely *is* a legal
@@ -176,21 +217,31 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
     reason the topic guard does, and returns a different message,
     because "try a government services portal" is the wrong advice for
     someone asking a real legal question.
+
+    Nothing below changes retrieval, its thresholds, or the abstention
+    logic. The safety layer only decides whether retrieval runs at all
+    and how its result is framed.
     """
-    category = classify_risk(question)
-    if category == "personalized_advice":
+    assessment = assess_query(question)
+
+    if assessment.severity == SEVERITY_HARMFUL_REQUEST:
         return LegalAnswer(
-            message=PERSONALIZED_ADVICE_MESSAGE,
+            message=assessment.message,
             abstained=True,
-            reason="risk_personalized_advice",
-            policy_decision="redirect_adviser",
+            reason=f"harmful_request_{assessment.category}",
+            policy_decision="refused",
+            severity=assessment.severity,
+            authority_guidance=assessment.authority_guidance,
         )
-    if category is not None:
+
+    if assessment.severity == SEVERITY_EMERGENCY:
         return LegalAnswer(
-            message=EMERGENCY_CONTACTS[category],
+            message=assessment.message,
             abstained=True,
-            reason=f"risk_{category}",
+            reason=f"risk_{assessment.category}",
             policy_decision="redirect_emergency",
+            severity=assessment.severity,
+            authority_guidance=assessment.authority_guidance,
         )
 
     topic_category = classify_topic(question)
@@ -200,6 +251,7 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             abstained=True,
             reason=f"out_of_domain_{topic_category}",
             policy_decision="abstained",
+            severity=assessment.severity,
         )
 
     coverage_category = classify_coverage_gap(question)
@@ -209,7 +261,31 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             abstained=True,
             reason=f"not_in_corpus_{coverage_category}",
             policy_decision="abstained",
+            severity=assessment.severity,
         )
 
     results = _search(question, top_k=top_k)
-    return build_legal_answer(results)
+    answer = build_legal_answer(results)
+
+    if assessment.severity == SEVERITY_SERIOUS:
+        return _as_serious_matter(answer, assessment)
+    return answer
+
+
+def _as_serious_matter(answer: LegalAnswer, assessment) -> LegalAnswer:
+    """Reframe a retrieved answer as a cautious serious-matter response.
+
+    The excerpts and the confidence gate's verdict are left exactly as
+    retrieval produced them -- this only replaces the framing, so the
+    caution and the legal-aid route lead, and any law that did clear the
+    gate follows as supporting context rather than as an answer to
+    "what should I do".
+    """
+    answer.message = assessment.message
+    answer.policy_decision = "redirect_adviser"
+    answer.severity = assessment.severity
+    answer.authority_guidance = assessment.authority_guidance
+    answer.reason = "serious_legal_matter" if answer.excerpts else (answer.reason or "serious_legal_matter")
+    # `abstained` stays true when nothing cleared the gate, so a caller
+    # can still tell "caution plus law" apart from "caution alone".
+    return answer

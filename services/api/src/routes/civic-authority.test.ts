@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { civicTransitions } from "@cap/contracts";
 import { createApp } from "../app.js";
 import { CivicReport } from "../models/civic-report.js";
+import { User } from "../models/user.js";
 import { signAccessToken } from "../lib/jwt.js";
 
 vi.mock("../models/civic-report.js", () => ({
@@ -22,12 +23,19 @@ vi.mock("../services/local-file-storage.js", () => ({
   }
 }));
 
+// The authority routes re-read the caller's role from the database, so a
+// demoted account cannot keep acting on a still-valid token.
+vi.mock("../models/user.js", () => ({ User: { findById: vi.fn() } }));
+
 const reportModel = CivicReport as unknown as {
   find: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
   findOneAndUpdate: ReturnType<typeof vi.fn>;
   countDocuments: ReturnType<typeof vi.fn>;
 };
+const userModel = User as unknown as { findById: ReturnType<typeof vi.fn> };
+
+const selectable = (value: unknown) => ({ select: () => Promise.resolve(value) });
 
 const CITIZEN_ID = "64b7f9c2e1a2b3c4d5e6f701";
 const AUTHORITY_ID = "64b7f9c2e1a2b3c4d5e6f703";
@@ -68,8 +76,15 @@ const transition = (token: string, body: Record<string, unknown>, id = REPORT_ID
     .set("Authorization", `Bearer ${token}`)
     .send(body);
 
+const storedRoleFor = (id: string) =>
+  id === ADMIN_ID ? "ADMIN" : id === AUTHORITY_ID ? "AUTHORITY" : "CITIZEN";
+
 beforeEach(() => {
   vi.clearAllMocks();
+  // Stored role matches the token unless a test deliberately diverges them.
+  userModel.findById.mockImplementation((id: string) =>
+    selectable({ role: storedRoleFor(String(id)), tokenVersion: 0 })
+  );
   // By default the conditional update succeeds and echoes the new state.
   reportModel.findOneAndUpdate.mockImplementation(async (_filter: unknown, update: Record<string, never>) => {
     const set = (update as { $set?: Record<string, unknown> }).$set ?? {};

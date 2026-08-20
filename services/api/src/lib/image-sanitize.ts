@@ -1,49 +1,32 @@
-/**
- * Image type verification and metadata stripping -- no dependencies.
- *
- * A civic report photo is taken on a phone, so its EXIF block routinely
- * carries GPS coordinates, the device identity and a timestamp. The
- * citizen chose what location to put on the report; they did not choose
- * to publish where they were standing, which phone they own, or where
- * else that photo was taken. So metadata is removed BEFORE the file is
- * persisted -- the original bytes never reach disk.
- *
- * This is written by hand against the JPEG/PNG container formats rather
- * than by adding an image-processing stack (sharp, exiftool, etc.):
- * dropping metadata segments needs only a container walk, not decoding,
- * and pulling in a native image library for it would be a large
- * dependency for a small, well-specified job. The trade-off is that
- * only JPEG and PNG are supported -- which is exactly the allow-list.
- *
- * NOT in scope (deliberately deferred): face and number-plate masking,
- * any computer vision, re-encoding, or thumbnail generation.
- */
+// Image type verification and metadata stripping, with no dependencies.
+//
+// A phone photo's EXIF block routinely carries GPS coordinates, device
+// identity and a timestamp. The citizen chose the location on the report;
+// they did not choose to publish where they were standing. So metadata is
+// removed BEFORE the file is persisted -- original bytes never reach disk.
+//
+// Written by hand against the JPEG/PNG containers rather than pulling in
+// an image stack: dropping metadata segments needs a container walk, not
+// decoding. The trade-off is JPEG and PNG only, which is the allow-list.
+//
+// Deliberately out of scope: face or number-plate masking, any computer
+// vision, re-encoding, thumbnails.
 
 export type ImageFormat = "image/jpeg" | "image/png";
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-/**
- * Identifies a buffer by its magic bytes.
- *
- * The client-supplied Content-Type is a claim, not evidence -- anything
- * can be labelled `image/jpeg`. Storage decisions use this result
- * instead, and a mismatch between claim and content is rejected upstream.
- */
+// Identify by magic bytes: a client-supplied Content-Type is a claim, not
+// evidence. Storage decisions use this, and a mismatch is rejected upstream.
 export const detectImageFormat = (buffer: Buffer): ImageFormat | null => {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
   if (buffer.length >= 8 && buffer.subarray(0, 8).equals(PNG_SIGNATURE)) return "image/png";
   return null;
 };
 
-/**
- * Rebuilds a JPEG without its APPn application segments (APP1 holds
- * EXIF/GPS, APP13 holds IPTC, APP2 holds ICC/MPF) or COM comments.
- *
- * Structural segments -- quantisation tables, frame headers, Huffman
- * tables and the entropy-coded scan -- are copied through untouched, so
- * the image data itself is bit-identical and never re-encoded.
- */
+// Rebuild a JPEG without its APPn segments (APP1 EXIF/GPS, APP13 IPTC,
+// APP2 ICC/MPF) or COM comments. Structural segments and the entropy-coded
+// scan are copied through untouched, so pixels are never re-encoded.
 const stripJpegMetadata = (buffer: Buffer): Buffer => {
   const output: Buffer[] = [Buffer.from([0xff, 0xd8])]; // SOI
   let offset = 2;

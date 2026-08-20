@@ -26,13 +26,9 @@ const sortLabels: Record<CivicQueueSort, string> = {
   due_soonest: "Deadline soonest"
 };
 
-/**
- * The civic authority queue.
- *
- * Filters map one-to-one onto the API's validated query contract; the
- * server does the filtering, so what is on screen is what the database
- * matched rather than a client-side slice of an unbounded list.
- */
+// The civic authority queue. Filters map onto the API's validated query
+// contract, so the server does the filtering and the screen shows what
+// the database matched, not a client-side slice.
 export function AuthorityDashboardPage() {
   const [reports, setReports] = useState<CivicReport[]>([]);
   const [total, setTotal] = useState(0);

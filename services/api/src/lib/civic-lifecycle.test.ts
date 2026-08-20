@@ -12,11 +12,8 @@ import {
   type UserRoleName
 } from "@cap/contracts";
 
-/**
- * Tests for the shared lifecycle rules themselves, independent of HTTP.
- * These are the rules the API enforces and the UI renders from, so they
- * are worth pinning directly.
- */
+// The shared lifecycle rules, independent of HTTP: the API enforces them
+// and the UI renders from them, so they are pinned directly.
 
 const ROLES: UserRoleName[] = ["CITIZEN", "AUTHORITY", "ADMIN"];
 

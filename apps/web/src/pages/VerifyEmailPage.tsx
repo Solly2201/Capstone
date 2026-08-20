@@ -6,15 +6,9 @@ import { api, apiErrorMessage } from "../lib/api";
 
 type Status = "idle" | "verifying" | "verified" | "error";
 
-/**
- * Completes the email-verification challenge.
- *
- * Reads the token from the query string (how the registration flow and
- * a future mailed link both arrive here) and verifies it on mount. When
- * there is no token -- someone opened the page directly, or their link
- * expired -- the page falls back to requesting a fresh challenge by
- * email address.
- */
+// Completes the email-verification challenge. Reads the token from the
+// query string and verifies it on mount; with no token, falls back to
+// requesting a fresh challenge by email address.
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");

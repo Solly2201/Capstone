@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { detectImageFormat, stripImageMetadata } from "./image-sanitize.js";
 
-/**
- * Fixtures are hand-built containers rather than real photographs: the
- * sanitiser walks container structure and never decodes pixels, so a
- * structurally valid file with a known secret in its metadata is a
- * sharper test than a real JPEG whose EXIF we would have to trust.
- */
+// Fixtures are hand-built containers, not real photographs: the
+// sanitiser walks structure and never decodes pixels, so a file with a
+// known secret in its metadata is a sharper test than a real JPEG.
 
 const GPS_SECRET = "GPS:19.0760N,72.8777E-DEVICE-SERIAL-1234";
 

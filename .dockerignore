@@ -1,0 +1,52 @@
+# Build context for services/api/Dockerfile and apps/web/Dockerfile,
+# both of which build from the repository root.
+#
+# Those Dockerfiles copy only: package.json, packages/contracts,
+# services/api, apps/web and infra/nginx. Everything excluded below is
+# therefore unused by them -- but note that each image reinstalls its own
+# dependencies, so excluding node_modules is required for correctness on
+# Linux as well as for size (a Windows/macOS node_modules contains
+# platform-specific binaries that would break the image).
+
+node_modules
+**/node_modules
+
+# Rebuilt inside the image; a stale copy would be shadowed anyway.
+dist
+**/dist
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+.git
+.gitignore
+.github
+
+# The AI service builds from its own context (services/ai) and is never
+# copied into the API or web images. This is the largest single exclusion
+# here -- it holds the legal corpus and the fine-tuning outputs.
+services/ai
+
+# Local state and caches.
+.claude
+coverage
+**/coverage
+.pytest_cache
+**/.pytest_cache
+__pycache__
+**/__pycache__
+*.py[cod]
+.venv
+**/.venv
+
+# Secrets must never enter a build context, where they would persist in
+# the image layers even if deleted by a later instruction.
+.env
+.env.*
+!.env.example
+
+# Documentation and local uploads are not part of any runtime image.
+docs
+data/uploads
+
+*.log
+.DS_Store

@@ -21,14 +21,9 @@ const tabs: { value: PetitionMineFilter; label: string }[] = [
   { value: "signed", label: "Signed by me" }
 ];
 
-/**
- * The citizen's own petition activity.
- *
- * The "signed by me" tab is not a convenience feature: one signature per
- * account is only a fair rule if a person can see what they have already
- * signed. Both tabs are scoped server-side to the authenticated account
- * -- this page never sends an id of its own.
- */
+// The citizen's own petition activity. One signature per account is only
+// fair if a person can see what they have signed. Both tabs are scoped
+// server-side; this page never sends an id of its own.
 export function MyPetitionsPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<PetitionMineFilter>("created");

@@ -1,0 +1,83 @@
+name: Docker integration
+
+# Building the AI image installs PyTorch, so this is far slower than the
+# unit pipeline. It runs on demand and on a weekly schedule rather than
+# on every pull request.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  stack:
+    name: Build and smoke-test the compose stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build
+
+      # Reports the saving from the CPU-only PyTorch install so a
+      # regression back to the CUDA wheel is visible.
+      - name: Report image sizes
+        run: docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | sort
+
+      - name: Start the stack
+        env:
+          # Never a real secret: this job only exercises a throwaway stack.
+          JWT_SECRET: ci-integration-secret-not-used-anywhere-else-000000
+        run: docker compose up -d
+
+      - name: Wait for services to report healthy
+        run: |
+          for _ in $(seq 1 60); do
+            api=$(curl -fsS http://localhost:4000/health || true)
+            ai=$(curl -fsS http://localhost:8000/health || true)
+            web=$(curl -fsS -o /dev/null -w '%{http_code}' http://localhost:5173/ || true)
+            if [ -n "$api" ] && [ -n "$ai" ] && [ "$web" = "200" ]; then
+              echo "api: $api"
+              echo "ai:  $ai"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Services did not become healthy in time"
+          docker compose ps
+          docker compose logs --tail 80
+          exit 1
+
+      - name: API readiness reports its MongoDB dependency
+        run: curl -fsS http://localhost:4000/health/ready
+
+      # The legal answer path must stay deterministic retrieval: an
+      # in-domain question returns cited excerpts, and the response
+      # always carries the disclaimer.
+      - name: Legal answer smoke test
+        run: |
+          answer=$(curl -fsS -X POST http://localhost:4000/api/legal/answer \
+            -H 'Content-Type: application/json' \
+            -d '{"question":"What are my rights when I am arrested?"}')
+          echo "$answer" | head -c 400
+          echo "$answer" | grep -q '"disclaimer_version"'
+          echo "$answer" | grep -q '"policy_decision"'
+
+      - name: Out-of-domain question abstains
+        run: |
+          answer=$(curl -fsS -X POST http://localhost:4000/api/legal/answer \
+            -H 'Content-Type: application/json' \
+            -d '{"question":"What is the best pizza topping?"}')
+          echo "$answer" | head -c 400
+          echo "$answer" | grep -q '"abstained":true'
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

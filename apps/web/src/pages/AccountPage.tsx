@@ -3,14 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { SiteShell } from "../components/SiteShell";
 
-/**
- * The one route in the app that genuinely requires an account today.
- *
- * It exists so the auth integration is actually reachable end to end
- * (sign in, see who you are from `GET /auth/me`, sign out) rather than
- * being wired but unusable. Role-specific dashboards belong to the
- * civic and petition increments.
- */
+// Makes the auth integration reachable end to end: sign in, read who you
+// are from GET /auth/me, sign out.
 export function AccountPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();

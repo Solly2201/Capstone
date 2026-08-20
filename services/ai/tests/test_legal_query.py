@@ -1,7 +1,12 @@
-"""End-to-end wiring of Risk/UPL around the deterministic pipeline.
-Retrieval is monkeypatched so these don't depend on ingest_corpus.py
-having been run, and call-tracking proves retrieval never happens for
-a message Risk/UPL catches -- not just that the output looks right.
+"""End-to-end wiring of the query-safety policy around the deterministic
+pipeline. Retrieval is monkeypatched so these don't depend on
+ingest_corpus.py having been run, and call-tracking proves retrieval
+never happens for a message the policy hard-stops -- not just that the
+output looks right.
+
+The severity split matters here: an emergency and a refusal must never
+reach retrieval, while a serious personal matter deliberately does, so
+the general law on the topic can be cited under the caution.
 """
 import os
 import sys
@@ -62,15 +67,109 @@ def test_risky_question_short_circuits_before_retrieval(monkeypatch):
     assert calls == []
 
 
-def test_personalized_advice_short_circuits_before_retrieval(monkeypatch):
+def test_serious_matter_leads_with_caution_but_still_cites_the_law(monkeypatch):
+    """A serious personal matter is not a hard stop.
+
+    Withholding case-specific steps is the safety measure; withholding the
+    text of the law is not, so retrieval runs and its excerpts are kept
+    under the caution.
+    """
     fake_search, calls = _tracking_search([BNSS_RESULT])
     monkeypatch.setattr(pipeline_module, "_search", fake_search)
 
     result = handle_legal_query("I was arrested yesterday, what should I do?")
 
     assert result.policy_decision == "redirect_adviser"
-    assert result.reason == "risk_personalized_advice"
-    assert "Tele-Law" in result.message or "Nyaya Bandhu" in result.message
+    assert result.severity == "serious"
+    assert result.authority_guidance is True
+    assert result.reason == "serious_legal_matter"
+    assert "can't safely advise you on the specific steps" in result.message
+    assert calls == ["I was arrested yesterday, what should I do?"]
+    assert [e.chunk_id for e in result.excerpts] == ["bnss:43"]
+
+
+def test_serious_matter_without_confident_retrieval_still_returns_the_caution(monkeypatch):
+    weak = {**BNSS_RESULT, "score": 0.4}
+    fake_search, _ = _tracking_search([weak])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("I was arrested yesterday, what should I do?")
+
+    assert result.policy_decision == "redirect_adviser"
+    assert result.severity == "serious"
+    assert result.excerpts == []
+    assert result.abstained is True
+    assert "can't safely advise you on the specific steps" in result.message
+
+
+def test_emergency_short_circuits_before_retrieval(monkeypatch):
+    fake_search, calls = _tracking_search([BNSS_RESULT])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("Someone is threatening to kill me right now. What should I do?")
+
+    assert result.policy_decision == "redirect_emergency"
+    assert result.severity == "emergency"
+    assert result.reason == "risk_threat_to_life"
+    assert "112" in result.message
+    assert calls == []
+
+
+def test_harmful_request_is_refused_before_retrieval(monkeypatch):
+    fake_search, calls = _tracking_search([BNSS_RESULT])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("How can I hide evidence from the police?")
+
+    assert result.policy_decision == "refused"
+    assert result.severity == "harmful_request"
+    assert result.reason == "harmful_request_obstruction_or_fabrication"
+    assert result.excerpts == []
+    assert calls == []
+
+
+def test_normal_question_reports_normal_severity(monkeypatch):
+    fake_search, _ = _tracking_search([BNSS_RESULT])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("What happens when you're arrested?")
+
+    assert result.severity == "normal"
+    assert result.authority_guidance is False
+
+
+def test_out_of_domain_abstention_is_unchanged_by_the_safety_layer(monkeypatch):
+    """The existing out-of-domain guard must keep its own behaviour.
+
+    A pizza question is not a safety event. It stays an ordinary
+    insufficient-evidence abstention at normal severity, decided by the
+    existing confidence gate on a weak retrieval score -- so the frontend
+    does not dress it up as a safety redirect.
+    """
+    weak = {**BNSS_RESULT, "score": 0.4}
+    fake_search, calls = _tracking_search([weak])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("What is the best pizza topping?")
+
+    assert result.policy_decision == "abstained"
+    assert result.reason == "insufficient_evidence"
+    assert result.severity == "normal"
+    assert result.abstained is True
+    assert result.excerpts == []
+    assert calls == ["What is the best pizza topping?"]
+
+
+def test_named_out_of_domain_topic_still_short_circuits_before_retrieval(monkeypatch):
+    """The topic-relevance guard is untouched by the safety layer."""
+    fake_search, calls = _tracking_search([BNSS_RESULT])
+    monkeypatch.setattr(pipeline_module, "_search", fake_search)
+
+    result = handle_legal_query("How do I get a driving licence?")
+
+    assert result.policy_decision == "abstained"
+    assert result.reason == "out_of_domain_driving_licence"
+    assert result.severity == "normal"
     assert calls == []
 
 

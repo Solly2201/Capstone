@@ -1,28 +1,15 @@
 import { Schema, model, type Types } from "mongoose";
 
-/**
- * One citizen's signature on one petition.
- *
- * This collection is the source of truth for petition support.
- * `Petition.signatureCount` is a cache derived from it, never the other
- * way round.
- *
- * **The unique compound index is the security control**, not a
- * convenience. "One signature per citizen per petition" is enforced by
- * the database: a second insert for the same pair fails with a duplicate
- * key error (E11000) no matter how many requests race, how many browser
- * tabs are open, or whether the frontend remembered to disable a button.
- * Application-level "have they signed already?" checks are inherently
- * check-then-act and lose under concurrency; this does not.
- *
- * The document is deliberately tiny -- petition, citizen, timestamp. A
- * signature carries no free text, so there is no user-controlled content
- * here to sanitise, and no room for a client to smuggle a field in.
- *
- * There is no compound `_id` trick and no application-generated id: the
- * default `_id` plus the unique index is the simplest arrangement that
- * gives both a stable row identity and the constraint.
- */
+// One citizen's signature on one petition, and the source of truth for
+// petition support -- Petition.signatureCount is a cache derived from it.
+//
+// The unique compound index below is the security control, not a
+// convenience: a second insert for the same pair fails with E11000 no
+// matter how many requests race. An application-level "have they signed?"
+// check is check-then-act and loses under concurrency; this does not.
+//
+// The document carries no free text, so there is nothing here for a
+// client to smuggle a field into.
 
 export type SignatureDocument = {
   petitionId: Types.ObjectId;
@@ -40,25 +27,17 @@ const signatureSchema = new Schema<SignatureDocument>(
   { timestamps: true }
 );
 
-/**
- * The uniqueness constraint. Also serves the "has this citizen signed?"
- * lookup on the detail page and the `$in` batch lookup the listing uses,
- * since both query on this exact prefix pair.
- */
+// The uniqueness constraint. Also serves the "has this citizen signed?"
+// lookup and the listing's $in batch lookup, which query the same pair.
 signatureSchema.index({ petitionId: 1, citizenId: 1 }, { unique: true });
 
-/** "Petitions I have signed, most recent first." */
+// Petitions I have signed, most recent first.
 signatureSchema.index({ citizenId: 1, createdAt: -1 });
 
 export const Signature = model<SignatureDocument>("Signature", signatureSchema);
 
-/**
- * MongoDB's duplicate-key error code.
- *
- * Exported so the signing path can tell "somebody already signed this"
- * apart from a genuine database failure without string-matching an error
- * message. Mongoose surfaces the driver's `code` on the thrown error.
- */
+// MongoDB's duplicate-key code, so the signing path can tell "already
+// signed" from a real database failure without string-matching.
 export const DUPLICATE_KEY_ERROR = 11000;
 
 export const isDuplicateKeyError = (error: unknown): boolean =>

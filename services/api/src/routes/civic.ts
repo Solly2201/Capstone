@@ -13,7 +13,7 @@ import {
   type CivicMediaMimeType
 } from "@cap/contracts";
 import { CivicReport, type CivicReportDocument } from "../models/civic-report.js";
-import { requireAuth, requireRole } from "../middleware/auth.js";
+import { requireAuth, requireFreshRole, requireRole } from "../middleware/auth.js";
 import { LocalFileStorage } from "../services/local-file-storage.js";
 import { stripImageMetadata } from "../lib/image-sanitize.js";
 import { toPublicCivicReport, type CivicReportViewer } from "../lib/civic-reports.js";
@@ -23,27 +23,16 @@ import {
   workflowStatusCode
 } from "../services/civic-workflow.js";
 
-/**
- * Civic reporting: citizen submission plus the authority workflow.
- *
- * Plain CRUD and a deterministic state machine over MongoDB -- nothing
- * here touches the Python AI service. That service exists for the
- * legal-answer pipeline; civic reporting has no AI in this milestone (no
- * classification, no priority prediction, no vision), so routing it
- * through Python would add a hop and a failure mode for no benefit.
- *
- * Authority scope: this simulation has ONE authority. An AUTHORITY user
- * sees every report in every category, because the project models a
- * single civic body rather than a real jurisdictional hierarchy (wards,
- * departments, escalation chains). Introducing jurisdiction would mean
- * inventing a government structure the project has not specified.
- */
+// Civic reporting: citizen submission plus the authority workflow. A
+// deterministic state machine over MongoDB; no AI service in this path.
+//
+// The simulation has one authority, which sees every report: the project
+// models a single civic body, not a jurisdictional hierarchy.
 export const civicRouter = Router();
 
 const storage = new LocalFileStorage();
 
-// Report creation writes a file and a document, so it gets a tighter
-// limit than the app-wide default.
+// Tighter than the app-wide default: this writes a file and a document.
 const createReportRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
@@ -52,8 +41,7 @@ const createReportRateLimiter = rateLimit({
   message: { message: "Too many reports submitted. Please try again later." }
 });
 
-// Workflow actions are cheap but state-changing; a limit bounds both
-// mistakes and any attempt to churn a report's history.
+// Bounds mistakes and any attempt to churn a report's history.
 const workflowRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 120,
@@ -62,12 +50,9 @@ const workflowRateLimiter = rateLimit({
   message: { message: "Too many workflow actions. Please try again shortly." }
 });
 
-/**
- * Images are buffered in memory, never streamed to disk by multer.
- * Nothing reaches storage until the bytes have been verified as a real
- * JPEG/PNG and stripped of metadata, and the filename multer sees is
- * never used as a path.
- */
+// Images are buffered in memory, never streamed to disk by multer.
+// Nothing reaches storage until the bytes are verified as a real JPEG or
+// PNG and stripped, and multer's filename is never used as a path.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: civicMediaMaxBytes, files: 1, fields: 20 },
@@ -82,11 +67,7 @@ const upload = multer({
 
 const viewerFrom = (request: Request): CivicReportViewer => ({ role: request.auth!.role });
 
-/**
- * Route params are typed as `string | string[]`, so a repeated param
- * would arrive as an array. Anything that is not a single ObjectId
- * string is treated as "no such report" rather than coerced.
- */
+// A malformed or repeated id must never reach a database call.
 const objectIdParam = (value: unknown): string | null =>
   typeof value === "string" && isValidObjectId(value) ? value : null;
 
@@ -103,8 +84,7 @@ civicRouter.post(
     try {
       const input = createCivicReportSchema.parse(request.body);
 
-      // reporterId comes from the verified JWT only. A client-supplied
-      // reporterId is not part of the schema, so it is dropped here.
+      // From the verified JWT only; the schema carries no reporterId.
       const reporterId = request.auth!.userId;
 
       const media = [];
@@ -113,7 +93,7 @@ civicRouter.post(
         if (!sanitised) {
           return response.status(415).json({ message: "That file is not a valid JPEG or PNG image." });
         }
-        // The declared Content-Type must agree with the actual bytes.
+        // Declared Content-Type must agree with the actual bytes.
         if (sanitised.format !== request.file.mimetype) {
           return response
             .status(415)
@@ -131,8 +111,7 @@ civicRouter.post(
         });
       }
 
-      // The SLA clock starts at submission. Priority is MEDIUM until an
-      // authority sets it, so the initial deadline uses that window.
+      // SLA clock starts at submission; MEDIUM until an authority sets it.
       const createdAt = new Date();
       const report = await CivicReport.create({
         reporterId,
@@ -167,18 +146,13 @@ civicRouter.get("/reports/mine", requireAuth, async (request, response, next) =>
   }
 });
 
-/**
- * The authority queue.
- *
- * Declared before `/reports/:id` so "authority" is never parsed as a
- * report id. Filters and sorting are validated against the shared query
- * contract, so only known fields reach the database -- a client cannot
- * inject an arbitrary Mongo filter.
- */
+// Authority queue. Declared before /reports/:id so the literal segment is
+// never parsed as an id. Filters are validated against the shared query
+// contract, so no query string can reach an arbitrary Mongo filter.
 civicRouter.get(
   "/authority/reports",
   requireAuth,
-  requireRole("AUTHORITY", "ADMIN"),
+  requireFreshRole("AUTHORITY", "ADMIN"),
   async (request, response, next) => {
     try {
       const query = civicQueueQuerySchema.parse(request.query);
@@ -189,8 +163,7 @@ civicRouter.get(
       if (query.category) filter.category = query.category;
       if (query.priority) filter.priority = query.priority;
       if (query.overdue) {
-        // Overdue is "past the deadline and still open" -- the same rule
-        // the shared helper applies at read time, expressed as a query.
+        // Same rule as the shared read-time helper, expressed as a query.
         filter.dueAt = { $lt: now };
         filter.status = query.status ?? { $nin: ["RESOLVED", "REJECTED"] };
       }
@@ -219,14 +192,8 @@ civicRouter.get(
   }
 );
 
-/**
- * A citizen may read their own report; AUTHORITY and ADMIN may read any
- * report, since they must act on them.
- *
- * A citizen asking for someone else's report gets 404, not 403 --
- * distinguishing "exists but not yours" from "does not exist" would let
- * anyone enumerate which report ids are real.
- */
+// A citizen reads their own report; staff read any. Someone else's
+// report answers 404, not 403, so ids cannot be enumerated.
 civicRouter.get("/reports/:id", requireAuth, async (request, response, next) => {
   try {
     const id = objectIdParam(request.params.id);
@@ -244,24 +211,17 @@ civicRouter.get("/reports/:id", requireAuth, async (request, response, next) => 
   }
 });
 
-/**
- * Perform a status transition.
- *
- * Modelled as creating a transition rather than PATCHing a status field,
- * because that is what actually happens: an actor performs a reviewable
- * act that appends to the report's history. There is deliberately no
- * endpoint that assigns an arbitrary status.
- *
- * Authorisation is enforced twice, on purpose: `requireRole` keeps
- * citizens out of the route entirely, and the shared transition table
- * independently decides whether this actor's role may make this
- * particular move. Neither check alone is trusted.
- */
+// Apply a status transition. Modelled as creating a transition rather
+// than PATCHing a status: no endpoint assigns an arbitrary status.
+//
+// Authorisation is enforced twice on purpose -- requireRole keeps
+// citizens out of the route, and the shared table independently decides
+// whether this role may make this particular move.
 civicRouter.post(
   "/reports/:id/transitions",
   requireAuth,
-  requireRole("AUTHORITY", "ADMIN"),
   workflowRateLimiter,
+  requireFreshRole("AUTHORITY", "ADMIN"),
   async (request, response, next) => {
     try {
       const id = objectIdParam(request.params.id);
@@ -290,8 +250,8 @@ civicRouter.post(
 civicRouter.patch(
   "/reports/:id/priority",
   requireAuth,
-  requireRole("AUTHORITY", "ADMIN"),
   workflowRateLimiter,
+  requireFreshRole("AUTHORITY", "ADMIN"),
   async (request, response, next) => {
     try {
       const id = objectIdParam(request.params.id);
@@ -316,15 +276,10 @@ civicRouter.patch(
   }
 );
 
-/**
- * Serves an attached image.
- *
- * Same ownership rule as the report itself -- media is not public, and
- * the URL is not a capability: knowing it is not enough without a token
- * for an account allowed to see the report. The file is read by its
- * server-generated stored name through LocalFileStorage, which re-checks
- * containment within the storage root.
- */
+// Serves an attached image under the same ownership rule as the report.
+// The URL is not a capability: knowing it is useless without a token for
+// an account allowed to see the report. Reads go through
+// LocalFileStorage, which re-checks containment within the storage root.
 civicRouter.get("/reports/:id/media/:mediaId", requireAuth, async (request, response, next) => {
   try {
     const id = objectIdParam(request.params.id);
@@ -345,7 +300,7 @@ civicRouter.get("/reports/:id/media/:mediaId", requireAuth, async (request, resp
     const bytes = await storage.read(media.scope, media.storedName);
     response.setHeader("Content-Type", media.mimeType);
     response.setHeader("Content-Length", String(bytes.length));
-    // Stored images are already stripped; stop browsers sniffing anyway.
+    // Stored images are already stripped; block sniffing anyway.
     response.setHeader("X-Content-Type-Options", "nosniff");
     response.setHeader("Cache-Control", "private, max-age=300");
     return response.send(bytes);
@@ -354,11 +309,8 @@ civicRouter.get("/reports/:id/media/:mediaId", requireAuth, async (request, resp
   }
 });
 
-/**
- * Upload failures arrive as multer errors rather than Zod errors, so
- * they are translated here into the project's JSON error shape instead
- * of falling through to the app-wide 500 handler.
- */
+// Multer errors are not Zod errors, so they are translated into the
+// project's JSON error shape rather than falling through as a 500.
 civicRouter.use((error: unknown, _request: Request, response: Response, next: NextFunction) => {
   if (error instanceof multer.MulterError) {
     if (error.code === "LIMIT_FILE_SIZE") {

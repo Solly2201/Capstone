@@ -28,18 +28,26 @@ services:
       context: .
       dockerfile: services/api/Dockerfile
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 4000
-      MONGODB_URI: mongodb://mongo:27017/cap
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: local-development-secret-change-before-production
-      WEB_ORIGIN: http://localhost:5173
-      AI_SERVICE_URL: http://ai:8000
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/cap}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Overridable so a non-local deployment supplies its own secret;
+      # the API refuses to boot in production with the placeholder.
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-before-production}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
       LOCAL_STORAGE_ROOT: /data/uploads
     ports:
       - "4000:4000"
     volumes:
       - uploads_data:/data/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       mongo:
         condition: service_healthy
@@ -49,13 +57,24 @@ services:
   ai:
     build:
       context: ./services/ai
+    environment:
+      # Keeps the embedding model in a named volume so recreating the
+      # container does not re-download it (see docs/ARCHITECTURE.md).
+      HF_HOME: /cache/huggingface
     volumes:
       # data/index and data/legal-corpus are build artifacts (gitignored,
       # rebuilt by scripts/ingest_corpus.py), so they are mounted rather
       # than baked into the image.
       - ./services/ai/data:/app/data:ro
+      - ai_model_cache:/cache/huggingface
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   web:
     build:
@@ -70,3 +89,4 @@ volumes:
   mongo_data:
   redis_data:
   uploads_data:
+  ai_model_cache:

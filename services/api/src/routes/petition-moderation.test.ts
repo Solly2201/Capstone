@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { petitionStatuses, petitionTransitions } from "@cap/contracts";
 import { createApp } from "../app.js";
 import { Petition } from "../models/petition.js";
+import { User } from "../models/user.js";
 import { signAccessToken } from "../lib/jwt.js";
 
 vi.mock("../models/petition.js", () => ({
@@ -30,12 +31,15 @@ vi.mock("../models/signature.js", async (importOriginal) => {
   };
 });
 
+// The transitions route re-reads the actor's role from the database, so
+// capability is derived from stored state rather than the token's claim.
 vi.mock("../models/user.js", () => ({ User: { findById: vi.fn() } }));
 
 const petitionModel = Petition as unknown as {
   findById: ReturnType<typeof vi.fn>;
   findOneAndUpdate: ReturnType<typeof vi.fn>;
 };
+const userModel = User as unknown as { findById: ReturnType<typeof vi.fn> };
 
 const PETITION_ID = "64b7f9c2e1a2b3c4d5e6fa01";
 const CREATOR_ID = "64b7f9c2e1a2b3c4d5e6f701";
@@ -79,8 +83,14 @@ const transition = (token: string, body: Record<string, unknown>, id = PETITION_
     .set("Authorization", `Bearer ${token}`)
     .send(body);
 
+const storedRoleFor = (id: string) =>
+  id === ADMIN_ID ? "ADMIN" : id === AUTHORITY_ID ? "AUTHORITY" : "CITIZEN";
+
 beforeEach(() => {
   vi.clearAllMocks();
+  userModel.findById.mockImplementation((id: string) => ({
+    select: () => Promise.resolve({ role: storedRoleFor(String(id)), tokenVersion: 0 })
+  }));
   // By default the conditional update succeeds and echoes the new state.
   petitionModel.findOneAndUpdate.mockImplementation(
     async (_filter: unknown, update: Record<string, never>) => {
@@ -130,11 +140,8 @@ describe("POST /api/petitions/:id/transitions", () => {
     }
   });
 
-  /**
-   * The central authorisation property: a citizen who did not create the
-   * petition resolves to no capability and therefore cannot make a
-   * single move, from any state to any state.
-   */
+  // The central authorisation property: a citizen who did not create the
+  // petition resolves to no capability and can make no move at all.
   it("lets a citizen who is not the creator move nothing at all", async () => {
     for (const from of petitionStatuses) {
       for (const to of petitionStatuses) {
@@ -214,12 +221,9 @@ describe("POST /api/petitions/:id/transitions", () => {
     }
   });
 
-  /**
-   * Regression from the Phase 6 security audit: capability was derived
-   * from role before creatorship, so an account promoted to staff after
-   * publishing a petition could review, answer or remove its own. It now
-   * keeps only the creator's single power over that petition.
-   */
+  // Regression: capability was once derived from role before creatorship,
+  // so an account promoted after publishing could moderate its own
+  // petition. It now keeps only the creator's power over that one.
   it("does not let a staff account moderate a petition it created itself", async () => {
     for (const [role, token] of [
       ["AUTHORITY", authorityToken],
@@ -389,10 +393,8 @@ describe("POST /api/petitions/:id/transitions", () => {
     expect(missing.status).toBe(404);
   });
 
-  /**
-   * A stranger must not be able to distinguish "this removed petition
-   * exists" from "no such petition", even through the action endpoint.
-   */
+  // A stranger must not distinguish "this removed petition exists" from
+  // "no such petition", even through the action endpoint.
   it("answers 404, not 403, when a stranger acts on a removed petition", async () => {
     petitionModel.findById.mockResolvedValue(fakePetition({ status: "REJECTED" }));
 

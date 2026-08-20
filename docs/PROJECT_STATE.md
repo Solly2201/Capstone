@@ -51,13 +51,13 @@ Monorepo, React+TS frontend, Tailwind, React Router, Node+Express backend, FastA
 - FastAPI endpoints: `GET /corpus/sources`, `GET /corpus/search`, `GET /corpus/sections/{source}/{unit}` — retrieval only, no LLM generation.
 - Node proxy: `GET /api/corpus/*` forwards to the AI service, keeping the browser off the Python service directly.
 - Frontend: `LearnPage`, `ArticlePage`, `DocumentBrowserPage` replace the `/learn` placeholder.
-- 3 fully-grounded learning articles (`apps/web/src/content/learningArticles.ts`): Cognizable vs Non-Cognizable, Bailable vs Non-Bailable, What Happens When You're Arrested. Every paragraph cites an exact section.
+- 63 fully-grounded learning articles (`apps/web/src/content/learn/`), grouped into eleven categories: Constitution & Fundamental Rights; Police, FIR & Complaints; Arrest & Bail; Courts, Trials & Evidence; Everyday Citizen Rights; Consumer Rights; Digital & Online Rights; Women's Safety & Domestic Violence; Children & Young People; Legal Aid & Access to Justice; and Civic Participation. 189 grounded quiz questions (three per article) sit alongside them in `content/learn/questions/`, each explaining its answer from the same provision the article cites. Every paragraph cites an exact Article or section, and each article lists the official India Code source it was written against. Content is curated and static -- nothing on these pages is generated at request time.
 - Tests: `services/ai/tests/test_ingestion.py`, `test_retrieval.py` (11 passing). Whole JS monorepo typechecks, existing tests pass, production build succeeds. AI test suite is now also enforced in CI (`.github/workflows/ci.yml`).
 
 **Module 1B — Deterministic legal answers (no generative LLM)**
 - `services/ai/app/generation/pipeline.py`: `handle_legal_query()` (Risk/UPL → retrieval → `build_legal_answer()`), the confidence gate (`LEGAL_CHAT_MIN_SCORE`, provisional — see its docstring for why no defensible cutoff exists in the current corpus/tokenization), and `build_legal_answer()` itself, which returns the verbatim retrieved chunk text plus real citations directly — no LLM call, no free text to validate, since nothing generates one.
 - `services/ai/app/generation/context.py`: `distinct_sources()` only, repurposed as a grouping/labeling helper. Multiple or differing sources are returned as separate excerpts by construction (never merged into one synthesized paragraph), which is why the old design's "don't let the LLM merge conflicting sources" prompt instruction has no replacement — the problem it solved doesn't exist once nothing generates a paragraph.
-- `services/ai/app/safety/`: deterministic Risk/UPL categories (self-harm, child safety, domestic violence, medical emergency, active crime, cyber fraud, personalized advice) — unchanged by the pivot, still runs before retrieval. `fabrication.py`'s pattern matcher was repurposed from a per-request runtime check into a one-time regression test (`test_template_safety.py`) against the small set of fixed, hand-written response strings, since nothing generates free text to check anymore. Prompt-injection detection (`safety/injection.py`) was removed entirely — it defended an LLM system prompt, and no prompt exists anywhere in this pipeline now.
+- `services/ai/app/safety/`: the deterministic query-safety policy (`risk.py`), which runs before retrieval. It is no longer a flat category list: `assess_query()` combines a **subject** signal (life-threatening vs. serious-legal), a **framing** signal (informational / instructional / personal) and an **immediacy** signal, and returns one of four severities — `harmful_request` (obstruction or fabrication instructions; refused, no retrieval), `emergency` (helpline immediately, no retrieval, no legal analysis in front of it), `serious` (caution plus a legal-aid route, and retrieval still runs so the general law can be cited under it), and `normal` (straight through). This replaced a keyword ruleset that both answered "How can I hide evidence from the police?" as an ordinary question and blocked "Explain what the law says about domestic violence" as an emergency. `fabrication.py`'s pattern matcher was repurposed from a per-request runtime check into a one-time regression test (`test_template_safety.py`) against the small set of fixed, hand-written response strings, since nothing generates free text to check anymore. Prompt-injection detection (`safety/injection.py`) was removed entirely — it defended an LLM system prompt, and no prompt exists anywhere in this pipeline now.
 - Endpoints: `POST /legal/answer` (AI service, public, disclaimer attached to every response) and its proxy `POST /api/legal/answer` (Node, own rate limiter, sized for cheap BM25 lookups rather than LLM-call cost).
 - Removed entirely: `LLMProvider`/`MockLLMProvider`/`GeminiProvider`/`get_provider` (`generation/provider.py`, `generation/gemini_provider.py`), `requirements-gemini.txt`. This was real, tested integration work (the Gemini path was verified this session against the live API, including its failure path with an invalid key) — it is recorded here as history, not silently erased, but none of it ships.
 - Tests: 39 AI-service tests (Module 1A + 1B), all pure-function or monkeypatched-retrieval — no provider/LLM mocking exists anywhere in the suite because there is nothing left to mock. Live-verified against the real corpus, including a genuine multi-source query (BNSS + Constitution) confirmed to return two separate, unmerged excerpts.
@@ -104,7 +104,7 @@ Monorepo, React+TS frontend, Tailwind, React Router, Node+Express backend, FastA
 
 **M1 — Platform usability (frontend/auth integration milestone)**
 This milestone changed no AI/retrieval behaviour at all. It closed the gap between working backend functionality and what a user could actually reach in the browser. Nothing under `services/ai/` was modified (verified by `git status` and by the Python suite staying green).
-- **Legal Assistant page** (`apps/web/src/pages/LegalAssistantPage.tsx`, route `/legal-assistant`, linked from the header nav and from `/learn`): the first frontend consumer of `POST /api/legal/answer`. It renders exactly what the backend returns — verbatim excerpt text, source, act number, section/article, official-source link, verified-as-on date, coverage note, and the backend's own distinct-source list — and nothing else. It does not summarise, paraphrase, reorder, merge or explain the retrieved law, so the "no generative LLM in the legal-answer path" decision holds on the frontend as well as in the service. All four `policy_decision` branches are handled: `answered`, `abstained`, `redirect_emergency` and `redirect_adviser`, with emergency redirects framed distinctly from ordinary abstentions instead of looking like a "no results" shrug. The disclaimer shown is the one carried on the response (`disclaimer_text` + `disclaimer_version`), not a hardcoded copy. The page is public, matching the endpoint's deliberate no-login design.
+- **Legal Assistant page** (`apps/web/src/pages/LegalAssistantPage.tsx`, route `/legal-assistant`, linked from the header nav and from `/learn`): the first frontend consumer of `POST /api/legal/answer`. It renders exactly what the backend returns — verbatim excerpt text, source, act number, section/article, official-source link, verified-as-on date, coverage note, and the backend's own distinct-source list — and nothing else. It does not summarise, paraphrase, reorder, merge or explain the retrieved law, so the "no generative LLM in the legal-answer path" decision holds on the frontend as well as in the service. All five `policy_decision` branches are handled: `answered`, `abstained`, `redirect_emergency`, `redirect_adviser` and `refused`. The framing is chosen from the response's structured `severity`/`authority_guidance` fields rather than by parsing the message string, so an emergency, a refusal and an ordinary abstention each read as what they are instead of looking like a "no results" shrug. A `serious` response leads with the caution and then shows the retrieved law beneath it, labelled as general information. The disclaimer shown is the one carried on the response (`disclaimer_text` + `disclaimer_version`), not a hardcoded copy. The page is public, matching the endpoint's deliberate no-login design.
 - **Email-verification deadlock — fixed.** Registration created accounts with `emailVerified: false`, login rejected unverified accounts, and nothing ever issued a verification challenge, so *every* self-registered account was permanently locked out; only `seed.ts` accounts could sign in. `services/api/src/lib/email-verification.ts` now issues a 32-byte random token at registration, persists only its SHA-256 hash (`emailVerification.tokenHash`, `select: false`) with a 24-hour expiry, and `POST /api/auth/verify-email` consumes it. **Chosen development behaviour, deliberately documented:** this project has no mail transport (nodemailer is a dependency that nothing imports), so outside production the raw token is returned in the register/resend response (`verification.deliveredVia: "api-response"`) and the frontend carries it straight to `/verify-email`. `devVerification()` returns `undefined` when `NODE_ENV === "production"`, so a deployed instance never leaks a token over the API. Wiring a real provider later means mailing `token` from those two handlers — no other part of the flow changes. No external infrastructure was invented. `POST /api/auth/resend-verification` covers a lost or expired token and answers identically whether or not the address exists, so it cannot be used to enumerate accounts.
 - **Frontend auth state**: `apps/web/src/auth/AuthContext.tsx` plus `lib/auth-storage.ts`. The JWT is persisted in `localStorage` (same key the old LoginPage already used) and attached to every request by an axios interceptor in `lib/api.ts`; a 401 on a request that actually presented a token clears the session. The user object is never cached alongside the token — it is always re-fetched from `GET /auth/me`, so a revoked token cannot leave a stale signed-in shell on screen. `RegisterPage`, `VerifyEmailPage` and `AccountPage` are new; `LoginPage` now drives the context and routes the user onward instead of printing a placeholder message; `SiteShell` shows the signed-in user and a working log-out.
 - **Protected routes**: `components/ProtectedRoute.tsx` guards `/account` (the only route that genuinely needs an account today). It waits for the session check to resolve before deciding, so refreshing a protected page does not bounce an authenticated user to `/login`, and it deliberately does **not** guard the legal-answer page.
@@ -165,14 +165,130 @@ Citizens publish petitions, sign each one at most once, and follow what the auth
 - **Retrieval behaviour is unchanged and was never touched.** The existing index loads exactly as built (1,801 chunks, `all-MiniLM-L6-v2`, 384-dim, `mode=hybrid`); `RETRIEVAL_MODE` remains **unset** so the service auto-selects hybrid on its own; a live query runs in `retrieval_mode=hybrid` with `dense_score` present for the gate. **Zero changes** to BM25, dense retrieval, RRF, thresholds, safety guards, the corpus, the index, embeddings, evaluation datasets or fine-tuning — verified by diff, not by assertion.
 - **API smoke test against the live stack:** 58 requests, 67/69 checks passing; both flagged items were test-side, not defects (`act_no` is legitimately empty for the Constitution, which has no Act number, and a hand-minted token was correctly rejected for lacking the required `iss`/`aud`). Covered auth (register -> development verification -> login -> `/me`, plus expired, malformed, wrong-secret and `alg=none` rejection), legal (answered, abstained, citations, disclaimer), civic (creation with image, media persistence, IDOR, path traversal, MIME spoofing, priority, valid and invalid transitions, concurrent transitions where exactly one wins) and petitions (creation, browse, signing, duplicate rejection with no count inflation, withdrawal, moderation, lifecycle, authorisation boundaries).
 - **Browser smoke test:** 18/18 checkpoints through a real Chrome session with zero console errors — landing, registration, verification, login, Legal Assistant (real AI response with citations, official-source links and disclaimer), civic report creation with image upload (blob confirmed loaded), My Reports, authority queue, the full authority workflow (priority change moving the SLA deadline, a transition recorded in history with actor and note, next valid actions updating), petition browse/create/sign, My Petitions, authority petition queue, and logout clearing the token with protected routes redirecting.
-- **Security review against the running system.** Verified: forged `reporterId`/`status`/`priority` on report creation are ignored (server-derived); forged `creatorId`/`signatureCount`/`status`/`creatorName` on petition creation are rejected outright by the strict schema; cross-citizen IDOR on reports and media returns 404; media requires auth and rejects path traversal; SVG-declared-as-PNG is rejected 415; role boundaries hold on every authority route. **Documented, not fixed:** the JWT `role` claim is trusted without a database re-check, so a validly-signed token with correct `iss`/`aud` claiming `AUTHORITY`/`ADMIN` is accepted for a CITIZEN account. That requires possession of the signing secret, so it is standard stateless-JWT design rather than a bypass — but `docker-compose.yml` ships a hardcoded development secret, and a role change or account deletion is not reflected until the 15-minute token expiry.
-- **Tests unchanged:** API 233, web 129, Python/RAG 74 — all still passing, with typecheck and production build clean. M5 added no test files; its evidence is the live-system verification recorded above.
+- **Security review against the running system.** Verified: forged `reporterId`/`status`/`priority` on report creation are ignored (server-derived); forged `creatorId`/`signatureCount`/`status`/`creatorName` on petition creation are rejected outright by the strict schema; cross-citizen IDOR on reports and media returns 404; media requires auth and rejects path traversal; SVG-declared-as-PNG is rejected 415; role boundaries hold on every authority route. **Documented at M5, fixed in M6:** the JWT `role` claim was trusted without a database re-check, so a validly-signed token claiming `AUTHORITY`/`ADMIN` was accepted for a CITIZEN account, and a role change or account deletion was not reflected until the 15-minute token expiry. M6 added `User.tokenVersion` + a `ver` token claim and re-reads the stored role on privileged routes (see "M6 — engineering hardening" below); `docker-compose.yml` no longer hardcodes the secret, and production refuses to boot with the development placeholder.
+- **Tests unchanged at M5:** API 233, web 129, Python/RAG 74 — all still passing, with typecheck and production build clean. M5 added no test files; its evidence is the live-system verification recorded above. (The Learn expansion and M6 later raised these to API 265, web 155, Python/RAG 74.)
+
+### M6 — engineering hardening (verified against the live stack)
+
+Production-readiness work. **No product behaviour changed, and the frozen
+RAG system was not touched** — `git status` on `services/ai/` shows only
+`Dockerfile` and a new `.dockerignore`, both packaging, with retrieval,
+corpus, embeddings, thresholds, safety gates, evaluation sets and
+fine-tuning all byte-identical.
+
+- **Token freshness and revocation.** `User.tokenVersion` (default 0) is
+  embedded in the access token as `ver`. `requireFreshRole(...)` re-reads
+  `{ role, tokenVersion }` from the database on privileged routes,
+  rejects a superseded token version, and replaces `request.auth.role`
+  with the stored value so authorisation uses stored fact, not the
+  token's claim. Bumping a user's `tokenVersion` revokes their live
+  tokens. Ordinary citizen requests keep the stateless path. This closes
+  the M5 finding above. 10 tests in `src/middleware/auth-freshness.test.ts`.
+- **Environment guards.** Production refuses to start with the
+  development `JWT_SECRET` or a wildcard `WEB_ORIGIN`; `parseEnv()` is
+  exported so this is testable. `docker-compose.yml` now reads secrets
+  and addresses from the environment with local defaults, documented in
+  a new root `.env.example`. 6 tests in `src/config/env.test.ts`.
+- **Observability.** One pino instance with redaction at the logger
+  (`authorization`, `cookie`, `password`, `passwordHash`, `token`,
+  `tokenHash`), `pino-http` request logging with a request id and
+  outcome-graded levels, path-only logging so legal query strings are
+  never recorded, and AI-proxy failure logging that omits the question.
+  5 tests in `src/lib/logger.test.ts`.
+- **Health and lifecycle.** `/health` is dependency-free liveness;
+  `/health/ready` reports MongoDB connectivity and answers 503 when
+  degraded. SIGTERM/SIGINT drain the server, close Socket.IO and
+  disconnect Mongoose with a 10s backstop. MongoDB connection events are
+  logged.
+- **MongoDB transactions deliberately not adopted.** Signing is protected
+  by a unique index plus atomic `$inc` with compensating writes;
+  status changes are single-document conditional updates. Neither needs a
+  transaction, so no replica set was configured. Reasoning recorded in
+  `docs/ARCHITECTURE.md`.
+- **Image and context hygiene.** The AI image installs CPU-only PyTorch
+  (the CUDA wheel was ~2 GB the service never loads; there is no GPU in
+  the stack and `embeddings.py` never selects a device). `.dockerignore`
+  files cut the root build context 330.0 MB → 0.9 MB and the AI context
+  111.6 MB → 0.1 MB, verified statically against every `COPY` source. The
+  embedding model is cached in a named volume rather than baked in.
+- **CI.** pip caching, a concurrency group, and a `git diff --check`
+  step; a separate weekly/on-demand `integration.yml` builds the stack
+  and smoke-tests health, readiness, an in-domain answer and an
+  out-of-domain abstention. Retrieval evaluation stays out of CI.
+
+- **Database integration tests.** The petition signature guarantee is
+  enforced by a unique index in MongoDB, so a mock cannot verify it: the
+  unit suite's signature fake throws a real E11000 and would behave
+  identically against a schema carrying no index at all. A 13-test suite
+  (`src/services/petition-signatures.integration.test.ts`) now runs
+  against a real `mongod` and asserts the index exists and is unique,
+  that a duplicate insert is refused, that 12 concurrent `signPetition`
+  calls by one citizen produce exactly one row with `signatureCount` 1,
+  that 12 distinct citizens produce 12, that a non-`OPEN` petition
+  records nothing, and that the enum validators and the unique
+  `users.email` index hold. Confirmed non-vacuous by mutation: removing
+  `unique: true` from the schema fails exactly the four tests that assert
+  the guarantee, including the count-inflation one.
+
+  `mongodb-memory-server` was evaluated first and rejected on cost, not
+  capability — it does start a genuine `mongod`, but it pulled 37 packages
+  and a 781 MB MongoDB 8.2.6 archive, and validated against a different
+  server version than the `mongo:7.0` this project deploys. The suite
+  instead connects to a server that already exists (`MONGODB_TEST_URI`,
+  defaulting to localhost), which the README's setup step and the CI
+  service container both provide. It uses its own database name and drops
+  it afterwards, so it never touches development data. Kept out of
+  `npm test` behind `npm run test:integration` so the unit suite stays
+  infrastructure-free.
+
+**Verification performed (Docker daemon available this session):**
+
+| Check | Result |
+| --- | --- |
+| `docker compose build` | succeeded, all three images |
+| AI image size | **8.61 GB — 2.07 GB**, the CPU-only PyTorch change measured against the previous image |
+| API / web image size | 324 MB / 74.7 MB |
+| All five services start and report healthy | mongo, redis, api, ai healthy; web serving HTTP 200 |
+| `/health`, `/health/ready` | `ok`; `ready` with `mongodb: up` |
+| API — MongoDB / Redis | readiness reports `up`; `redis-cli ping` returns `PONG` |
+| API — AI over Compose DNS | `http://ai:8000/health` reachable from the api container |
+| Normal legal question | `answered`, severity `normal`, 5 cited excerpts, disclaimer attached |
+| Serious query | `redirect_adviser`, severity `serious`, caution plus 5 cited excerpts |
+| Emergency query | `redirect_emergency`, severity `emergency`, no excerpts, no retrieval |
+| Obstruction request | `refused`, severity `harmful_request`, no excerpts, no retrieval |
+| Out-of-domain question | `abstained`, `insufficient_evidence`, severity `normal` |
+| Educational domestic-violence question | `answered`, severity `normal` (the false-positive check) |
+| Hybrid retrieval live in the container | `retrieval_mode: hybrid` with real `dense_score` values |
+| `.dockerignore` completeness | ai image carries `app/` and the mounted `data/`; api carries `packages/contracts`; web carries the built assets |
+| Environment guards in the container | production rejects the placeholder `JWT_SECRET` and a wildcard `WEB_ORIGIN`, accepts a real pair; development still accepts the placeholder |
+| CORS for the browser leg | preflight from `http://localhost:5173` returns the matching allow-origin; another origin never receives its own |
+
+**Model cache across container recreation.** The 88 MB
+`all-MiniLM-L6-v2` download lands in the `ai_model_cache` named volume.
+The container was **recreated** (`docker compose rm -sf ai` then `up`,
+confirmed by a changed container id — not a restart) and the cache was
+still present before any query. Conclusively: the model then loaded with
+`HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` set, which is only
+possible from cache.
+
+**Retrieval baseline re-measured, unchanged.** `eval/run_eval.py` was
+re-run because the harness calls `handle_legal_query()`, so the new
+safety layer could in principle have shifted abstention. It did not —
+hybrid reproduces the documented control-set baseline exactly: recall@5
+0.8370, precision@5 0.1822, MRR 0.7096, nDCG@5 0.7227, top-1 0.6222,
+abstention accuracy 0.9796, with `q19` the only false abstain as before.
+
+**Still not verified:** the browser leg. The Chrome extension was not
+connected this session, so no click-through of the Learn or Legal
+Assistant pages was performed. The HTTP path those pages use was
+verified instead, including the CORS preflight that is the part most
+likely to break.
 
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core and the authority workflow are built** (see M2 and M3 above). Do not build duplicate detection, DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
 - Module 3 (petitions): the **citizen petition core, signatures and the authority moderation workflow are built** (see M4 above). Do not build a petition recommendation agent, DBSCAN clustering over petitions, petition-to-report linking, petition comments/discussion, identity or constituency verification of signers, or petition analytics without a new instruction.
-- FIR/NCR and bail-procedure learning content can now be written (BNSS ss.173-196 and 478-496 are ingested) — not yet done, still future work, not a "do not" anymore.
+- The Learn module is **expanded and complete for the current corpus**: 63 grounded articles and 189 quiz questions across eleven categories in `apps/web/src/content/learn/`. Remaining Learn gaps are content the corpus cannot support: RTI (un-ingested), workplace/labour rights (no labour legislation ingested), sexual offences against children (POCSO un-ingested), and IT Act sections 43/43A/66 (absent from the ingested PDF). Do not write content for those without ingesting a source first.
 - Do not redesign the architecture without a concrete reason.
 - Do not re-ask questions already answered in prior chat history — check the conversation/spec first.
 
@@ -182,7 +298,7 @@ Citizens publish petitions, sign each one at most once, and follow what the auth
 1. ~~**BNSS**: ingest Chapter XIII (investigation/FIR) and Chapter XXXV (bail and bonds)~~ — resolved this session: BNSS is now fully ingested (533/533 sections), see "Corpus expansion" above.
 2. ~~**BNS**: ingest punishments, abetment, offences against the body, offences against property~~ — resolved this session: BNS is now fully ingested (357 sections).
 3. ~~**BSA**: currently only a small excerpt~~ — resolved this session: BSA is now fully ingested (170 sections).
-4. FIR vs NCR and Bail Procedure learning articles can now be written (corpus supports them) — not yet done, still future work.
+4. ~~FIR vs NCR and Bail Procedure learning articles can now be written (corpus supports them)~~ — resolved: both are written (`fir-vs-ncr`, `bail-procedure-basics`), grounded in BNSS ss.173-176 and ss.478-484 respectively.
 5. ~~Compoundable vs Non-compoundable Offences topic — needs BNSS section 359~~ — resolved this session: section 359 is ingested. Article not yet written.
 6. Consider adding a lightweight admin UI (or at minimum a documented CLI step) for approving a new source before `ingest_corpus.py` will pick it up, per the "admin validates official origin before indexing" requirement — not built yet, currently enforced only by the `APPROVED_SOURCES` allow-list in code.
 7. ~~Dense embeddings are optional and untested~~ — resolved this session: `requirements-full.txt` (`sentence-transformers`) installs and runs cleanly; hybrid mode is live and evaluated (`docs/RETRIEVAL_EVALUATION.md`). Note for future environments: this environment's global TensorFlow/Keras install initially broke `transformers`' TF integration path on import — worked around with `USE_TF=0` in `app/retrieval/embeddings.py`, harmless where TF isn't installed at all.
@@ -192,7 +308,7 @@ Citizens publish petitions, sign each one at most once, and follow what the auth
 9. ~~`LEGAL_CHAT_MIN_SCORE` provisional floor~~ — resolved this session: floors are now per-retrieval-mode (`DEFAULT_MIN_SCORE_BY_MODE` in `generation/pipeline.py`), each tuned against the new evaluation harness rather than guessed. Still not perfect (a 30-query eval set isn't statistically robust) — re-sweep after significant corpus growth.
 10. ~~No retrieval evaluation harness~~ — resolved this session: `services/ai/eval/` (Recall@K, Precision@K, MRR, nDCG, abstention accuracy, top-1 citation correctness). It was used to justify moving from BM25-only to hybrid (BM25+dense, RRF-fused) with real before/after numbers, and to decide reranking is not yet justified (see `docs/RETRIEVAL_EVALUATION.md`).
 11. No persisted audit log of policy decisions — deliberately deferred to the evaluation/hardening increment; current logging is application-level only.
-12. Risk/UPL detection is a curated deterministic phrase/regex ruleset, not an exhaustive classifier — false negatives on rephrased risky queries are possible; this is the accepted v1 trade-off for staying rules-only (no ML/LLM classifier, per standing decision).
+12. The query-safety policy is a deterministic signal-combining ruleset, not an exhaustive classifier — false negatives on unusually phrased risky queries remain possible; this is the accepted trade-off for staying rules-only (no ML/LLM classifier, per standing decision). It is materially harder to evade than the flat keyword list it replaced, because a harmful request is matched on act plus instructional framing rather than on an exact phrase, but it is still curated and should be extended when a specific miss is demonstrated.
 13. ~~No query preprocessing (synonym expansion, misspelling correction) yet~~ — partially resolved: `app/retrieval/query_expand.py` now expands 2 known Indian-legal abbreviations (FIR, NCR) after evaluation demonstrated a concrete need (see "Retrieval/evaluation hardening" above). Still no general synonym expansion or misspelling correction — this remains a narrow, curated exception, not a new preprocessing stage, and should stay that way unless evaluation demonstrates another specific, named gap.
 14. Reranking (the architecture diagram's optional stage) was evaluated as a candidate and deferred with documented reasoning — hybrid already beat the BM25 baseline on every metric, and the remaining misses look like embedding-model/vocabulary gaps rather than reranking-shaped ranking-order problems. Re-evaluated again after the Constitution-title/RRF-retune fix and still not justified — see `docs/RETRIEVAL_EVALUATION.md`'s "Reranking: deferred" and "Failure-analysis-driven fixes" for what would justify revisiting this.
 15. No FAISS/ANN index — a deliberate choice, not an oversight: brute-force NumPy cosine similarity over ~400 chunks runs in sub-millisecond time, so an approximate-nearest-neighbor index has no measured benefit yet. `app/retrieval/embeddings.py` was kept swap-compatible with one for when/if the corpus grows by orders of magnitude.
@@ -253,11 +369,11 @@ Citizens publish petitions, sign each one at most once, and follow what the auth
 60. ~~**Still not smoke-tested against a live stack.**~~ — **resolved in M5.** The Docker daemon is now running and the full five-service Compose stack was brought up, exercised through the API and a real browser, and validated against real MongoDB. See the M5 entry under Completed.
 
 **M5 live stack**
-61. **The AI image carries roughly 2 GB of CUDA packages it never executes.** Installing `requirements-full.txt` pulls the default `torch` wheel, which brings `cuda-toolkit`, `nvidia-cublas`, `nvidia-cudnn`, `nvidia-nccl`, `triton` and friends; the container reports `cuda_available=False`. The image went 441 MB -> 2.99 GB. A CPU-only wheel (`--extra-index-url https://download.pytorch.org/whl/cpu`) would be a dependency-only change and should recover most of that. **Deliberately not done in M5** — image optimisation was explicitly out of scope for an integration milestone.
-62. **The embedding model downloads at runtime, not at build time.** `all-MiniLM-L6-v2` (88 MB) is fetched from HuggingFace into `/root/.cache/huggingface` on the first `/legal/answer` call. It survives container restarts but **not** container recreation, and a network-isolated deployment would fail on its first request. Pre-baking the model into the image or mounting a cache volume is the fix.
-63. **The JWT `role` claim is trusted without a database re-check** (see the M5 security review). A validly-signed token with the correct `iss`/`aud` claiming `AUTHORITY` or `ADMIN` is accepted for a CITIZEN account. This needs the signing secret, so it is standard stateless-JWT design rather than an authentication bypass — but `docker-compose.yml` ships a hardcoded development secret that must never reach production, and a demotion or account deletion is not reflected until the 15-minute expiry. Re-checking the role per request, or shortening the token lifetime, are the available answers.
-64. **No `.dockerignore` exists**, so build contexts are larger than necessary (the AI context includes `data/`, `.venv/`, `__pycache__/` and fine-tuning checkpoints). Not a correctness defect — the images build correctly — but it slows builds and inflates context transfer.
-65. **The live-stack verification is scripted, not committed.** M5's evidence came from throwaway scripts run against the running system, not from tests in the repository. Nothing in CI would catch a regression in index creation, the Compose wiring or the AI image's dependencies. Turning the highest-value parts (index existence, the concurrent-signature proof, the container's ability to import `sentence-transformers` and answer/abstain) into a committed integration suite is the natural follow-up.
+61. ~~**The AI image carries roughly 2 GB of CUDA packages it never executes.**~~ **Resolved and measured in M6:** the Dockerfile installs the CPU-only PyTorch wheel before `requirements-full.txt`, taking the image from **8.61 GB to 2.07 GB**. Original text follows.  Installing `requirements-full.txt` pulls the default `torch` wheel, which brings `cuda-toolkit`, `nvidia-cublas`, `nvidia-cudnn`, `nvidia-nccl`, `triton` and friends; the container reports `cuda_available=False`. The image went 441 MB -> 2.99 GB. A CPU-only wheel (`--extra-index-url https://download.pytorch.org/whl/cpu`) would be a dependency-only change and should recover most of that. **Deliberately not done in M5** — image optimisation was explicitly out of scope for an integration milestone.
+62. ~~**The embedding model downloads at runtime, not at build time.**~~ **Resolved in M6:** `HF_HOME` points at the `ai_model_cache` named volume. Verified by recreating the container (changed container id, not a restart) and then loading the model with `HF_HUB_OFFLINE=1`, which only succeeds from cache. A network-isolated first run would still fail on a cold volume. Original text follows.  `all-MiniLM-L6-v2` (88 MB) is fetched from HuggingFace into `/root/.cache/huggingface` on the first `/legal/answer` call. It survives container restarts but **not** container recreation, and a network-isolated deployment would fail on its first request. Pre-baking the model into the image or mounting a cache volume is the fix.
+63. ~~**The JWT `role` claim is trusted without a database re-check**~~ **Resolved in M6** by `requireFreshRole`/`withFreshRole` plus `tokenVersion` revocation; privileged routes authorise on stored state, not the token's claim. Original text follows.  (see the M5 security review). A validly-signed token with the correct `iss`/`aud` claiming `AUTHORITY` or `ADMIN` is accepted for a CITIZEN account. This needs the signing secret, so it is standard stateless-JWT design rather than an authentication bypass — but `docker-compose.yml` ships a hardcoded development secret that must never reach production, and a demotion or account deletion is not reflected until the 15-minute expiry. Re-checking the role per request, or shortening the token lifetime, are the available answers.
+64. ~~**No `.dockerignore` exists**~~ **Resolved in M6:** a root and an AI `.dockerignore`, both verified against the built images (the AI image still carries `app/` and its mounted `data/`, the API image still carries `packages/contracts`, the web image still carries its built assets). Original text follows.  so build contexts are larger than necessary (the AI context includes `data/`, `.venv/`, `__pycache__/` and fine-tuning checkpoints). Not a correctness defect — the images build correctly — but it slows builds and inflates context transfer.
+65. ~~**The live-stack verification is scripted, not committed.**~~ **Partly resolved in M6:** the highest-value part is now a committed 13-test integration suite run against a real `mongod` in CI (`npm run test:integration`), covering index existence, concurrent signing and schema validation. The Compose wiring and the AI image's dependencies are covered by the on-demand `integration.yml` workflow rather than by per-commit CI. Original text follows.  M5's evidence came from throwaway scripts run against the running system, not from tests in the repository. Nothing in CI would catch a regression in index creation, the Compose wiring or the AI image's dependencies. Turning the highest-value parts (index existence, the concurrent-signature proof, the container's ability to import `sentence-transformers` and answer/abstain) into a committed integration suite is the natural follow-up.
 66. **The API rate limiter bounds bulk end-to-end testing.** The app-wide limit is 100 requests per 15 minutes per IP with an in-process store (gap #59), so a full smoke run has to be split across API restarts. Harmless in production terms, but worth knowing before anyone writes a larger automated end-to-end suite.
 
 ## Development philosophy (unchanged from Increment 1)

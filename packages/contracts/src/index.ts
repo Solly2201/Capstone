@@ -52,13 +52,9 @@ export type LoginResponse = {
 };
 
 /**
- * Development-only email-verification handoff.
- *
- * This project has no email provider wired in (nodemailer is a
- * dependency but nothing imports it), so outside production the API
- * hands the verification token back in the response instead of mailing
- * it. In production this field is never populated -- see
- * `services/api/src/routes/auth.ts`.
+ * Development-only verification handoff. With no email provider wired in,
+ * the API returns the token in the response outside production; in
+ * production this field is never populated.
  */
 export type DevVerification = {
   token: string;
@@ -89,7 +85,24 @@ export type LegalExcerpt = {
   coverage_note: string;
 };
 
-export type LegalPolicyDecision = "answered" | "abstained" | "redirect_emergency" | "redirect_adviser";
+export type LegalPolicyDecision =
+  | "answered"
+  | "abstained"
+  | "redirect_emergency"
+  | "redirect_adviser"
+  | "refused";
+
+/**
+ * Safety severity assigned before retrieval by the AI service's
+ * deterministic query-safety policy (services/ai/app/safety/risk.py).
+ *
+ * - `normal` — ordinary legal education; retrieval and the confidence gate decide the rest.
+ * - `serious` — a real legal matter affecting the asker; the caution leads, cited law may follow.
+ * - `emergency` — an immediate safety situation; official contact only, no legal analysis.
+ * - `harmful_request` — a request for obstruction or fabrication; refused.
+ */
+export const legalSeverities = ["normal", "serious", "emergency", "harmful_request"] as const;
+export type LegalSeverity = (typeof legalSeverities)[number];
 
 /** Mirrors the AI service's `LegalAnswerResponse` (services/ai/app/main.py). */
 export type LegalAnswerResponse = {
@@ -101,4 +114,7 @@ export type LegalAnswerResponse = {
   sources: string[];
   disclaimer_version: string;
   disclaimer_text: string;
+  severity: LegalSeverity;
+  /** The response points at an authority, helpline or legal-aid service. */
+  authority_guidance: boolean;
 };

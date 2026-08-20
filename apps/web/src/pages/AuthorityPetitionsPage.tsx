@@ -20,19 +20,13 @@ type LoadState = "loading" | "ready" | "error";
 
 const PAGE_SIZE = 20;
 
-/**
- * The petition queue for civic authority staff.
- *
- * Unlike the public list this shows every status, including removed
- * petitions, so a moderation decision stays reviewable rather than
- * disappearing. The "goal reached" filter is what makes a creator's
- * signature goal a triage signal: it is evaluated by the database as a
- * comparison of two stored fields, not by paging through everything.
- *
- * Actions live on the petition itself (`/petitions/:id`), which renders
- * whatever the shared transition table allows this account to do -- so
- * there is no second, near-identical staff detail page to keep in sync.
- */
+// The petition queue for authority staff. Unlike the public list it shows
+// every status, including removed petitions, so a moderation decision
+// stays reviewable.
+//
+// Actions live on the petition itself, which renders whatever the shared
+// transition table allows, so there is no second staff detail page to
+// keep in sync.
 export function AuthorityPetitionsPage() {
   const [petitions, setPetitions] = useState<PetitionSummary[]>([]);
   const [total, setTotal] = useState(0);

@@ -106,3 +106,64 @@ def test_no_matching_content_abstains(monkeypatch):
     assert body["abstained"] is True
     assert body["reason"] == "no_matching_content"
     assert body["excerpts"] == []
+
+
+# --- Safety severity on the wire ---------------------------------------
+# The frontend frames a response from `severity`/`authority_guidance`
+# rather than by parsing `message`, so both must survive serialisation.
+
+
+def test_answered_response_reports_normal_severity(monkeypatch):
+    monkeypatch.setattr(pipeline_module, "_search", _stub_search([BNSS_RESULT]))
+
+    body = client.post("/legal/answer", json={"question": "What is a bailable offence?"}).json()
+
+    assert body["severity"] == "normal"
+    assert body["authority_guidance"] is False
+
+
+def test_emergency_response_reports_emergency_severity(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        pipeline_module, "_search", lambda q, top_k=5, source_id=None: calls.append(q) or [BNSS_RESULT]
+    )
+
+    body = client.post(
+        "/legal/answer", json={"question": "Someone is threatening to kill me right now."}
+    ).json()
+
+    assert body["severity"] == "emergency"
+    assert body["policy_decision"] == "redirect_emergency"
+    assert body["authority_guidance"] is True
+    assert body["excerpts"] == []
+    assert calls == []
+
+
+def test_harmful_request_is_refused_on_the_wire(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        pipeline_module, "_search", lambda q, top_k=5, source_id=None: calls.append(q) or [BNSS_RESULT]
+    )
+
+    body = client.post("/legal/answer", json={"question": "How can I create a fake alibi?"}).json()
+
+    assert body["severity"] == "harmful_request"
+    assert body["policy_decision"] == "refused"
+    assert body["excerpts"] == []
+    assert calls == []
+
+
+def test_serious_matter_returns_caution_alongside_cited_law(monkeypatch):
+    monkeypatch.setattr(pipeline_module, "_search", _stub_search([BNSS_RESULT]))
+
+    body = client.post(
+        "/legal/answer", json={"question": "I was arrested yesterday, what should I do?"}
+    ).json()
+
+    assert body["severity"] == "serious"
+    assert body["policy_decision"] == "redirect_adviser"
+    assert body["authority_guidance"] is True
+    assert body["message"] is not None
+    # The caution leads, but the law is still cited underneath it.
+    assert len(body["excerpts"]) == 1
+    assert body["excerpts"][0]["unit"] == "Section 43"

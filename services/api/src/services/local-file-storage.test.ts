@@ -3,14 +3,10 @@ import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 
-/**
- * Storage-safety tests run against a real temporary directory rather
- * than a mocked filesystem -- path traversal is precisely a question of
- * what the real path layer does with a crafted name.
- *
- * The storage root is read from the environment when the module is
- * first loaded, so the env var is set before the dynamic import.
- */
+// Storage-safety tests run against a real temporary directory: path
+// traversal is a question of what the real path layer does with a crafted
+// name. The storage root is read at module load, so the env var is set
+// before the dynamic import.
 let storage: InstanceType<typeof import("./local-file-storage.js").LocalFileStorage>;
 let root: string;
 
@@ -66,10 +62,9 @@ describe("LocalFileStorage.read", () => {
     const secretPath = join(root, "secret.txt");
     await writeFile(secretPath, "do-not-serve");
 
-    // basename() neutralises the traversal before the path is built, so
-    // the observable outcome is a rejection rather than the planted
-    // content. That rejection is the property under test: no crafted
-    // stored name yields bytes from outside the scope directory.
+    // basename() neutralises the traversal before the path is built. The
+    // property under test is that no crafted stored name yields bytes
+    // from outside the scope directory.
 
     await expect(storage.read("originals", `..${sep}secret.txt`)).rejects.toThrow();
     await expect(storage.read("originals", "../secret.txt")).rejects.toThrow();

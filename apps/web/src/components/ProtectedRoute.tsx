@@ -3,24 +3,18 @@ import type { UserRole } from "@cap/contracts";
 import { useAuth } from "../auth/AuthContext";
 import { SiteShell } from "./SiteShell";
 
-/**
- * Gate for routes that need an account, optionally restricted by role.
- *
- * Deliberately *not* applied to the legal-answer page: basic legal
- * information is public by standing product decision (see
- * services/api/src/routes/legal.ts), and putting a login wall in front
- * of it would contradict that.
- *
- * While the token is being exchanged for a user via /auth/me the route
- * renders a waiting state instead of redirecting, otherwise every
- * refresh on a protected page would bounce the user to /login before
- * their session had a chance to resolve.
- *
- * `roles` hides a route from the wrong audience; it is not the security
- * boundary. Every authority action is independently authorised by the
- * API, so a citizen who types the dashboard URL sees nothing they could
- * act on even before the redirect lands.
- */
+// Gate for routes that need an account, optionally restricted by role.
+// Deliberately not applied to the legal-answer page, which is public by
+// standing product decision.
+//
+// While the token is exchanged for a user via /auth/me the route waits
+// rather than redirecting, so a refresh does not bounce to /login before
+// the session resolves.
+//
+// roles hides a route from the wrong audience; it is not the security
+// boundary: every authority action is independently authorised by the
+// API, so a citizen who types the dashboard URL sees nothing they could
+// act on even before the redirect lands.
 export function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: UserRole[] }) {
   const { status, user } = useAuth();
   const location = useLocation();

@@ -1,26 +1,18 @@
-/**
- * Access-token persistence.
- *
- * localStorage is a deliberate, documented trade-off rather than the
- * strongest option available. The API issues a bearer JWT
- * (services/api/src/lib/jwt.ts) and reads it from the Authorization
- * header; moving to an httpOnly cookie would mean changing the backend
- * auth architecture (cookie issuance plus CSRF protection), which this
- * milestone explicitly does not do. The exposure is the usual one: any
- * XSS on this origin can read the token. It is bounded by the token's
- * short 15-minute lifetime.
- *
- * The key name matches the one the previous LoginPage already wrote to,
- * so existing local sessions are not silently orphaned.
- */
+// Access-token persistence.
+//
+// localStorage is a documented trade-off, not the strongest option: the
+// API reads a bearer JWT from the Authorization header, and moving to an
+// httpOnly cookie would mean cookie issuance plus CSRF protection on the
+// backend. The exposure is the usual one -- any XSS on this origin can
+// read the token -- bounded by its 15-minute lifetime.
 const TOKEN_KEY = "cap.accessToken";
 
 const storage = (): Storage | null => {
   try {
     return window.localStorage;
   } catch {
-    // Private-mode / disabled-storage browsers: degrade to a session
-    // that simply does not survive a reload, rather than crashing.
+    // Private mode or disabled storage: degrade to a session that does
+    // not survive a reload, rather than crashing.
     return null;
   }
 };

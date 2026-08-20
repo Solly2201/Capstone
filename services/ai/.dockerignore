@@ -1,0 +1,35 @@
+# Build context for services/ai/Dockerfile.
+#
+# That Dockerfile copies only requirements*.txt and app/. Everything
+# excluded here is either a runtime bind mount, a research artifact, or a
+# local cache.
+
+# The legal corpus and the built index are mounted read-only at runtime
+# by docker-compose.yml (./services/ai/data -> /app/data), never copied
+# into the image. If a future Dockerfile needs to COPY data/, this line
+# must be removed first.
+data
+
+# Retrieval evaluation and fine-tuning are offline research workflows.
+# finetune/output holds model checkpoints and is by far the largest
+# directory in this context.
+finetune
+eval
+checkpoints
+
+# Tests run in CI against the source tree, not inside the image.
+tests
+scripts
+
+.venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+**/.pytest_cache
+
+.env
+.env.*
+
+*.log
+.DS_Store

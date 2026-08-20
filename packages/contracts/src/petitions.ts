@@ -1,16 +1,8 @@
 import { z } from "zod";
 
-/**
- * Petition and public-participation contracts, shared by the web app and
- * the Node API.
- *
- * Same discipline as `civic.ts`: closed enums rather than free strings,
- * one declared lifecycle table that both sides read, and no
- * security-sensitive field anywhere in an input schema. A petition is
- * public content, so the response shapes here are deliberately narrower
- * than the stored document -- see `services/api/src/lib/petitions.ts`
- * for the mapper that decides what actually leaves the server.
- */
+// Petition contracts shared by the web app and the Node API. Closed
+// enums, one lifecycle table both sides read, and no security-sensitive
+// field in any input schema.
 
 export const petitionCategories = [
   "infrastructure",
@@ -39,13 +31,7 @@ export const petitionCategoryLabels: Record<PetitionCategory, string> = {
   other: "Something else"
 };
 
-/**
- * The petition lifecycle vocabulary.
- *
- * `OPEN` is the only signable state. `ANSWERED` is the only terminal
- * one: it means the authority published a formal response, which is the
- * outcome the whole feature exists to produce.
- */
+// OPEN is the only signable state; ANSWERED is the only terminal one.
 export const petitionStatuses = ["OPEN", "UNDER_REVIEW", "ANSWERED", "CLOSED", "REJECTED"] as const;
 export type PetitionStatus = (typeof petitionStatuses)[number];
 
@@ -57,14 +43,9 @@ export const petitionStatusLabels: Record<PetitionStatus, string> = {
   REJECTED: "Removed"
 };
 
-/**
- * Statuses an anonymous or unrelated citizen may see.
- *
- * `REJECTED` is absent on purpose. A removed petition stays visible to
- * its creator (so they can read why it was removed) and to staff (so the
- * decision stays auditable), but it is not public content any more --
- * republishing removed material would defeat the point of removing it.
- */
+// Statuses an anonymous or unrelated citizen may see. REJECTED is absent
+// on purpose: a removed petition stays visible only to its creator and to
+// staff, never to the public.
 export const publicPetitionStatuses: readonly PetitionStatus[] = [
   "OPEN",
   "UNDER_REVIEW",
@@ -84,32 +65,24 @@ export const terminalPetitionStatuses: readonly PetitionStatus[] = ["ANSWERED"];
 export const isTerminalPetitionStatus = (status: PetitionStatus): boolean =>
   terminalPetitionStatuses.includes(status);
 
-/**
- * Structural alias for the role names in `userRoles`, declared here so
- * this module stays self-contained. Same union as `UserRole`.
- */
+// Same union as UserRole, redeclared so this module stays self-contained.
 export type PetitionUserRole = "CITIZEN" | "AUTHORITY" | "ADMIN";
 
 // --- Petition lifecycle -------------------------------------------------
 //
-// The table below is the single source of truth for what may happen to a
-// petition. The API enforces it; the web app renders only the actions it
-// declares. Route handlers carry no status if-statements of their own.
+// Single source of truth for what may happen to a petition: the API
+// enforces it, the web app renders only what it declares.
 //
-// Unlike the civic report table, this one is keyed by an *actor
-// capability* rather than a raw role, because a petition has one
-// relationship a report does not: its creator. Capability is derived
-// server-side from (role, is-this-the-creator) and is the only thing the
-// table ever sees.
+// Keyed by actor capability rather than raw role, because a petition has
+// a creator. Capability is derived server-side from (role, is-creator):
 //
 //   CREATOR   -- the CITIZEN whose account published this petition
 //   AUTHORITY -- civic authority staff
 //   ADMIN     -- staff with reopen/reinstate reach
 //
-// A citizen who is not the creator maps to no capability at all, so they
-// appear in no rule and can move nothing. That is a property of the
-// table itself rather than of a middleware check a future route could
-// forget -- the same guarantee `civicTransitions` gives.
+// A citizen who is not the creator maps to no capability, so they appear
+// in no rule and can move nothing -- a property of the table itself, not
+// of a middleware check a future route could forget.
 
 export const petitionActorCapabilities = ["CREATOR", "AUTHORITY", "ADMIN"] as const;
 export type PetitionActorCapability = (typeof petitionActorCapabilities)[number];
@@ -120,23 +93,13 @@ export const petitionCapabilityLabels: Record<PetitionActorCapability, string> =
   ADMIN: "an administrator"
 };
 
-/**
- * Derives what an actor may do, from server-held state only.
- *
- * `isCreator` is always computed by comparing the authenticated user id
- * against the stored `creatorId`; it is never accepted from a request.
- *
- * **Creatorship is checked first, deliberately: nobody adjudicates their
- * own petition.** Petition creation is CITIZEN-only, so today the only
- * way to be both a creator and a member of staff is for an account to be
- * promoted after publishing something. If that ever happens, this
- * ordering means they keep the creator's single power (closing their own
- * petition) and lose the staff powers *over that one petition* -- they
- * cannot review, answer or remove it. Every other petition is unaffected,
- * and any of their colleagues can still moderate this one, so the rule
- * costs nothing and closes a real conflict of interest rather than
- * relying on the current absence of a role-change feature.
- */
+// Derives what an actor may do, from server-held state only. isCreator is
+// computed by comparing the authenticated user id against the stored
+// creatorId and is never accepted from a request.
+//
+// Creatorship is checked first so nobody adjudicates their own petition:
+// a promoted account keeps the creator's power to close its own petition
+// and loses staff powers over that one petition only.
 export const petitionCapabilityFor = (
   role: PetitionUserRole,
   isCreator: boolean
@@ -237,10 +200,8 @@ export type PetitionTransitionCheck =
       message: string;
     };
 
-/**
- * The one place a petition transition is judged. Both the API and the UI
- * call it; the API's answer is the authoritative one.
- */
+// The one place a petition transition is judged. The API's answer is
+// authoritative; the UI calls it only to decide what to render.
 export const checkPetitionTransition = (
   from: PetitionStatus,
   to: PetitionStatus,
@@ -281,18 +242,9 @@ export const checkPetitionTransition = (
 
 // --- Petition history ---------------------------------------------------
 
-/**
- * One recorded lifecycle change.
- *
- * Entirely server-constructed: nothing from a request body reaches an
- * entry except the note, so a client cannot forge an actor, a timestamp,
- * a previous status, or a change that never happened.
- *
- * `actorId` is included only for AUTHORITY/ADMIN viewers. Everyone else
- * -- including the general public reading an answered petition -- sees
- * which capability acted and why, which is what makes the decision
- * accountable without naming an individual member of staff.
- */
+// One recorded lifecycle change. Entirely server-constructed except the
+// note, so a client cannot forge an actor, a timestamp or a change that
+// never happened. actorId is exposed only to AUTHORITY/ADMIN viewers.
 export type PetitionHistoryEntry = {
   from: PetitionStatus;
   to: PetitionStatus;
@@ -311,18 +263,9 @@ export const petitionDescriptionMax = 5000;
 export const petitionGoalMin = 10;
 export const petitionGoalMax = 100_000;
 
-/**
- * Petition creation input.
- *
- * `.strict()` rather than Zod's default strip: an unknown key is a 400,
- * not a silently discarded field. Nothing here is security-sensitive --
- * `creatorId`, `creatorName`, `status`, `signatureCount`, `history` and
- * both timestamps are absent by design and are set from authenticated
- * server state instead.
- *
- * `signatureGoal` *is* client-chosen, deliberately: it is the creator's
- * own target, it grants no privilege, and it is bounded here.
- */
+// Petition creation input. .strict() makes an unknown key a 400 rather
+// than a silently dropped field. Creator, status, count and history are
+// absent by design and set from authenticated server state.
 export const createPetitionSchema = z
   .object({
     category: z.enum(petitionCategories),
@@ -354,17 +297,9 @@ export const petitionSortLabels: Record<PetitionSort, string> = {
   most_signed: "Most signatures"
 };
 
-/**
- * Public listing parameters.
- *
- * Every filter is a closed enum or a bounded integer, so only known
- * fields with known values ever reach the database -- there is no path
- * from a query string to an arbitrary Mongo filter. Unknown parameters
- * are dropped by Zod rather than forwarded.
- *
- * `status` is narrowed to the public statuses: a client cannot ask the
- * public list for removed petitions.
- */
+// Public listing parameters. Every filter is a closed enum or a bounded
+// integer, so no query string can reach an arbitrary Mongo filter, and
+// status is narrowed so a client cannot ask for removed petitions.
 export const petitionListQuerySchema = z.object({
   category: z.enum(petitionCategories).optional(),
   status: z.enum(["OPEN", "UNDER_REVIEW", "ANSWERED", "CLOSED"]).optional(),
@@ -374,11 +309,8 @@ export const petitionListQuerySchema = z.object({
 });
 export type PetitionListQuery = z.infer<typeof petitionListQuerySchema>;
 
-/**
- * The authority queue. Staff may additionally filter on REJECTED and on
- * whether a petition reached the goal its creator set, which is what
- * turns that goal from decoration into a triage signal.
- */
+// The authority queue. Staff may also filter on REJECTED and on whether
+// a petition reached its creator's goal.
 export const petitionQueueQuerySchema = z.object({
   category: z.enum(petitionCategories).optional(),
   status: z.enum(petitionStatuses).optional(),
@@ -404,13 +336,8 @@ export type PetitionMineQuery = z.infer<typeof petitionMineQuerySchema>;
 
 // --- Response shapes ----------------------------------------------------
 
-/**
- * A petition as it appears in a list.
- *
- * Deliberately narrower than the detail shape: no description body, no
- * history, no creator id. A listing is a browsing surface, and the less
- * each row carries the less there is to leak across every page.
- */
+// A petition as it appears in a list: no description, history or creator
+// id, so a browsing surface carries less than the detail shape.
 export type PetitionSummary = {
   id: string;
   title: string;
@@ -458,14 +385,8 @@ export const hasReachedPetitionGoal = (
   petition: Pick<PetitionSummary, "signatureCount" | "signatureGoal">
 ): boolean => petition.signatureCount >= petition.signatureGoal;
 
-/**
- * Progress towards the goal as a 0-100 percentage.
- *
- * Clamped at both ends so a petition that overshoots its target does not
- * render a progress bar wider than its track, and a non-positive goal
- * (which validation forbids, but defence in depth is cheap) cannot
- * divide by zero.
- */
+// Progress as a 0-100 percentage, clamped at both ends so an overshoot
+// cannot overflow the track and a non-positive goal cannot divide by zero.
 export const petitionProgressPercent = (
   petition: Pick<PetitionSummary, "signatureCount" | "signatureGoal">
 ): number => {

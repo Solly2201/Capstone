@@ -19,20 +19,14 @@ import { api, apiErrorMessage, apiErrorStatus } from "../lib/api";
 
 type LoadState = "loading" | "ready" | "missing" | "error";
 
-/**
- * A single petition, for everybody.
- *
- * One page rather than a public view plus a near-identical staff view,
- * because the difference between the two is entirely "which actions are
- * available", and that answer already exists in the shared transition
- * table. Rendering `petitionTransitionsFor(status, capability)` means
- * the buttons on screen are exactly the moves the API will accept, and
- * a reader with no capability simply sees no action panel.
- *
- * None of this is a security boundary: the API independently derives the
- * same capability from the token and the stored creator id, and
- * re-authorises every action behind it.
- */
+// One petition page for everybody, rather than a public view plus a
+// near-identical staff view: the only difference is which actions are
+// available, and the shared transition table already answers that. A
+// reader with no capability simply sees no action panel.
+//
+// None of this is a security boundary -- the API derives the same
+// capability from the token and the stored creator id, and re-authorises
+// every action behind it.
 export function PetitionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();

@@ -22,18 +22,12 @@ export function PetitionStatusBadge({ status }: { status: PetitionStatus }) {
   );
 }
 
-/**
- * Signature progress towards the creator's own goal.
- *
- * Both the percentage and the goal-met test come from the shared
- * contract helpers, so the bar cannot disagree with the authority
- * queue's `goalMet` filter about whether a petition got there.
- *
- * The bar is decorative -- the real numbers are stated in text beside
- * it, and it carries `aria-hidden` with the accessible value exposed on
- * the wrapper instead, so a screen reader hears one figure rather than a
- * meaningless nested element.
- */
+// Signature progress towards the creator's goal. The percentage and the
+// goal-met test come from the shared contract helpers, so the bar cannot
+// disagree with the authority queue's goalMet filter.
+//
+// The bar itself is decorative: the numbers are stated in text beside it,
+// and the accessible value sits on the wrapper.
 export function PetitionProgress({
   petition
 }: {

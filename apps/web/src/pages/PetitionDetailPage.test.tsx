@@ -50,11 +50,8 @@ const petition = (overrides: Partial<Petition> = {}): Petition => ({
   ...overrides
 });
 
-/**
- * Renders the page, optionally signed in as a given account. The auth
- * check and the petition fetch share the mocked `get`, so they are
- * dispatched by path.
- */
+// Renders the page, optionally signed in. The auth check and the petition
+// fetch share the mocked get, so they are dispatched by path.
 const renderPage = async (options: { as?: { role: UserRole; id: string }; petition?: Petition } = {}) => {
   const current = options.petition ?? petition();
 

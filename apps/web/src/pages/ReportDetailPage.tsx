@@ -35,7 +35,7 @@ export function ReportDetailPage() {
       .catch((error) => {
         if (!active) return;
         // The API answers 404 for both "no such report" and "not yours",
-        // deliberately -- so the UI cannot distinguish them either.
+        // so the UI cannot distinguish them either.
         if (apiErrorStatus(error) === 404) {
           setStatus("missing");
           return;

@@ -35,11 +35,8 @@ export function ReportPage() {
     defaultValues: { category: "pothole" }
   });
 
-  /**
-   * Browser geolocation only -- no map library and no reverse
-   * geocoding in this milestone. The manual latitude/longitude inputs
-   * stay the primary path; this button just fills them in.
-   */
+  // Browser geolocation only: no map library, no reverse geocoding. The
+  // manual latitude/longitude inputs stay the primary path.
   const useMyLocation = () => {
     if (!("geolocation" in navigator)) {
       setGeoState("unsupported");
@@ -64,7 +61,7 @@ export function ReportPage() {
       return;
     }
     // Mirrors the API's limits so an oversized file is not uploaded just
-    // to be rejected. The API enforces these again on arrival.
+    // to be rejected; the API enforces them again on arrival.
     if (!civicMediaAllowedMimeTypes.includes(selected.type as CivicMediaMimeType)) {
       setFile(null);
       setFileError("Only JPEG and PNG images are accepted.");
