@@ -7,7 +7,8 @@ export const legalSourceIds = [
   "it_act",
   "jj2015",
   "pwdva",
-  "lsa"
+  "lsa",
+  "rti"
 ] as const;
 
 export type LegalSourceId = (typeof legalSourceIds)[number];
@@ -86,6 +87,15 @@ export const legalSources: Record<LegalSourceId, LegalSource> = {
     unitLabel: "Section",
     officialUrl: "https://www.indiacode.nic.in/handle/123456789/1925",
     publisher: "India Code / Ministry of Law and Justice"
+  },
+  rti: {
+    label: "Right to Information Act, 2005",
+    actNo: "Act No. 22 of 2005",
+    unitLabel: "Section",
+    // The Central Information Commission's own published copy, which is
+    // also the exact file ingested into the corpus.
+    officialUrl: "https://cic.gov.in/sites/default/files/RTI-Act_English.pdf",
+    publisher: "Central Information Commission"
   }
 };
 
@@ -111,7 +121,8 @@ export type LearnCategoryId =
   | "women-and-safety"
   | "children-and-young-people"
   | "legal-aid"
-  | "civic-participation";
+  | "civic-participation"
+  | "right-to-information";
 
 export type LearningArticle = {
   slug: string;

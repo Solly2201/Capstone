@@ -9,6 +9,7 @@ import { everydayRightsArticles } from "./everyday-rights";
 import { faqs as allFaqs } from "./faqs";
 import { legalAidArticles } from "./legal-aid";
 import { policeFirArticles } from "./police-fir";
+import { rightToInformationArticles } from "./right-to-information";
 import { quizQuestions as allQuizQuestions } from "./questions";
 import { womenAndSafetyArticles } from "./women-and-safety";
 import {
@@ -100,6 +101,16 @@ export const learnCategories: LearnCategory[] = [
     title: "Civic Participation",
     description:
       "Civic complaints and petitions on this platform, how they differ from a legal case, and how to use them well."
+  },
+  {
+    id: "right-to-information",
+    title: "Right to Information",
+    description:
+      "How to ask a public authority for information it holds, how long it has to answer, what it may withhold, and what to do when it refuses or stays silent.",
+    deferredTopics: [
+      "Fee amounts for an RTI application — the Act says only \"such fee as may be prescribed\"; the figures are set by rules made under the Act, which are not part of this project's source library.",
+      "How long an Information Commissioner serves and on what terms — sections 13, 16 and 27 were replaced by the Right to Information (Amendment) Act, 2019, and the pre-2019 text is deliberately excluded from the corpus rather than shown as current law."
+    ]
   }
 ];
 
@@ -117,7 +128,8 @@ export const learningArticles: LearningArticle[] = [
   ...womenAndSafetyArticles,
   ...childrenArticles,
   ...legalAidArticles,
-  ...civicParticipationArticles
+  ...civicParticipationArticles,
+  ...rightToInformationArticles
 ];
 
 export const findCategory = (id: LearnCategoryId): LearnCategory | undefined =>

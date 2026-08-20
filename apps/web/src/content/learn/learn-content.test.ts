@@ -41,9 +41,23 @@ describe("learn content", () => {
     }
   });
 
-  it("points every registered source at an India Code URL", () => {
+  it("points every registered source at an official government publisher", () => {
+    // The rule this enforces is "the citation resolves to an official
+    // publisher's own copy", and for eight of the nine Acts that is
+    // India Code. The RTI Act is hosted here by the Central Information
+    // Commission, the statutory body that administers it, because the
+    // CIC's published PDF is the exact file ingested into the corpus --
+    // and types.ts requires an article citation and a document-browser
+    // result to point at the same document. Sending RTI to India Code
+    // instead would break that invariant and link to a different text
+    // from the one this project actually holds.
+    const officialHosts = [
+      /^https:\/\/www\.indiacode\.nic\.in\//,
+      /^https:\/\/cic\.gov\.in\//
+    ];
     for (const id of legalSourceIds) {
-      expect(legalSources[id].officialUrl).toMatch(/^https:\/\/www\.indiacode\.nic\.in\//);
+      const url = legalSources[id].officialUrl;
+      expect(officialHosts.some((host) => host.test(url)), `${id}: ${url}`).toBe(true);
     }
   });
 

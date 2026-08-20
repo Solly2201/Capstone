@@ -1,4 +1,5 @@
 import { everydayServicesFaqs } from "./everyday-services";
+import { informationAndRecordsFaqs } from "./information-and-records";
 import { policeAndArrestFaqs } from "./police-and-arrest";
 import { safetyAndRightsFaqs } from "./safety-and-rights";
 
@@ -13,4 +14,9 @@ import { safetyAndRightsFaqs } from "./safety-and-rights";
  * from a target count. Where the corpus cannot support a question it was
  * left out rather than written from general knowledge.
  */
-export const faqs = [...policeAndArrestFaqs, ...safetyAndRightsFaqs, ...everydayServicesFaqs];
+export const faqs = [
+  ...policeAndArrestFaqs,
+  ...safetyAndRightsFaqs,
+  ...everydayServicesFaqs,
+  ...informationAndRecordsFaqs
+];

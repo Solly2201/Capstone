@@ -113,7 +113,12 @@ describe("FAQ content", () => {
         // "section 12(h)" and "s. 478(1)" are stripped before scanning, so
         // the check stays about helplines rather than flagging citations.
         .replace(/\b(sections?|s\.)\s*\d+[A-Za-z]*(\(\d+\))?/gi, "")
-        .replace(/\b\d{4}\b(?=\s*(Act|,))/g, "");
+        .replace(/\b\d{4}\b(?=\s*(Act|,))/g, "")
+        // A rupee amount is not a phone number either. RTI's penalty is
+        // "Rs 250 a day, up to Rs 25,000", and both figures are statutory
+        // quantities from section 20.
+        .replace(/\bRs\.?\s*[\d,]+/gi, "")
+        .replace(/\b[\d,]+\s*(rupees|per day|a day)\b/gi, "");
       for (const number of text.match(/\b\d{3,5}\b/g) ?? []) {
         expect(allowed.has(number), `${faq.id} names ${number}`).toBe(true);
       }

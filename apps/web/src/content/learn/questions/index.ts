@@ -8,6 +8,7 @@ import { digitalRightsQuestions } from "./digital-rights";
 import { everydayRightsQuestions } from "./everyday-rights";
 import { legalAidQuestions } from "./legal-aid";
 import { policeFirQuestions } from "./police-fir";
+import { rightToInformationQuestions } from "./right-to-information";
 import { womenAndSafetyQuestions } from "./women-and-safety";
 
 /**
@@ -27,5 +28,6 @@ export const quizQuestions = [
   ...womenAndSafetyQuestions,
   ...childrenQuestions,
   ...legalAidQuestions,
-  ...civicParticipationQuestions
+  ...civicParticipationQuestions,
+  ...rightToInformationQuestions
 ];
