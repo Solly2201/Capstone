@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
 import {
+  faqs,
   learnCategories,
   learningArticles,
   questionsForArticle,
@@ -42,7 +43,7 @@ describe("LearnPage", () => {
     renderPage();
 
     expect(screen.getByRole("status").textContent).toBe(
-      `${learningArticles.length} of ${learningArticles.length} articles`
+      `${learningArticles.length} of ${learningArticles.length} articles · ${faqs.length} of ${faqs.length} FAQs`
     );
   });
 
@@ -101,7 +102,7 @@ describe("LearnPage", () => {
 
     expect(
       screen.getByText(
-        `${learningArticles.length} articles · ${learnCategories.length} topics · ${quizQuestions.length} practice questions`
+        `${learningArticles.length} articles · ${faqs.length} practical FAQs · ${learnCategories.length} topics · ${quizQuestions.length} practice questions`
       )
     ).toBeTruthy();
   });
@@ -129,5 +130,58 @@ describe("LearnPage", () => {
     expect(
       screen.getAllByText(/only for public awareness and information/).length
     ).toBeGreaterThan(0);
+  });
+
+  it("shows the FAQ section alongside the learning articles", () => {
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: /FAQs · What should I do\?/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /The police won't register my FIR/ })
+    ).toBeTruthy();
+  });
+
+  it("counts FAQs as well as articles in the result summary", () => {
+    renderPage();
+
+    expect(screen.getByRole("status").textContent).toContain(
+      `${faqs.length} of ${faqs.length} FAQs`
+    );
+  });
+
+  it("finds an FAQ from citizen wording that is not in its title", () => {
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("Search learning articles"), {
+      target: { value: "cops won't file" }
+    });
+
+    // The FAQ is titled "The police won't register my FIR" -- the match
+    // comes from the citizen-language tags, which is the point of them.
+    expect(
+      screen.getByRole("button", { name: /The police won't register my FIR/ })
+    ).toBeTruthy();
+  });
+
+  it("narrows FAQs with the category filter, like articles", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Consumer Rights" }));
+
+    expect(screen.getByRole("button", { name: /A shop sold me something defective/ })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /The police won't register my FIR/ })
+    ).toBeNull();
+  });
+
+  it("hides the FAQ section when nothing matches, without breaking the empty state", () => {
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("Search learning articles"), {
+      target: { value: "zzzzz no such topic" }
+    });
+
+    expect(screen.queryByRole("heading", { name: /FAQs · What should I do\?/ })).toBeNull();
+    expect(screen.getByText("No articles match that search")).toBeTruthy();
   });
 });

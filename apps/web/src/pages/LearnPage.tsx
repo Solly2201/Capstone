@@ -1,11 +1,15 @@
-import { BookOpen, HelpCircle, Info, MessagesSquare, Search } from "lucide-react";
+import { BookOpen, HelpCircle, Info, LifeBuoy, MessagesSquare, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { disclaimerText } from "@cap/contracts";
+import { FaqPanel } from "../components/FaqPanel";
 import { SiteShell } from "../components/SiteShell";
 import {
   articleSourceIds,
   articlesInCategory,
+  faqMatchesQuery,
+  faqs,
+  faqsInCategory,
   learnCategories,
   learningArticles,
   legalSources,
@@ -33,8 +37,19 @@ export function LearnPage() {
     [filter, query]
   );
 
+  // FAQs answer the practical question and articles explain the concept,
+  // so one search box drives both rather than two competing surfaces.
+  const matchingFaqs = useMemo(
+    () =>
+      learnCategories
+        .filter((category) => filter === "all" || category.id === filter)
+        .flatMap((category) => faqsInCategory(category.id))
+        .filter((faq) => faqMatchesQuery(faq, query)),
+    [filter, query]
+  );
+
   const matchCount = sections.reduce((total, section) => total + section.articles.length, 0);
-  const noResults = matchCount === 0;
+  const noResults = matchCount === 0 && matchingFaqs.length === 0;
 
   return (
     <SiteShell>
@@ -49,8 +64,8 @@ export function LearnPage() {
         </p>
 
         <p className="mt-3 text-sm text-ink/60">
-          {learningArticles.length} articles &middot; {learnCategories.length} topics &middot;{" "}
-          {quizQuestions.length} practice questions
+          {learningArticles.length} articles &middot; {faqs.length} practical FAQs &middot;{" "}
+          {learnCategories.length} topics &middot; {quizQuestions.length} practice questions
         </p>
 
         <div className="mt-6 rounded-xl border border-clay/30 bg-sandstone/40 p-4 text-sm leading-6 text-ink/80">
@@ -74,7 +89,8 @@ export function LearnPage() {
             />
           </label>
           <p className="text-sm text-ink/60" role="status">
-            {matchCount} of {learningArticles.length} articles
+            {matchCount} of {learningArticles.length} articles &middot; {matchingFaqs.length} of{" "}
+            {faqs.length} FAQs
           </p>
         </div>
 
@@ -119,6 +135,28 @@ export function LearnPage() {
               </Link>
             </div>
           </div>
+        )}
+
+        {matchingFaqs.length > 0 && (
+          <section className="mt-12" aria-labelledby="faq-heading">
+            <div className="flex items-center gap-2">
+              <LifeBuoy className="text-clay" size={22} aria-hidden="true" />
+              <h2 id="faq-heading" className="font-serif text-2xl font-semibold">
+                FAQs &middot; What should I do?
+              </h2>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/70">
+              Practical answers for situations people actually find themselves in. The articles below
+              explain what a law <em>is</em>; these answer what you can generally <em>do</em>. Every
+              answer cites the provision it rests on, and none of it is legal advice about your own
+              case.
+            </p>
+            <div className="mt-5 space-y-3">
+              {matchingFaqs.map((faq) => (
+                <FaqPanel key={faq.id} faq={faq} />
+              ))}
+            </div>
+          </section>
         )}
 
         <div className="mt-12 space-y-14">

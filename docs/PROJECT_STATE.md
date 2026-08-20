@@ -354,6 +354,58 @@ expands `FIR` to "First Information Report", a phrase appearing in only 4
 of 1,801 chunks; the statute says "information relating to the commission
 of a cognizable offence". Reported, not changed — that file is frozen.
 
+### M7b — Learn FAQs, "What should I do?" (uncommitted)
+
+30 practical FAQs alongside the 63 explanatory articles. The split is
+deliberate: an article answers *what is this law*, an FAQ answers *what do
+I need to know if this happens to me*. An FAQ never duplicates an article
+— it answers briefly and links to the article for the detail.
+
+**Chosen from demand, not from a target count.** The questions come from
+the 313-query citizen-language evaluation set: the provisions citizens
+actually ask about most, in their own words. `bnss:47`, `bnss:173`,
+`lsa:13`, `jj2015:10`, `bnss:478` and `pwdva:18` were each asked about
+four times; those became FAQs. Nothing was written to reach a number.
+
+**Grounding.** All 92 citations resolve to real corpus sections (checked
+against `chunks.jsonl`, and enforced by
+`apps/web/src/content/learn/faq-content.test.ts`). Every FAQ carries a
+mandatory `scopeNote` naming what it does not decide, and all 36
+`relatedArticles` links resolve to existing article slugs. Secondary
+sources (NALSA, DAKSH) helped identify *which questions citizens ask* and
+supplied citizen-language search tags; they are **not** cited as legal
+authority anywhere.
+
+**Safety.** FAQs touching danger or live legal jeopardy carry an
+`urgency`, and the panel then leads with contacting help rather than with
+the law. Only the four official national helplines the Legal Assistant's
+safety layer may name appear anywhere — 112, 181, 1098, 1930 — enforced by
+a test that strips statutory references first so a section number is not
+mistaken for a phone number. A second test rejects outcome-promising
+wording ("you will get", "guaranteed") in any answer or step.
+
+**Static, not retrieved.** FAQs are ordinary Learn content. The frontend
+does not call the AI service to render one, so an FAQ cannot change under
+a reader or assert something its cited provision does not say. They reuse
+the existing Learn search and category filter rather than adding a second
+search surface, and their citizen-language `tags` are what let a search
+for "cops won't file" reach the FAQ titled "The police won't register my
+FIR" — the same gap the retrieval normalisation layer closes, solved here
+by indexing the words people actually use.
+
+**Coverage, by category:** police-fir 7, arrest-bail 7, everyday-rights 4,
+women-and-safety 3, consumer-rights 3, legal-aid 2, digital-rights 2,
+children-and-young-people 2.
+
+**Deliberately omitted.** A "government department is ignoring my
+complaint" FAQ was planned and dropped: the corpus contains no
+grievance-redressal statute, the RTI Act is not ingested, and the
+Legislative Department's grievance page returned HTTP 403. Writing it
+would have meant inventing procedure from general knowledge. The civic
+complaint route on this platform is described in the Civic Participation
+article instead, which is honest about being platform behaviour rather
+than law.
+
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core and the authority workflow are built** (see M2 and M3 above). Do not build duplicate detection, DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.

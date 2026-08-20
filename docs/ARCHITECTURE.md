@@ -135,6 +135,25 @@ Multiple or differing sources are never merged into one synthesized paragraph --
 
 The severity and an `authority_guidance` flag are carried on the API response, so the frontend frames a redirect from structured fields rather than by parsing the message string. Only official national numbers are named (112, 181, 1098, 1930) -- the contact routes are fixed configuration data, never generated. The policy is deliberately conservative where a miss risks physical harm and permissive where a false positive would block ordinary legal education; the matrix in `services/ai/tests/test_safety.py` pins both directions, including a false-positive group of heavy-subject-word questions that must stay `normal`.
 
+**Learn FAQs.** The Learn module carries two kinds of content. Learning
+articles explain a concept; FAQs (`apps/web/src/content/learn/faqs/`)
+answer the practical question a person in a situation actually has, and
+link back to the article for the detail. Both are static, cited content
+built at authoring time — the frontend never calls the AI service to
+render either, so neither can change under a reader.
+
+An FAQ's `legalBasis` reuses the article paragraph shape, so every
+substantive claim carries a citation and the same test that proves
+article citations resolve covers FAQs too. A mandatory `scopeNote` states
+what the FAQ does not decide, and an optional `urgency` makes the panel
+lead with contacting help for situations involving danger or live legal
+jeopardy — mirroring how the Legal Assistant's safety layer frames the
+same situations, and restricted to the same four official helplines.
+Questions were selected from the demand signal in the citizen-language
+evaluation set rather than from a target count, and citizen-language
+`tags` feed the existing Learn search so people find an FAQ by the words
+they would use rather than by its title.
+
 **Citizen-language normalisation (`app/query/normalize.py`):** runs after
 the safety policy and both guards, and rewrites only the text handed to
 retrieval. It lives in its own package, deliberately outside

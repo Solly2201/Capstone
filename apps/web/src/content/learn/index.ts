@@ -6,6 +6,7 @@ import { consumerRightsArticles } from "./consumer-rights";
 import { courtsAndEvidenceArticles } from "./courts-and-evidence";
 import { digitalRightsArticles } from "./digital-rights";
 import { everydayRightsArticles } from "./everyday-rights";
+import { faqs as allFaqs } from "./faqs";
 import { legalAidArticles } from "./legal-aid";
 import { policeFirArticles } from "./police-fir";
 import { quizQuestions as allQuizQuestions } from "./questions";
@@ -15,6 +16,7 @@ import {
   type Citation,
   type LearnCategory,
   type LearnCategoryId,
+  type Faq,
   type LearningArticle,
   type LegalSourceId,
   type QuizQuestion
@@ -198,4 +200,52 @@ export const scoreAttempt = (
     total,
     percentage: total === 0 ? 0 : Math.round((correct / total) * 100)
   };
+};
+
+// --- FAQs ---------------------------------------------------------------
+// Practical "what should I do?" content, alongside the explanatory
+// articles. Static and grounded exactly like the articles: the frontend
+// never calls the AI service to render one, so an FAQ cannot change
+// under a reader or say something the cited provision does not.
+
+export const faqs: Faq[] = allFaqs;
+
+export const findFaq = (id: string | undefined): Faq | undefined =>
+  id ? faqs.find((faq) => faq.id === id) : undefined;
+
+export const faqsInCategory = (id: LearnCategoryId): Faq[] =>
+  faqs.filter((faq) => faq.categoryId === id);
+
+/** Distinct sources cited by an FAQ, in first-citation order. */
+export const faqSourceIds = (faq: Faq): LegalSourceId[] => {
+  const seen: LegalSourceId[] = [];
+  for (const paragraph of faq.legalBasis) {
+    const id = paragraph.citation?.sourceId;
+    if (id && !seen.includes(id)) seen.push(id);
+  }
+  return seen;
+};
+
+/**
+ * Case-insensitive match over the question, the short answer, the tags
+ * and the citation labels.
+ *
+ * Tags carry the citizen wording deliberately, so a search for "police
+ * won't take my complaint" reaches the FAQ titled "The police won't
+ * register my FIR" -- the same gap the retrieval normalisation layer
+ * exists to close, solved here by indexing the words people use.
+ */
+export const faqMatchesQuery = (faq: Faq, query: string): boolean => {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = [
+    faq.question,
+    faq.shortAnswer,
+    ...faq.tags,
+    ...(faq.whatYouCanDo ?? []),
+    ...faq.legalBasis.map((paragraph) => paragraph.citation?.label ?? "")
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(needle);
 };

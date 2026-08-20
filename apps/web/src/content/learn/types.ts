@@ -159,3 +159,40 @@ export type QuizQuestion = {
   explanation: string;
   citation: Citation;
 };
+
+/**
+ * A practical "what should I do?" question.
+ *
+ * Learning articles answer "what is this law?"; an FAQ answers "what do I
+ * need to know if this happens to me?". The two are deliberately
+ * different shapes, and an FAQ never duplicates an article -- it answers
+ * the practical question briefly and links to the article for the detail.
+ *
+ * `legalBasis` reuses `ArticleParagraph`, so every substantive claim
+ * carries the same citation structure -- and the same test that proves
+ * article citations resolve to real corpus sections covers FAQs too.
+ */
+export type FaqUrgency = "emergency" | "serious";
+
+export type Faq = {
+  id: string;
+  question: string;
+  categoryId: LearnCategoryId;
+  /** Two or three sentences a worried person can read first. */
+  shortAnswer: string;
+  /** Lawful, source-supported steps. Omitted where the source supports none. */
+  whatYouCanDo?: string[];
+  /** The provisions the answer rests on, each cited. */
+  legalBasis: ArticleParagraph[];
+  /** What this FAQ deliberately does not decide. Always present. */
+  scopeNote: string;
+  /** Slugs of learning articles that go deeper. */
+  relatedArticles: string[];
+  /** Citizen-language words people actually search for. */
+  tags: string[];
+  /**
+   * Set when the situation may involve danger or live legal jeopardy, so
+   * the page leads with contacting help rather than with the law.
+   */
+  urgency?: FaqUrgency;
+};
