@@ -17,6 +17,8 @@ import json
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.generation.pipeline import handle_legal_query  # noqa: E402
@@ -26,6 +28,25 @@ from app.safety.corpus_coverage import (  # noqa: E402
 )
 
 EVAL_DIR = os.path.join(os.path.dirname(__file__), "..", "eval")
+INDEX_MANIFEST = os.path.join(
+    os.path.dirname(__file__), "..", "data", "index", "chunk_manifest.jsonl"
+)
+
+# A built index is a generated artifact and is gitignored, so a clean
+# checkout has the corpus PDFs but no index. CI deliberately does not
+# build one either -- its requirements pull the BM25-only dependency
+# set, without the sentence-transformer model a hybrid index needs.
+#
+# Most tests in this file are unaffected, because their queries abstain
+# at this guard before retrieval is ever reached. The one that asserts a
+# query IS answered genuinely needs a real index, so it skips where none
+# has been built rather than failing. (Two other test modules happen to
+# build an index in their setup, but they sort after this one, so
+# relying on that would be an ordering accident rather than a fixture.)
+needs_index = pytest.mark.skipif(
+    not os.path.exists(INDEX_MANIFEST),
+    reason="no built index (run scripts/ingest_corpus.py); CI does not build one",
+)
 
 # --- the exact evaluation failures this guard was built for ---------------
 # Each of these was answered confidently from the wrong Act before the
@@ -73,6 +94,7 @@ def test_rti_is_no_longer_a_coverage_gap():
         assert classify_coverage_gap(text) is None, text
 
 
+@needs_index
 def test_rti_questions_are_answered_from_the_rti_act():
     """The end-to-end contract: an information-access question must come
     back citing the RTI Act, not a lexically-similar section of BNSS,
@@ -94,19 +116,30 @@ def test_rti_questions_are_answered_from_the_rti_act():
 
 def test_amended_institutional_sections_are_not_served():
     """ss.13, 16 and 27 were replaced by the RTI (Amendment) Act 2019 and
-    the ingested copy predates it, so they are excluded at ingestion.
-    Nothing anywhere may surface them as current law."""
-    import json as _json
-    import os as _os
-    path = _os.path.join(_os.path.dirname(__file__), "..", "data", "index", "chunk_manifest.jsonl")
-    rti_units = set()
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            row = _json.loads(line)
-            if row["source_id"] == "rti":
-                rti_units.add(row["unit_number"])
-    assert rti_units, "no RTI chunks indexed"
-    assert {"13", "16", "27"}.isdisjoint(rti_units), sorted(rti_units & {"13", "16", "27"})
+    the ingested copy predates them; s.25 is excluded for measured
+    retrieval harm. None may reach the corpus as current law.
+
+    Runs ingestion rather than reading the built index, so it holds on a
+    clean checkout and in CI. Chunking is pure text processing and needs
+    no embedding model. It is also the stronger assertion: ingestion
+    itself refuses to run when an excluded unit is one the chunker never
+    produced, so this proves the exclusion is doing real work rather
+    than naming sections that were never there.
+    """
+    from app.ingestion.pipeline import ingest_source, load_chunks
+    from app.ingestion.sources import APPROVED_SOURCES
+
+    excluded = set(APPROVED_SOURCES["rti"].exclude_units)
+    assert excluded == {"13", "16", "25", "27"}, sorted(excluded)
+    assert APPROVED_SOURCES["rti"].exclude_reason.strip(), "an exclusion must state why"
+
+    ingest_source("rti")
+    units = {chunk.unit_number for chunk in load_chunks("rti")}
+    assert units, "RTI ingestion produced no chunks"
+    assert excluded.isdisjoint(units), sorted(excluded & units)
+    # The citizen-facing provisions must survive that exclusion.
+    for section in ("3", "6", "7", "8", "9", "10", "11", "18", "19", "20"):
+        assert section in units, section
 
 
 # --- must NOT block anything the corpus genuinely answers -----------------
