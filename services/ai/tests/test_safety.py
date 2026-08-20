@@ -278,3 +278,129 @@ def test_fabrication_examples_are_detected():
 def test_grounded_informational_text_is_not_flagged_as_fabrication():
     text = "Women cannot generally be arrested after sunset or before sunrise."
     assert contains_fabricated_action_claim(text) is False
+
+
+# --- I. Possession of a legal matter is not, alone, jeopardy -----------
+# "my case" / "my trial" / "my arrest" say only that a person HAS a legal
+# matter. Every other serious-tier pattern describes jeopardy outright
+# ("been accused", "about to be arrested", "should I plead guilty"), and
+# because a possessive is inherently personal, `_is_purely_educational`
+# could never stand this one down -- so it fired unconditionally and
+# redirected pure entitlement questions to a lawyer.
+
+ROUTINE_CIVIC_COMPLAINTS = [
+    # "my complaint" was in the possessive list, so a pothole graded serious.
+    "the municipality is ignoring my complaint about a broken road",
+    "my complaint to the water department got no response",
+    "my complaint about garbage collection was ignored",
+    "who do I complain to about a broken street light",
+]
+
+
+@pytest.mark.parametrize("text", ROUTINE_CIVIC_COMPLAINTS)
+def test_routine_civic_complaint_is_normal(text):
+    """A complaint the person FILED is not personal legal jeopardy. A
+    complaint AGAINST them still is -- see the test below."""
+    assert assess_query(text).severity == SEVERITY_NORMAL
+
+
+ENTITLEMENT_QUESTIONS = [
+    "must the police tell me the grounds of my arrest",
+    "can I get a copy of the police report before my trial",
+    "how do I get a free copy of my FIR",
+    "am I entitled to a lawyer at my trial",
+    "how long can my bail application take",
+    "what are my rights if my case goes to trial",
+]
+
+
+@pytest.mark.parametrize("text", ENTITLEMENT_QUESTIONS)
+def test_entitlement_question_about_own_matter_is_normal(text):
+    """Asking what the law entitles you to WITHIN your own matter is an
+    informational question, not a request for personalised coaching."""
+    assert assess_query(text).severity == SEVERITY_NORMAL
+
+
+# --- J. Bribery solicitation grades consistently ----------------------
+# The person being asked for a bribe is the victim, not the accused, so
+# a possessive in the sentence must not change the grade. At HEAD,
+# "officer demanding a bribe" was normal while "police officer wants
+# money to register my FIR" was serious -- same conduct, two grades.
+
+BRIBE_SOLICITATION = [
+    "a government officer is demanding a bribe to process my file",
+    "the police officer wants money to register my FIR",
+    "a public servant asked me for a bribe",
+    "the clerk wants money to release my certificate",
+]
+
+
+@pytest.mark.parametrize("text", BRIBE_SOLICITATION)
+def test_bribe_solicitation_is_normal(text):
+    assert assess_query(text).severity == SEVERITY_NORMAL
+
+
+def test_bribe_solicitation_grades_identically_regardless_of_possessive():
+    """The defect was inconsistency, so assert the property directly
+    rather than only the individual grades."""
+    severities = {assess_query(t).severity for t in BRIBE_SOLICITATION}
+    assert len(severities) == 1, severities
+
+
+# --- K. Genuine serious detection is not weakened ----------------------
+# Every one of these must survive the possessive narrowing above.
+
+STILL_SERIOUS = [
+    "police arrested me last night what should I do",
+    "I have been accused of theft",
+    "should I plead guilty to get a lighter sentence",
+    "the police are about to arrest me",
+    "what should I say when the police question me",
+    "will I go to jail for this",
+    "my case is coming up and I don't know what to do",
+    "what should I do about my bail application",
+    "I am under investigation by the police",
+    "they are questioning me at the police station right now",
+]
+
+
+@pytest.mark.parametrize("text", STILL_SERIOUS)
+def test_genuine_serious_matters_stay_serious(text):
+    assert assess_query(text).severity == SEVERITY_SERIOUS
+
+
+COMPLAINT_AGAINST_THE_PERSON = [
+    # Removing bare "my complaint" must not lose these.
+    "an FIR has been filed against me",
+    "a case has been registered against me",
+    "a complaint has been filed against me by my neighbour",
+    "there is an FIR against me",
+]
+
+
+@pytest.mark.parametrize("text", COMPLAINT_AGAINST_THE_PERSON)
+def test_complaint_against_the_person_is_serious(text):
+    """A complaint AGAINST the person is exposure, whatever words sit
+    between the noun and "against me"."""
+    assert assess_query(text).severity == SEVERITY_SERIOUS
+
+
+# --- L. Emergency detection is not weakened ----------------------------
+
+STILL_EMERGENCY = [
+    ("my husband is beating me right now", "domestic_violence"),
+    ("someone is breaking into my house", "threat_to_life"),
+    ("I want to kill myself", "self_harm"),
+    ("money was debited from my account by a scammer", "cyber_fraud"),
+    # Kidnapping grades threat_to_life, not child_safety -- both are
+    # emergencies, and this records the existing routing.
+    ("my daughter has been kidnapped", "threat_to_life"),
+    ("my child is being abused at school", "child_safety"),
+]
+
+
+@pytest.mark.parametrize("text,category", STILL_EMERGENCY)
+def test_emergencies_stay_emergencies(text, category):
+    assessment = assess_query(text)
+    assert assessment.severity == SEVERITY_EMERGENCY, text
+    assert assessment.category == category, text

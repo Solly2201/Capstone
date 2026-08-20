@@ -202,7 +202,10 @@ _SERIOUS_LEGAL_SUBJECTS = _compile([
     r"\b(been|being) (accused|charged|booked|chargesheeted|framed|prosecuted)\b",
     r"\b(accused|charged|booked|framed) (me|us|my \w+)\b",
     r"\bcase (has been )?(filed|registered|lodged) against (me|us|my)\b",
-    r"\b(fir|complaint|case|chargesheet) against (me|us|my \w+)\b",
+    # Allows words between the noun and "against me": at HEAD this
+    # required them adjacent, so "an FIR has been filed against me"
+    # graded normal while "an FIR against me" graded serious.
+    r"\b(fir|complaint|case|chargesheet|charges?)\b[^.?!]{0,30}\bagainst (me|us|my \w+)\b",
     r"\b(i am|i'm|we are|we're) (under investigation|being investigated)\b",
     # Interrogation / custody / imminent arrest
     r"\b(police|cbi|officers?|investigating officer)\b[^.?!]{0,40}"
@@ -221,9 +224,69 @@ _SERIOUS_LEGAL_SUBJECTS = _compile([
     r"\bam i going to (jail|prison)\b",
     r"\bshould i (plead guilty|confess|surrender|sign|admit|say anything)\b",
     r"\bwhat (exactly )?should (i|we|he|she|they) (say|tell|answer)\b",
-    r"\bmy (fir|case|complaint|bail|trial|hearing|chargesheet|arrest|conviction|sentence)\b",
     r"\b(i|we) (was|were|got|have been|had been) arrested\b",
     r"\bpolice arrested (me|us|my \w+)\b",
+])
+
+# A possessive reference to one's own legal matter, split out of
+# _SERIOUS_LEGAL_SUBJECTS above because it behaves differently from
+# every other member of that group.
+#
+# The other patterns describe jeopardy outright ("been accused", "about
+# to be arrested", "should I plead guilty"). This one describes only
+# *possession* of a legal matter, which is a much weaker signal -- and
+# because "my case" is inherently personal, `_is_purely_educational`
+# can never be true for it, so as an ordinary member of the group it
+# fired unconditionally. Measured consequences: "must the police tell me
+# the grounds of my arrest" and "can I get a copy of the police report
+# before my trial" were both graded `serious` and redirected to a
+# lawyer, although each asks only what the law entitles the person to.
+#
+# "complaint" is deliberately no longer in this list. A complaint the
+# person *filed* is not jeopardy -- it made "the municipality is
+# ignoring my complaint about a broken road" a serious legal matter. A
+# complaint *against* them is still caught, by the
+# "(fir|complaint|case|chargesheet) against (me|us|my ...)" pattern
+# above, which is the phrasing that actually indicates exposure.
+_OWN_LEGAL_MATTER = _compile([
+    r"\bmy (fir|case|bail|trial|hearing|chargesheet|arrest|conviction|sentence)\b",
+])
+
+# Asking what the law entitles you to *within* your own matter is an
+# informational question, not a request for personalised coaching. Kept
+# separate from _INFORMATIONAL_FRAME on purpose: that group also gates
+# the emergency tier, and widening it there could let a live emergency
+# read as educational. This group only ever stands down the weak
+# possessive signal above.
+_ENTITLEMENT_FRAME = _compile([
+    r"\b(am i|are we) entitled\b",
+    r"\bdo(es)? (i|we) have (a|the|any) right\b",
+    r"\bwhat (is|are) my rights?\b",
+    r"\b(can|may|must|should|do|does|will) (the )?"
+    r"(police|court|magistrate|judge|officer|state|government|prosecution|jail|prison)\b",
+    r"\b(can|may|am i able to) (i )?(get|obtain|see|inspect|receive|ask for|request)\b"
+    r"[^.?!]{0,30}\b(copy|copies|document|record|records|information|file|papers)\b",
+    r"\bhow (do|can|would) (i|we) (get|obtain|see|inspect|receive|request|ask for|apply for)\b"
+    r"[^.?!]{0,30}\b(copy|copies|document|record|records|information|file|papers)\b",
+    r"\bhow long (can|may|does|do|is|are)\b",
+    r"\b(entitled to|right to) (a |an |the )?(copy|copies|information|records?|lawyer|bail)\b",
+])
+
+# Being solicited for a bribe is not personal jeopardy either: the
+# person is the one being asked, not the one accused. "The police
+# officer wants money to register my FIR" carries "my FIR" but reports
+# extortion by an official, and must grade the same as "a government
+# officer is demanding a bribe to process my file", which carries no
+# possessive at all. That inconsistency -- serious for one phrasing,
+# normal for the other, for the same conduct -- was a measured Stage 2
+# defect. Both now grade normal, and the corpus-coverage guard abstains
+# honestly on both because the Prevention of Corruption Act 1988 is not
+# ingested.
+_BRIBE_SOLICITATION = _compile([
+    r"\b(bribe[sd]?|bribery|bribing|rishwat|ghoos|ghus|kickbacks?|"
+    r"speed money|chai[- ]?paani|hafta)\b",
+    r"\b(demand(s|ed|ing)?|want(s|ed|ing)?|ask(s|ed|ing)?|expect(s|ed|ing)?)\b"
+    r"[^.?!]{0,32}\b(money|cash|bribe|payment)\b",
 ])
 
 # Domestic abuse and cyber fraud sit between the tiers: they need their
@@ -443,7 +506,19 @@ def _life_threatening_subject(text: str) -> bool:
 
 
 def _serious_legal_subject(text: str) -> bool:
-    return _any(_SERIOUS_LEGAL_SUBJECTS, text)
+    """True when the query describes a serious personal legal matter.
+
+    An outright jeopardy phrasing is enough on its own. A bare
+    possessive reference to one's own matter ("my trial") is not: it
+    counts only when the question is not asking what the law entitles
+    the person to, and is not reporting a bribe solicitation. See
+    _OWN_LEGAL_MATTER for the measured failures that distinction fixes.
+    """
+    if _any(_SERIOUS_LEGAL_SUBJECTS, text):
+        return True
+    if not _any(_OWN_LEGAL_MATTER, text):
+        return False
+    return not (_any(_ENTITLEMENT_FRAME, text) or _any(_BRIBE_SOLICITATION, text))
 
 
 def _requests_harmful_assistance(text: str) -> bool:
