@@ -11,6 +11,7 @@ vi.mock("../models/petition.js", () => ({
     create: vi.fn(),
     find: vi.fn(),
     findById: vi.fn(),
+    findByIdAndUpdate: vi.fn(),
     findOneAndUpdate: vi.fn(),
     updateOne: vi.fn(),
     countDocuments: vi.fn()
@@ -39,6 +40,7 @@ const petitionModel = Petition as unknown as {
   create: ReturnType<typeof vi.fn>;
   find: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
+  findByIdAndUpdate: ReturnType<typeof vi.fn>;
   countDocuments: ReturnType<typeof vi.fn>;
 };
 const signatureModel = Signature as unknown as {
@@ -732,5 +734,51 @@ describe("GET /api/petitions/authority", () => {
       .set("Authorization", `Bearer ${authorityToken}`);
 
     expect(petitionModel.findById).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/petitions/:id/signatures/recount", () => {
+  it("lets an ADMIN rebuild the count from the signature rows", async () => {
+    signatureModel.countDocuments.mockResolvedValue(57);
+    petitionModel.findByIdAndUpdate.mockResolvedValue(fakePetition({ signatureCount: 57 }));
+
+    const response = await request(createApp())
+      .post(`/api/petitions/${PETITION_ID}/signatures/recount`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.petition.signatureCount).toBe(57);
+    // The write sets the count to the real row count, atomically.
+    expect(petitionModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      PETITION_ID,
+      { $set: { signatureCount: 57 } },
+      { new: true }
+    );
+    expect(signatureModel.countDocuments).toHaveBeenCalledWith({ petitionId: PETITION_ID });
+  });
+
+  it("refuses AUTHORITY and CITIZEN accounts", async () => {
+    for (const token of [authorityToken, otherCitizenToken]) {
+      const response = await request(createApp())
+        .post(`/api/petitions/${PETITION_ID}/signatures/recount`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(response.status).toBe(403);
+    }
+    expect(petitionModel.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 for an unknown or malformed petition id", async () => {
+    petitionModel.findByIdAndUpdate.mockResolvedValue(null);
+
+    const unknown = await request(createApp())
+      .post(`/api/petitions/${PETITION_ID}/signatures/recount`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(unknown.status).toBe(404);
+
+    const malformed = await request(createApp())
+      .post("/api/petitions/not-an-id/signatures/recount")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(malformed.status).toBe(404);
   });
 });

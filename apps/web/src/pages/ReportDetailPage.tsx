@@ -1,5 +1,5 @@
-import { ArrowLeft, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, MapPin, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   civicCategoryLabels,
@@ -21,33 +21,37 @@ export function ReportDetailPage() {
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
     if (!id) return;
-    let active = true;
-
-    api
-      .get<CivicReportResponse>(`/civic/reports/${id}`)
-      .then((response) => {
-        if (!active) return;
-        setReport(response.data.report);
-        setStatus("ready");
-      })
-      .catch((error) => {
-        if (!active) return;
-        // The API answers 404 for both "no such report" and "not yours",
-        // so the UI cannot distinguish them either.
-        if (apiErrorStatus(error) === 404) {
-          setStatus("missing");
-          return;
-        }
-        setErrorMessage(apiErrorMessage(error, "We could not load this report. Please try again."));
-        setStatus("error");
-      });
-
-    return () => {
-      active = false;
-    };
+    try {
+      const response = await api.get<CivicReportResponse>(`/civic/reports/${id}`);
+      setReport(response.data.report);
+      setStatus("ready");
+    } catch (error) {
+      // The API answers 404 for both "no such report" and "not yours",
+      // so the UI cannot distinguish them either.
+      if (apiErrorStatus(error) === 404) {
+        setStatus("missing");
+        return;
+      }
+      setErrorMessage(apiErrorMessage(error, "We could not load this report. Please try again."));
+      setStatus("error");
+    }
   }, [id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // The authority moves a report while the citizen watches this page;
+  // nothing pushes that change, so give them a way to pull it.
+  const refresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
 
   return (
     <SiteShell>
@@ -75,9 +79,19 @@ export function ReportDetailPage() {
         )}
 
         {status === "error" && (
-          <p role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
-            {errorMessage}
-          </p>
+          <div role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setStatus("loading");
+                void load();
+              }}
+              className="mt-3 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {status === "ready" && report && (
@@ -143,7 +157,18 @@ export function ReportDetailPage() {
             </dl>
 
             <section className="mt-10 border-t border-ink/10 pt-6">
-              <h2 className="font-serif text-xl font-semibold">What has happened so far</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-serif text-xl font-semibold">What has happened so far</h2>
+                <button
+                  type="button"
+                  disabled={refreshing}
+                  onClick={() => void refresh()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-ink/20 px-3 py-2 text-xs font-semibold transition hover:bg-sandstone disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw size={13} aria-hidden="true" />
+                  {refreshing ? "Refreshing…" : "Check for updates"}
+                </button>
+              </div>
               <div className="mt-4">
                 <StatusHistory history={report.history} />
               </div>

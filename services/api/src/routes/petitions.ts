@@ -21,6 +21,7 @@ import {
 } from "../services/petition-workflow.js";
 import {
   hasCitizenSigned,
+  recountPetitionSignatures,
   signPetition,
   signatureStatusCode,
   signedPetitionIds,
@@ -313,6 +314,34 @@ petitionRouter.delete(
       return response.json({
         petition: toPublicPetition(result.petition, viewerFrom(request), false),
         signed: false
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+// Rebuild the signature count from the Signature collection, the source
+// of truth. The compensating-write design accepts rare one-directional
+// drift (the count may understate support after a crash); this is the
+// documented recovery. ADMIN-only maintenance: it changes no signature
+// rows, only the derived count.
+petitionRouter.post(
+  "/:id/signatures/recount",
+  requireAuth,
+  petitionWorkflowRateLimiter,
+  requireFreshRole("ADMIN"),
+  async (request, response, next) => {
+    try {
+      const id = objectIdParam(request.params.id);
+      if (!id) return response.status(404).json({ message: "Petition not found." });
+
+      const petition = await recountPetitionSignatures(id);
+      if (!petition) return response.status(404).json({ message: "Petition not found." });
+
+      const hasSigned = await hasCitizenSigned(petition._id, request.auth!.userId);
+      return response.json({
+        petition: toPublicPetition(petition, viewerFrom(request), hasSigned)
       });
     } catch (error) {
       return next(error);

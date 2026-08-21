@@ -1,11 +1,12 @@
 import { ArrowLeft, MapPin } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   civicCategoryLabels,
   civicPriorities,
   civicTransitionsFor,
   formatCivicLocation,
+  isTerminalCivicStatus,
   type CivicPriority,
   type CivicReport,
   type CivicReportResponse,
@@ -37,35 +38,37 @@ export function AuthorityReportPage() {
   const [working, setWorking] = useState(false);
   const [priority, setPriority] = useState<CivicPriority>("MEDIUM");
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!id) return;
-    let active = true;
-
-    api
-      .get<CivicReportResponse>(`/civic/reports/${id}`)
-      .then((response) => {
-        if (!active) return;
-        setReport(response.data.report);
-        setPriority(response.data.report.priority);
-        setState("ready");
-      })
-      .catch((error) => {
-        if (!active) return;
-        if (apiErrorStatus(error) === 404) {
-          setState("missing");
-          return;
-        }
-        setErrorMessage(apiErrorMessage(error, "We could not load this report. Please try again."));
-        setState("error");
-      });
-
-    return () => {
-      active = false;
-    };
+    try {
+      const response = await api.get<CivicReportResponse>(`/civic/reports/${id}`);
+      setReport(response.data.report);
+      setPriority(response.data.report.priority);
+      setState("ready");
+    } catch (error) {
+      if (apiErrorStatus(error) === 404) {
+        setState("missing");
+        return;
+      }
+      setErrorMessage(apiErrorMessage(error, "We could not load this report. Please try again."));
+      setState("error");
+    }
   }, [id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // A 409 means another authority moved this report first. Refetch so the
+  // screen shows the state their decision produced, rather than keeping a
+  // stale action list beside a message saying to reload.
+  const resyncAfterConflict = async (error: unknown) => {
+    if (apiErrorStatus(error) === 409) await load();
+  };
 
   const available = report && user ? civicTransitionsFor(report.status, user.role) : [];
   const selectedRule = available.find((rule) => rule.to === pendingStatus);
+  const closed = report ? isTerminalCivicStatus(report.status) : false;
 
   async function performTransition(event: FormEvent) {
     event.preventDefault();
@@ -85,6 +88,7 @@ export function AuthorityReportPage() {
       setNote("");
     } catch (error) {
       setActionError(apiErrorMessage(error, "That action could not be completed."));
+      await resyncAfterConflict(error);
     } finally {
       setWorking(false);
     }
@@ -106,6 +110,7 @@ export function AuthorityReportPage() {
     } catch (error) {
       setPriority(report.priority);
       setActionError(apiErrorMessage(error, "Priority could not be changed."));
+      await resyncAfterConflict(error);
     } finally {
       setWorking(false);
     }
@@ -135,9 +140,19 @@ export function AuthorityReportPage() {
         )}
 
         {state === "error" && (
-          <p role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
-            {errorMessage}
-          </p>
+          <div role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setState("loading");
+                void load();
+              }}
+              className="mt-3 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {state === "ready" && report && (
@@ -192,7 +207,10 @@ export function AuthorityReportPage() {
                 <select
                   className="field"
                   value={priority}
-                  disabled={working}
+                  // The API refuses priority changes on closed reports (it
+                  // would move a finished report's deadline); offering the
+                  // control just to fail is worse than saying why not.
+                  disabled={working || closed}
                   onChange={(event) => {
                     const next = event.target.value as CivicPriority;
                     setPriority(next);
@@ -205,6 +223,11 @@ export function AuthorityReportPage() {
                     </option>
                   ))}
                 </select>
+                {closed && (
+                  <span className="mt-1 block text-xs font-normal text-ink/55">
+                    Priority cannot be changed on a closed report.
+                  </span>
+                )}
               </label>
 
               {available.length === 0 ? (

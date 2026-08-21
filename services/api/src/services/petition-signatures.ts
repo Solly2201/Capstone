@@ -187,3 +187,20 @@ export const signedPetitionIds = async (
   const rows = await Signature.find({ petitionId: { $in: petitionIds }, citizenId }).select("petitionId");
   return new Set(rows.map((row) => String(row.petitionId)));
 };
+
+// The documented recovery for count drift, now implemented: the
+// Signature collection is the source of truth, so the count is set from
+// a real row count. ADMIN-triggered maintenance, not part of any citizen
+// path. A signature landing between the count and the write can leave
+// the stored value one below the rows again -- the same conservative
+// direction as every other drift here, fixable by running it again.
+export const recountPetitionSignatures = async (
+  petitionId: string
+): Promise<HydratedDocument<PetitionDocument> | null> => {
+  const rows = await Signature.countDocuments({ petitionId });
+  return Petition.findByIdAndUpdate(
+    petitionId,
+    { $set: { signatureCount: rows } },
+    { new: true }
+  );
+};

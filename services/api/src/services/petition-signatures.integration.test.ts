@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { Petition } from "../models/petition.js";
 import { Signature } from "../models/signature.js";
 import { User } from "../models/user.js";
-import { signPetition } from "./petition-signatures.js";
+import { recountPetitionSignatures, signPetition } from "./petition-signatures.js";
 import { clearCollections, startMongo, stopMongo } from "../test/mongo.js";
 
 /**
@@ -182,5 +182,25 @@ describe("schema validation against a real MongoDB", () => {
         disclaimerAcceptance: { version: "2026-08-16", acceptedAt: new Date() }
       })
     ).rejects.toThrow();
+  });
+});
+
+describe("signature recount against a real MongoDB", () => {
+  it("repairs a drifted count from the signature rows", async () => {
+    const petition = await createPetition();
+    await Signature.create({ petitionId: petition._id, citizenId: objectId() });
+    await Signature.create({ petitionId: petition._id, citizenId: objectId() });
+    // Simulate the documented crash drift: the count understates the rows.
+    await Petition.updateOne({ _id: petition._id }, { $set: { signatureCount: 0 } });
+
+    const updated = await recountPetitionSignatures(String(petition._id));
+
+    expect(updated?.signatureCount).toBe(2);
+    // And the rows themselves were never touched.
+    expect(await Signature.countDocuments({ petitionId: petition._id })).toBe(2);
+  });
+
+  it("returns null for a petition that does not exist", async () => {
+    expect(await recountPetitionSignatures(objectId())).toBeNull();
   });
 });

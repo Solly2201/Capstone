@@ -1,5 +1,5 @@
-import { ArrowLeft, Check, PenLine } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { ArrowLeft, Check, Megaphone, PenLine } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   petitionCapabilityFor,
@@ -27,6 +27,27 @@ type LoadState = "loading" | "ready" | "missing" | "error";
 // None of this is a security boundary -- the API derives the same
 // capability from the token and the stored creator id, and re-authorises
 // every action behind it.
+// The formal answer is the flagship outcome of the whole module: the note
+// recorded on the UNDER_REVIEW → ANSWERED transition is the authority's
+// published response, and it deserves its own panel rather than being one
+// more grey row in the history timeline (where it still appears too).
+function AuthorityResponse({ petition }: { petition: Petition }) {
+  if (petition.status !== "ANSWERED") return null;
+  const entry = [...petition.history].reverse().find((item) => item.to === "ANSWERED");
+  if (!entry?.note) return null;
+
+  return (
+    <div className="mt-6 rounded-xl border border-sage/50 bg-sage/10 p-5">
+      <div className="flex items-center gap-2">
+        <Megaphone size={18} aria-hidden="true" className="text-sage" />
+        <h2 className="font-serif text-xl font-semibold">The authority&rsquo;s response</h2>
+      </div>
+      <p className="mt-3 whitespace-pre-line text-sm leading-6 text-ink/90">{entry.note}</p>
+      <p className="mt-2 text-xs text-ink/55">Answered on {new Date(entry.at).toLocaleDateString()}</p>
+    </div>
+  );
+}
+
 export function PetitionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -41,31 +62,33 @@ export function PetitionDetailPage() {
   const [pendingStatus, setPendingStatus] = useState<PetitionStatus | null>(null);
   const [note, setNote] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!id) return;
-    let active = true;
-
-    api
-      .get<PetitionResponse>(`/petitions/${id}`)
-      .then((response) => {
-        if (!active) return;
-        setPetition(response.data.petition);
-        setState("ready");
-      })
-      .catch((error) => {
-        if (!active) return;
-        if (apiErrorStatus(error) === 404) {
-          setState("missing");
-          return;
-        }
-        setErrorMessage(apiErrorMessage(error, "We could not load this petition. Please try again."));
-        setState("error");
-      });
-
-    return () => {
-      active = false;
-    };
+    try {
+      const response = await api.get<PetitionResponse>(`/petitions/${id}`);
+      setPetition(response.data.petition);
+      setState("ready");
+    } catch (error) {
+      if (apiErrorStatus(error) === 404) {
+        setState("missing");
+        return;
+      }
+      setErrorMessage(apiErrorMessage(error, "We could not load this petition. Please try again."));
+      setState("error");
+    }
   }, [id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // A 409 means this page was acting on stale state — somebody (possibly
+  // this user in another tab) changed the petition first. The honest
+  // response is to show the current state alongside the message, not to
+  // leave a button that can never succeed on screen.
+  const resyncAfterConflict = async (error: unknown) => {
+    if (apiErrorStatus(error) === 409) await load();
+  };
 
   const isCreator = Boolean(user && petition && user.id === petition.creatorId);
   const capability = user && petition ? petitionCapabilityFor(user.role, isCreator) : null;
@@ -90,6 +113,7 @@ export function PetitionDetailPage() {
       setActionSuccess("Your signature has been recorded.");
     } catch (error) {
       setActionError(apiErrorMessage(error, "Your signature could not be recorded."));
+      await resyncAfterConflict(error);
     } finally {
       setWorking(false);
     }
@@ -107,6 +131,7 @@ export function PetitionDetailPage() {
       setActionSuccess("Your signature has been withdrawn.");
     } catch (error) {
       setActionError(apiErrorMessage(error, "Your signature could not be withdrawn."));
+      await resyncAfterConflict(error);
     } finally {
       setWorking(false);
     }
@@ -129,6 +154,7 @@ export function PetitionDetailPage() {
       setNote("");
     } catch (error) {
       setActionError(apiErrorMessage(error, "That action could not be completed."));
+      await resyncAfterConflict(error);
     } finally {
       setWorking(false);
     }
@@ -160,9 +186,19 @@ export function PetitionDetailPage() {
         )}
 
         {state === "error" && (
-          <p role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
-            {errorMessage}
-          </p>
+          <div role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setState("loading");
+                void load();
+              }}
+              className="mt-3 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {state === "ready" && petition && (
@@ -183,6 +219,8 @@ export function PetitionDetailPage() {
             <p className="mt-3 text-sm text-ink/60">
               Started by {petition.creatorName} on {new Date(petition.createdAt).toLocaleDateString()}
             </p>
+
+            <AuthorityResponse petition={petition} />
 
             <div className="mt-8 rounded-xl border border-ink/15 bg-white/50 p-5">
               <PetitionProgress petition={petition} />

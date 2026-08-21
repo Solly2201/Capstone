@@ -189,18 +189,30 @@ describe("PetitionDetailPage", () => {
     expect(screen.getByRole("button", { name: /Withdraw my signature/ })).toBeTruthy();
   });
 
-  it("surfaces a duplicate-signature conflict from the API", async () => {
+  it("surfaces a duplicate-signature conflict from the API and resyncs to the real state", async () => {
     await renderPage({ as: { role: "CITIZEN", id: OTHER_ID } });
 
     mockApi.post.mockRejectedValue({
       response: { status: 409, data: { message: "You have already signed this petition." } }
     });
+    // The refetch after the conflict returns what the database actually
+    // holds: this citizen has signed (e.g. in another tab).
+    const resynced = petition({ hasSigned: true, signatureCount: 121 });
+    mockApi.get.mockImplementation((path: string) =>
+      path === "/auth/me"
+        ? Promise.resolve({ data: { user: account("CITIZEN", OTHER_ID) } })
+        : Promise.resolve({ data: { petition: resynced } })
+    );
 
     fireEvent.click(await screen.findByRole("button", { name: /Sign this petition/ }));
 
     await waitFor(() =>
       expect(screen.getByRole("alert").textContent).toContain("You have already signed this petition.")
     );
+    // The page no longer offers a Sign button that can only fail again —
+    // it now reflects the signed state, with withdrawal available.
+    await waitFor(() => expect(screen.getByText(/You have signed this petition/)).toBeTruthy());
+    expect(screen.queryByRole("button", { name: /Sign this petition/ })).toBeNull();
   });
 
   it("lets a citizen withdraw a signature they gave", async () => {
@@ -371,6 +383,33 @@ describe("PetitionDetailPage", () => {
     const history = within(screen.getByRole("list"));
     expect(history.getByText(/Evening services resume from 1 October/)).toBeTruthy();
     expect(history.getAllByText(/by the civic authority/).length).toBe(2);
+  });
+
+  it("presents the authority's answer as its own panel, not just a history row", async () => {
+    await renderPage({
+      petition: petition({
+        status: "ANSWERED",
+        history: [
+          {
+            from: "UNDER_REVIEW",
+            to: "ANSWERED",
+            actorCapability: "AUTHORITY",
+            note: "Evening services resume from 1 October.",
+            at: "2026-08-20T09:00:00.000Z"
+          }
+        ]
+      })
+    });
+
+    expect(screen.getByRole("heading", { name: "The authority’s response" })).toBeTruthy();
+    // The note appears twice: once in the response panel, once in history.
+    expect(screen.getAllByText(/Evening services resume from 1 October/).length).toBe(2);
+  });
+
+  it("shows no response panel while a petition is still open", async () => {
+    await renderPage();
+
+    expect(screen.queryByRole("heading", { name: "The authority’s response" })).toBeNull();
   });
 
   it("distinguishes a creator's own close from a staff action in the history", async () => {
