@@ -15,6 +15,7 @@ import { Signature } from "../models/signature.js";
 import { User } from "../models/user.js";
 import { optionalAuth, requireAuth, requireFreshRole, requireRole, withFreshRole } from "../middleware/auth.js";
 import { isPetitionVisibleTo, toPetitionSummary, toPublicPetition } from "../lib/petitions.js";
+import { actorNamesFor } from "../lib/actor-names.js";
 import {
   applyPetitionTransition,
   petitionWorkflowStatusCode
@@ -74,6 +75,18 @@ const objectIdParam = (value: unknown): string | null =>
 
 const viewerFrom = (request: Request) =>
   request.auth ? { role: request.auth.role } : undefined;
+
+// Staff viewers see actor identities on history; resolve them to display
+// names in one batched read. Citizens never receive actorId, so no
+// lookup happens for them at all.
+const historyActorNames = async (
+  request: Request,
+  petition: { history?: { actorId: unknown }[] }
+): Promise<Map<string, string> | undefined> => {
+  const role = request.auth?.role;
+  if (role !== "AUTHORITY" && role !== "ADMIN") return undefined;
+  return actorNamesFor((petition.history ?? []).map((entry) => String(entry.actorId)));
+};
 
 const sortOrderFor = (sort: PetitionSort): Record<string, SortOrder> => {
   if (sort === "oldest") return { createdAt: 1 };
@@ -158,6 +171,17 @@ petitionRouter.get("/", optionalAuth, async (request, response, next) => {
       status: query.status ?? { $in: [...publicPetitionStatuses] }
     };
     if (query.category) filter.category = query.category;
+    if (query.q) {
+      // Deterministic substring search. The input is regex-escaped, so a
+      // query string can never become a crafted pattern; a collection
+      // scan at this scale is fine, and a text index can replace it
+      // without changing the contract if the collection ever grows.
+      const escaped = query.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.$or = [
+        { title: { $regex: escaped, $options: "i" } },
+        { description: { $regex: escaped, $options: "i" } }
+      ];
+    }
 
     return response.json(await listPetitions(filter, query, request.auth?.userId));
   } catch (error) {
@@ -261,7 +285,10 @@ petitionRouter.get("/:id", optionalAuth, async (request, response, next) => {
     }
 
     const hasSigned = await hasCitizenSigned(petition._id, request.auth?.userId);
-    return response.json({ petition: toPublicPetition(petition, viewerFrom(request), hasSigned) });
+    const actorNames = await historyActorNames(request, petition);
+    return response.json({
+      petition: toPublicPetition(petition, viewerFrom(request), hasSigned, actorNames)
+    });
   } catch (error) {
     return next(error);
   }
@@ -380,8 +407,9 @@ petitionRouter.post(
       }
 
       const hasSigned = await hasCitizenSigned(result.petition._id, request.auth!.userId);
+      const actorNames = await historyActorNames(request, result.petition);
       return response.json({
-        petition: toPublicPetition(result.petition, viewerFrom(request), hasSigned)
+        petition: toPublicPetition(result.petition, viewerFrom(request), hasSigned, actorNames)
       });
     } catch (error) {
       return next(error);

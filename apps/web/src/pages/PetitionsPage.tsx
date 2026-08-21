@@ -1,4 +1,4 @@
-import { Megaphone, Plus } from "lucide-react";
+import { Megaphone, Plus, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -38,6 +38,10 @@ export function PetitionsPage() {
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState<PetitionSort>("newest");
   const [offset, setOffset] = useState(0);
+  // The text typed in the box vs the term actually searched: the request
+  // fires on submit, not on every keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const load = useCallback(async () => {
     setState("loading");
@@ -46,6 +50,7 @@ export function PetitionsPage() {
         params: {
           ...(category ? { category } : {}),
           ...(status ? { status } : {}),
+          ...(searchTerm ? { q: searchTerm } : {}),
           sort,
           limit: PAGE_SIZE,
           offset
@@ -58,7 +63,7 @@ export function PetitionsPage() {
       setErrorMessage(apiErrorMessage(error, "We could not load petitions. Please try again."));
       setState("error");
     }
-  }, [category, status, sort, offset]);
+  }, [category, status, sort, offset, searchTerm]);
 
   useEffect(() => {
     void load();
@@ -95,7 +100,43 @@ export function PetitionsPage() {
           account can sign a petition once.
         </p>
 
-        <div className="mt-8 grid gap-4 rounded-xl border border-ink/15 bg-white/50 p-4 sm:grid-cols-3">
+        <form
+          className="mt-8 flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            changeFilter(() => setSearchTerm(searchInput.trim()));
+          }}
+        >
+          <label className="relative flex-1">
+            <span className="sr-only">Search petitions</span>
+            <Search
+              size={16}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/40"
+            />
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(event) => {
+                setSearchInput(event.target.value);
+                // Clearing the box clears the search without another click.
+                if (event.target.value.trim() === "" && searchTerm !== "") {
+                  changeFilter(() => setSearchTerm(""));
+                }
+              }}
+              placeholder="Search petitions by title or description"
+              className="w-full rounded-lg border border-ink/15 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-clay"
+            />
+          </label>
+          <button
+            type="submit"
+            className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-parchment transition hover:bg-coal"
+          >
+            <Search size={16} aria-hidden="true" /> Search
+          </button>
+        </form>
+
+        <div className="mt-4 grid gap-4 rounded-xl border border-ink/15 bg-white/50 p-4 sm:grid-cols-3">
           <label className="block text-sm font-semibold">
             Category
             <select

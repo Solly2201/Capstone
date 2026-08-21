@@ -214,4 +214,43 @@ describe("PetitionsPage", () => {
     await waitFor(() => expect(screen.getByText("Goal reached")).toBeTruthy());
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("100");
   });
+
+  it("searches on submit, not on every keystroke, and resets to the first page", async () => {
+    mockApi.get.mockResolvedValue(listResponse([petition()]));
+
+    renderPage();
+    await waitFor(() => expect(mockApi.get).toHaveBeenCalled());
+    const callsBeforeTyping = mockApi.get.mock.calls.length;
+
+    fireEvent.change(screen.getByLabelText("Search petitions"), { target: { value: "bus service" } });
+    // Typing alone fires nothing.
+    expect(mockApi.get.mock.calls.length).toBe(callsBeforeTyping);
+
+    fireEvent.click(screen.getByRole("button", { name: /Search/ }));
+    await waitFor(() => {
+      const [, config] = mockApi.get.mock.calls.at(-1) as [string, { params: Record<string, unknown> }];
+      expect(config.params.q).toBe("bus service");
+      expect(config.params.offset).toBe(0);
+    });
+  });
+
+  it("clears the search when the box is emptied", async () => {
+    mockApi.get.mockResolvedValue(listResponse([petition()]));
+
+    renderPage();
+    await waitFor(() => expect(mockApi.get).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText("Search petitions"), { target: { value: "bus" } });
+    fireEvent.click(screen.getByRole("button", { name: /Search/ }));
+    await waitFor(() => {
+      const [, config] = mockApi.get.mock.calls.at(-1) as [string, { params: Record<string, unknown> }];
+      expect(config.params.q).toBe("bus");
+    });
+
+    fireEvent.change(screen.getByLabelText("Search petitions"), { target: { value: "" } });
+    await waitFor(() => {
+      const [, config] = mockApi.get.mock.calls.at(-1) as [string, { params: Record<string, unknown> }];
+      expect(config.params.q).toBeUndefined();
+    });
+  });
 });

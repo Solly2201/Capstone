@@ -369,7 +369,11 @@ export function PetitionDetailPage() {
                       <p className="mt-1 text-xs text-ink/55">
                         {new Date(entry.at).toLocaleString()} · by{" "}
                         {petitionCapabilityLabels[entry.actorCapability]}
-                        {entry.actorId ? ` (${entry.actorId})` : ""}
+                        {entry.actorName
+                          ? ` (${entry.actorName})`
+                          : entry.actorId
+                            ? ` (${entry.actorId})`
+                            : ""}
                       </p>
                       {entry.note && <p className="mt-2 text-sm leading-6 text-ink/80">{entry.note}</p>}
                     </li>

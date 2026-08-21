@@ -49,18 +49,25 @@ export const toPetitionSummary = (
 export const toPublicPetition = (
   petition: HydratedDocument<PetitionDocument>,
   viewer?: PetitionViewer,
-  hasSigned = false
+  hasSigned = false,
+  /** Batched actorId → display-name map; travels only where actorId does. */
+  actorNames?: Map<string, string>
 ): PublicPetition => {
   const showActors = canSeeActorIdentity(viewer);
 
-  const history: PetitionHistoryEntry[] = (petition.history ?? []).map((entry) => ({
-    from: entry.from,
-    to: entry.to,
-    actorCapability: entry.actorCapability,
-    ...(showActors ? { actorId: String(entry.actorId) } : {}),
-    ...(entry.note ? { note: entry.note } : {}),
-    at: entry.at.toISOString()
-  }));
+  const history: PetitionHistoryEntry[] = (petition.history ?? []).map((entry) => {
+    const actorId = String(entry.actorId);
+    const actorName = actorNames?.get(actorId);
+    return {
+      from: entry.from,
+      to: entry.to,
+      actorCapability: entry.actorCapability,
+      ...(showActors ? { actorId } : {}),
+      ...(showActors && actorName ? { actorName } : {}),
+      ...(entry.note ? { note: entry.note } : {}),
+      at: entry.at.toISOString()
+    };
+  });
 
   return {
     ...toPetitionSummary(petition, hasSigned),

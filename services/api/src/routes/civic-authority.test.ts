@@ -25,7 +25,13 @@ vi.mock("../services/local-file-storage.js", () => ({
 
 // The authority routes re-read the caller's role from the database, so a
 // demoted account cannot keep acting on a still-valid token.
-vi.mock("../models/user.js", () => ({ User: { findById: vi.fn() } }));
+vi.mock("../models/user.js", () => ({
+  User: {
+    findById: vi.fn(),
+    // Batched actor-name resolution for staff history views.
+    find: vi.fn(() => ({ select: () => Promise.resolve([]) }))
+  }
+}));
 
 const reportModel = CivicReport as unknown as {
   find: ReturnType<typeof vi.fn>;

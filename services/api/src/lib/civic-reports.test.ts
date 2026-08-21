@@ -72,6 +72,33 @@ describe("toPublicCivicReport", () => {
     );
   });
 
+  it("resolves the actor to a display name for staff, and only for staff", () => {
+    const history = [
+      {
+        type: "STATUS",
+        from: "SUBMITTED",
+        to: "UNDER_REVIEW",
+        actorId: "64b7f9c2e1a2b3c4d5e6f703",
+        actorRole: "AUTHORITY",
+        at: CREATED_AT
+      }
+    ];
+    const names = new Map([["64b7f9c2e1a2b3c4d5e6f703", "Ravi Officer"]]);
+
+    const staff = toPublicCivicReport(doc({ history }), { role: "AUTHORITY" }, CREATED_AT, names);
+    expect(staff.history[0].actorName).toBe("Ravi Officer");
+
+    // A citizen never receives the name, even when a map is supplied.
+    const citizen = toPublicCivicReport(doc({ history }), { role: "CITIZEN" }, CREATED_AT, names);
+    expect(citizen.history[0].actorName).toBeUndefined();
+    expect(citizen.history[0].actorId).toBeUndefined();
+
+    // A deleted account resolves to nothing; the id remains as fallback.
+    const unresolved = toPublicCivicReport(doc({ history }), { role: "ADMIN" }, CREATED_AT, new Map());
+    expect(unresolved.history[0].actorName).toBeUndefined();
+    expect(unresolved.history[0].actorId).toBe("64b7f9c2e1a2b3c4d5e6f703");
+  });
+
   it("never exposes storage details", () => {
     const media = [
       {

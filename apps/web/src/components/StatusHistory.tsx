@@ -31,7 +31,9 @@ export function StatusHistory({ history }: { history: CivicHistoryEntry[] }) {
           </p>
           <p className="mt-1 text-xs text-ink/55">
             {new Date(entry.at).toLocaleString()} · by {entry.actorRole.toLowerCase()}
-            {entry.actorId ? ` (${entry.actorId})` : ""}
+            {/* Staff viewers get the acting account: name when the API
+                resolved one, raw id only as a legacy fallback. */}
+            {entry.actorName ? ` (${entry.actorName})` : entry.actorId ? ` (${entry.actorId})` : ""}
           </p>
           {entry.note && <p className="mt-2 text-sm leading-6 text-ink/80">{entry.note}</p>}
         </li>

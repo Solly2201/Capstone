@@ -33,7 +33,11 @@ vi.mock("../models/signature.js", async (importOriginal) => {
 });
 
 vi.mock("../models/user.js", () => ({
-  User: { findById: vi.fn() }
+  User: {
+    findById: vi.fn(),
+    // Batched actor-name resolution for staff history views.
+    find: vi.fn(() => ({ select: () => Promise.resolve([]) }))
+  }
 }));
 
 const petitionModel = Petition as unknown as {
@@ -780,5 +784,38 @@ describe("POST /api/petitions/:id/signatures/recount", () => {
       .post("/api/petitions/not-an-id/signatures/recount")
       .set("Authorization", `Bearer ${adminToken}`);
     expect(malformed.status).toBe(404);
+  });
+});
+
+describe("GET /api/petitions — free-text search", () => {
+  it("matches title and description with an escaped, case-insensitive pattern", async () => {
+    await request(createApp()).get("/api/petitions?q=bus+service");
+
+    const filter = petitionModel.find.mock.calls[0][0];
+    expect(filter.$or).toEqual([
+      { title: { $regex: "bus service", $options: "i" } },
+      { description: { $regex: "bus service", $options: "i" } }
+    ]);
+    // The public status floor still applies underneath the search.
+    expect(filter.status).toEqual({ $in: ["OPEN", "UNDER_REVIEW", "ANSWERED", "CLOSED"] });
+  });
+
+  it("escapes regex metacharacters so a query cannot become a pattern", async () => {
+    await request(createApp()).get(`/api/petitions?q=${encodeURIComponent("a+b (c) [d] .*")}`);
+
+    const filter = petitionModel.find.mock.calls[0][0];
+    expect(filter.$or[0].title.$regex).toBe("a\\+b \\(c\\) \\[d\\] \\.\\*");
+  });
+
+  it("rejects a one-character search instead of scanning on it", async () => {
+    const response = await request(createApp()).get("/api/petitions?q=a");
+
+    expect(response.status).toBe(400);
+  });
+
+  it("searches nothing when q is absent", async () => {
+    await request(createApp()).get("/api/petitions");
+
+    expect(petitionModel.find.mock.calls[0][0].$or).toBeUndefined();
   });
 });

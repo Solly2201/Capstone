@@ -262,6 +262,8 @@ export type CivicHistoryEntry = {
   to: string;
   actorRole: UserRoleName;
   actorId?: string;
+  /** Resolved display name for actorId; staff viewers only, like actorId. */
+  actorName?: string;
   note?: string;
   at: string;
 };
@@ -339,8 +341,17 @@ export type CivicReport = {
   updatedAt: string;
 };
 
+export const civicMineQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).default(0)
+});
+export type CivicMineQuery = z.infer<typeof civicMineQuerySchema>;
+
 export type CivicReportListResponse = {
   reports: CivicReport[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 export type CivicReportResponse = {

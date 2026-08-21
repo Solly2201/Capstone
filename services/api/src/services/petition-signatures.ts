@@ -118,11 +118,22 @@ export const signPetition = async (
 // -- once closed or answered, the tally is the record the authority acted
 // on, and editing it would rewrite that record.
 //
-// The ordering mirrors signing: decrement first, then delete. The common
-// failure ("you had not signed") is caught by the existence check before
-// any write; the ordering then protects against the petition closing
-// mid-request, since the conditional decrement fails before anything is
-// removed. If two withdrawals race, the decrement is compensated back.
+// The ordering is the INVERSE of signing, deliberately: decrement first,
+// then delete. The common failure ("you had not signed") is caught by the
+// existence check before any write; the ordering then protects against
+// the petition closing mid-request, since the conditional decrement fails
+// before anything is removed. If two withdrawals race, the decrement is
+// compensated back.
+//
+// Known residual (accepted, not an oversight): a process death between
+// the decrement and the delete leaves the count one below the rows, and a
+// retry of the same withdrawal decrements again before deleting — a
+// two-below drift. Flipping the order would let a crash INFLATE the count
+// instead, which violates the module's one safety invariant (a petition
+// must never claim support that has no signature row). So the drift stays
+// conservative-only, and the ADMIN recount endpoint
+// (POST /petitions/:id/signatures/recount) is the recovery: it rebuilds
+// the count from the rows, which remain the source of truth throughout.
 export const withdrawSignature = async (
   petitionId: string,
   actor: SignatureActor

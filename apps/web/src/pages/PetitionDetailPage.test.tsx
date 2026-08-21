@@ -385,6 +385,37 @@ describe("PetitionDetailPage", () => {
     expect(history.getAllByText(/by the civic authority/).length).toBe(2);
   });
 
+  it("shows the acting staff member's name to staff, falling back to the id", async () => {
+    await renderPage({
+      as: { role: "AUTHORITY", id: "staff-1" },
+      petition: petition({
+        status: "UNDER_REVIEW",
+        history: [
+          {
+            from: "OPEN",
+            to: "UNDER_REVIEW",
+            actorCapability: "AUTHORITY",
+            actorId: "64b7f9c2e1a2b3c4d5e6f703",
+            actorName: "Ravi Officer",
+            at: "2026-08-19T09:00:00.000Z"
+          },
+          {
+            from: "UNDER_REVIEW",
+            to: "UNDER_REVIEW",
+            actorCapability: "ADMIN",
+            actorId: "64b7f9c2e1a2b3c4d5e6f704",
+            // No resolved name: a deleted account keeps its id visible.
+            at: "2026-08-20T09:00:00.000Z"
+          }
+        ]
+      })
+    });
+
+    expect(screen.getByText(/\(Ravi Officer\)/)).toBeTruthy();
+    expect(screen.queryByText(/\(64b7f9c2e1a2b3c4d5e6f703\)/)).toBeNull();
+    expect(screen.getByText(/\(64b7f9c2e1a2b3c4d5e6f704\)/)).toBeTruthy();
+  });
+
   it("presents the authority's answer as its own panel, not just a history row", async () => {
     await renderPage({
       petition: petition({

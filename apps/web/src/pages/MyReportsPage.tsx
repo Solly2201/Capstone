@@ -16,22 +16,29 @@ import { api, apiErrorMessage } from "../lib/api";
 
 type Status = "loading" | "ready" | "error";
 
+const PAGE_SIZE = 20;
+
 export function MyReportsPage() {
   const [reports, setReports] = useState<CivicReport[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setStatus("loading");
     try {
-      const response = await api.get<CivicReportListResponse>("/civic/reports/mine");
+      const response = await api.get<CivicReportListResponse>("/civic/reports/mine", {
+        params: { limit: PAGE_SIZE, offset }
+      });
       setReports(response.data.reports);
+      setTotal(response.data.total);
       setStatus("ready");
     } catch (error) {
       setErrorMessage(apiErrorMessage(error, "We could not load your reports. Please try again."));
       setStatus("error");
     }
-  }, []);
+  }, [offset]);
 
   useEffect(() => {
     void load();
@@ -131,6 +138,30 @@ export function MyReportsPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {status === "ready" && total > PAGE_SIZE && (
+          <div className="mt-6 flex items-center justify-between">
+            <button
+              type="button"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              className="rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <p className="text-sm text-ink/60">
+              Showing {offset + 1}&ndash;{offset + reports.length} of {total}
+            </p>
+            <button
+              type="button"
+              disabled={offset + PAGE_SIZE >= total}
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+              className="rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         )}
       </section>
     </SiteShell>

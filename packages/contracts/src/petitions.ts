@@ -250,6 +250,8 @@ export type PetitionHistoryEntry = {
   to: PetitionStatus;
   actorCapability: PetitionActorCapability;
   actorId?: string;
+  /** Resolved display name for actorId; staff viewers only, like actorId. */
+  actorName?: string;
   note?: string;
   at: string;
 };
@@ -303,6 +305,9 @@ export const petitionSortLabels: Record<PetitionSort, string> = {
 export const petitionListQuerySchema = z.object({
   category: z.enum(petitionCategories).optional(),
   status: z.enum(["OPEN", "UNDER_REVIEW", "ANSWERED", "CLOSED"]).optional(),
+  // Free text matched deterministically against title and description
+  // (case-insensitive, escaped — never an arbitrary Mongo expression).
+  q: z.string().trim().min(2).max(100).optional(),
   sort: z.enum(petitionSortOptions).default("newest"),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   offset: z.coerce.number().int().min(0).default(0)

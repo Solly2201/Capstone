@@ -5,6 +5,7 @@ import { isValidObjectId, type FilterQuery, type SortOrder } from "mongoose";
 import {
   civicMediaAllowedMimeTypes,
   civicMediaMaxBytes,
+  civicMineQuerySchema,
   civicPriorityUpdateSchema,
   civicQueueQuerySchema,
   civicTransitionSchema,
@@ -17,6 +18,7 @@ import { requireAuth, requireFreshRole, requireRole } from "../middleware/auth.j
 import { LocalFileStorage } from "../services/local-file-storage.js";
 import { stripImageMetadata } from "../lib/image-sanitize.js";
 import { toPublicCivicReport, type CivicReportViewer } from "../lib/civic-reports.js";
+import { actorNamesFor } from "../lib/actor-names.js";
 import {
   applyPriorityChange,
   applyStatusTransition,
@@ -78,6 +80,19 @@ const objectIdParam = (value: unknown): string | null =>
 
 const isReviewer = (request: Request): boolean =>
   request.auth!.role === "AUTHORITY" || request.auth!.role === "ADMIN";
+
+// Staff viewers see actor identities on history; resolve them to display
+// names in one batched read across however many reports are being
+// serialised. Citizens never receive actorId, so no lookup happens.
+const historyActorNames = async (
+  request: Request,
+  reports: { history?: { actorId: unknown }[] }[]
+): Promise<Map<string, string> | undefined> => {
+  if (!isReviewer(request)) return undefined;
+  return actorNamesFor(
+    reports.flatMap((report) => (report.history ?? []).map((entry) => String(entry.actorId)))
+  );
+};
 
 civicRouter.post(
   "/reports",
@@ -200,12 +215,22 @@ civicRouter.post(
   }
 );
 
+// Paginated: the old fixed limit of 100 silently truncated a prolific
+// reporter's history with no indication anything was missing.
 civicRouter.get("/reports/mine", requireAuth, async (request, response, next) => {
   try {
-    const reports = await CivicReport.find({ reporterId: request.auth!.userId })
-      .sort({ createdAt: -1 })
-      .limit(100);
-    return response.json({ reports: reports.map((report) => toPublicCivicReport(report, viewerFrom(request))) });
+    const query = civicMineQuerySchema.parse(request.query);
+    const filter = { reporterId: request.auth!.userId };
+    const [reports, total] = await Promise.all([
+      CivicReport.find(filter).sort({ createdAt: -1 }).skip(query.offset).limit(query.limit),
+      CivicReport.countDocuments(filter)
+    ]);
+    return response.json({
+      reports: reports.map((report) => toPublicCivicReport(report, viewerFrom(request))),
+      total,
+      limit: query.limit,
+      offset: query.offset
+    });
   } catch (error) {
     return next(error);
   }
@@ -244,9 +269,10 @@ civicRouter.get(
         CivicReport.find(filter).sort(sortOrder).skip(query.offset).limit(query.limit),
         CivicReport.countDocuments(filter)
       ]);
+      const actorNames = await historyActorNames(request, reports);
 
       return response.json({
-        reports: reports.map((report) => toPublicCivicReport(report, viewerFrom(request), now)),
+        reports: reports.map((report) => toPublicCivicReport(report, viewerFrom(request), now, actorNames)),
         total,
         limit: query.limit,
         offset: query.offset
@@ -270,7 +296,8 @@ civicRouter.get("/reports/:id", requireAuth, async (request, response, next) => 
     const isOwner = String(report.reporterId) === request.auth!.userId;
     if (!isOwner && !isReviewer(request)) return response.status(404).json({ message: "Report not found." });
 
-    return response.json({ report: toPublicCivicReport(report, viewerFrom(request)) });
+    const actorNames = await historyActorNames(request, [report]);
+    return response.json({ report: toPublicCivicReport(report, viewerFrom(request), new Date(), actorNames) });
   } catch (error) {
     return next(error);
   }
@@ -304,7 +331,10 @@ civicRouter.post(
         return response.status(workflowStatusCode[result.code]).json({ message: result.message });
       }
 
-      return response.json({ report: toPublicCivicReport(result.report, viewerFrom(request)) });
+      const actorNames = await historyActorNames(request, [result.report]);
+      return response.json({
+        report: toPublicCivicReport(result.report, viewerFrom(request), new Date(), actorNames)
+      });
     } catch (error) {
       return next(error);
     }
@@ -334,7 +364,10 @@ civicRouter.patch(
         return response.status(workflowStatusCode[result.code]).json({ message: result.message });
       }
 
-      return response.json({ report: toPublicCivicReport(result.report, viewerFrom(request)) });
+      const actorNames = await historyActorNames(request, [result.report]);
+      return response.json({
+        report: toPublicCivicReport(result.report, viewerFrom(request), new Date(), actorNames)
+      });
     } catch (error) {
       return next(error);
     }

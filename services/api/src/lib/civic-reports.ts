@@ -25,7 +25,9 @@ const canSeeActorIdentity = (viewer?: CivicReportViewer): boolean =>
 export const toPublicCivicReport = (
   report: HydratedDocument<CivicReportDocument>,
   viewer?: CivicReportViewer,
-  now: Date = new Date()
+  now: Date = new Date(),
+  /** Batched actorId → display-name map; travels only where actorId does. */
+  actorNames?: Map<string, string>
 ): PublicCivicReport => {
   const [longitude, latitude] = report.location.coordinates;
   const showActors = canSeeActorIdentity(viewer);
@@ -39,15 +41,20 @@ export const toPublicCivicReport = (
     uploadedAt: entry.uploadedAt.toISOString()
   }));
 
-  const history: CivicHistoryEntry[] = (report.history ?? []).map((entry) => ({
-    type: entry.type,
-    from: entry.from,
-    to: entry.to,
-    actorRole: entry.actorRole,
-    ...(showActors ? { actorId: String(entry.actorId) } : {}),
-    ...(entry.note ? { note: entry.note } : {}),
-    at: entry.at.toISOString()
-  }));
+  const history: CivicHistoryEntry[] = (report.history ?? []).map((entry) => {
+    const actorId = String(entry.actorId);
+    const actorName = actorNames?.get(actorId);
+    return {
+      type: entry.type,
+      from: entry.from,
+      to: entry.to,
+      actorRole: entry.actorRole,
+      ...(showActors ? { actorId } : {}),
+      ...(showActors && actorName ? { actorName } : {}),
+      ...(entry.note ? { note: entry.note } : {}),
+      at: entry.at.toISOString()
+    };
+  });
 
   const dueAt = report.dueAt ? report.dueAt.toISOString() : undefined;
 

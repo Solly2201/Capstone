@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CivicReport } from "@cap/contracts";
@@ -64,7 +64,9 @@ describe("MyReportsPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText("Deep pothole outside the bus stop")).toBeTruthy());
-    expect(mockApi.get).toHaveBeenCalledWith("/civic/reports/mine");
+    expect(mockApi.get).toHaveBeenCalledWith("/civic/reports/mine", {
+      params: { limit: 20, offset: 0 }
+    });
     expect(screen.getByText("Under review")).toBeTruthy();
     expect(screen.getByText("Pothole")).toBeTruthy();
     expect(screen.getByText(/Priority: MEDIUM/)).toBeTruthy();
@@ -96,5 +98,30 @@ describe("MyReportsPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("An unexpected error occurred."));
+  });
+
+  it("pages past what a single response carries", async () => {
+    mockApi.get.mockResolvedValue({ data: { reports: [report], total: 45, limit: 20, offset: 0 } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/Showing 1–1 of 45/)).toBeTruthy());
+    expect((screen.getByRole("button", { name: "Previous" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    await waitFor(() => {
+      const [, config] = mockApi.get.mock.calls.at(-1) as [string, { params: Record<string, unknown> }];
+      expect(config.params.offset).toBe(20);
+    });
+  });
+
+  it("shows no pager when everything fits on one page", async () => {
+    mockApi.get.mockResolvedValue({ data: { reports: [report], total: 1, limit: 20, offset: 0 } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText("Deep pothole outside the bus stop")).toBeTruthy());
+    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
   });
 });

@@ -13,7 +13,8 @@ vi.mock("../models/civic-report.js", () => ({
     create: vi.fn(),
     find: vi.fn(),
     findOne: vi.fn(),
-    findById: vi.fn()
+    findById: vi.fn(),
+    countDocuments: vi.fn()
   }
 }));
 
@@ -29,6 +30,7 @@ const reportModel = CivicReport as unknown as {
   find: ReturnType<typeof vi.fn>;
   findOne: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
+  countDocuments: ReturnType<typeof vi.fn>;
 };
 
 const CITIZEN_ID = "64b7f9c2e1a2b3c4d5e6f701";
@@ -69,13 +71,16 @@ const mediaSubdocument = () => ({
 });
 
 /**
- * `CivicReport.find()` chains: `.sort().limit()` for listings, bare
- * `.limit()` for the potential-duplicate geo query.
+ * `CivicReport.find()` chains: `.sort().skip().limit()` for the paginated
+ * listings, bare `.limit()` for the potential-duplicate geo query.
  */
-const listQuery = (value: unknown) => ({
-  sort: () => ({ limit: () => Promise.resolve(value) }),
-  limit: () => Promise.resolve(value)
-});
+const listQuery = (value: unknown) => {
+  const self: Record<string, unknown> = {};
+  for (const method of ["sort", "skip", "limit"]) self[method] = () => self;
+  self.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+    Promise.resolve(value).then(resolve, reject);
+  return self;
+};
 
 const validFields = {
   category: "pothole",
@@ -114,6 +119,7 @@ beforeEach(() => {
   // nearby reports, unless a test says otherwise.
   reportModel.findOne.mockResolvedValue(null);
   reportModel.find.mockReturnValue(listQuery([]));
+  reportModel.countDocuments.mockResolvedValue(0);
   saveMock.mockResolvedValue({ scope: "originals", storedName: "generated-name.png" });
 });
 
@@ -484,5 +490,35 @@ describe("GET /api/civic/reports/:id/media/:mediaId", () => {
 
     expect(response.status).toBe(404);
     expect(readMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/civic/reports/mine — pagination", () => {
+  it("passes limit and offset through and reports the total", async () => {
+    const skip = vi.fn();
+    const limit = vi.fn(() => Promise.resolve([fakeReport()]));
+    reportModel.find.mockReturnValue({ sort: () => ({ skip: (n: number) => (skip(n), { limit }) }) });
+    reportModel.countDocuments.mockResolvedValue(53);
+
+    const response = await request(createApp())
+      .get("/api/civic/reports/mine?limit=10&offset=20")
+      .set("Authorization", `Bearer ${citizenToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(53);
+    expect(response.body.limit).toBe(10);
+    expect(response.body.offset).toBe(20);
+    expect(skip).toHaveBeenCalledWith(20);
+    expect(limit).toHaveBeenCalledWith(10);
+    // Total is counted over the same owner-scoped filter the page uses.
+    expect(reportModel.countDocuments).toHaveBeenCalledWith({ reporterId: CITIZEN_ID });
+  });
+
+  it("rejects out-of-range paging parameters", async () => {
+    const response = await request(createApp())
+      .get("/api/civic/reports/mine?limit=500")
+      .set("Authorization", `Bearer ${citizenToken}`);
+
+    expect(response.status).toBe(400);
   });
 });
