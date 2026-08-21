@@ -1892,3 +1892,79 @@ correctly returned `redirect_adviser`. Burglary-in-progress is plausibly
 inside the documented "active crime" emergency category. This was **not
 changed** — the safety gates are frozen — but it is a concrete candidate
 for the hard-negative/safety expansion in the work above.
+
+## M12 — production-path evaluation, failure taxonomy, and a fine-tune that finally generalises
+
+**A second measurement series.** `run_eval.py --production-path` retrieves
+on `app.query.normalize`'s output — the text `handle_legal_query` actually
+searches — closing the M9 "the harness measures a path the product does
+not use" gap without touching the historical raw-query series (the
+default is unchanged and still reproduces every documented number).
+Production-path baselines at the start of M12: control hybrid recall@5
+0.8623 / abstention 0.9796 (`q19` the sole false abstain); citizen
+0.7199 / 0.8307, zero false accepts, 53 false abstains.
+
+**Failure taxonomy** (every hybrid production-path failure, 112 rows):
+G_gate 35 (gold in the top-5, pipeline abstained — 17 with gold at rank
+1), F_ranking 23 (in both top-50 pools, below 5), E_one_pool 40 (mostly
+absent from BM25 — vocabulary), E_both_pools 14 (representation).
+
+**Promoted, one variable at a time, each measured against both sets:**
+
+1. *Curated spelling layer* (`app/query/spelling.py`) + seven
+   probe-verified normalisation rules (theft/theft-by-servant/cheating
+   with police- and consumer-stand-downs, e-commerce scam, PWDVA / JJ-CCL
+   / CWC abbreviations) + two child-rule extensions ("under 16/17/18",
+   turn-spanning order). Citizen production-path recall@5 0.7199 →
+   0.7448, abstention 0.8307 → 0.8498; control byte-identical. A GENERIC
+   edit-distance corrector against the corpus vocabulary was built and
+   REJECTED: statutes don't contain ordinary English, so "unknown token"
+   ≠ "misspelled token" ("texting"→"testing", "goons"→"goods").
+2. *Gate floor 0.42 → 0.41.* The 0.42 floor was calibrated against
+   raw-query scores; on the production path the highest score any
+   should-abstain query reaches is 0.399. Swept on a tune split (control
+   + odd citizen rows), validated held-out (even rows): zero new false
+   accepts, zero wrong-Act change, both splits. Citizen abstention
+   0.8498 → 0.8562. An agreement-branch gate (BM25∧dense rank ≤2,
+   dense ≥0.30) was measured and REJECTED: +5 good answers, +2 wrong-Act
+   — both methods can agree on the same wrong chunk.
+3. *Follow-up benchmark 18 → 40 rows* (`queries_followup.jsonl`, all
+   targets corpus-verified) with detection fixes (content-cap 3,
+   definitional-opening stand-down, pronoun/fragment rules): condition
+   follow-ups 19/21 with context vs 3/21 fragment-only; ambiguous 4/4,
+   no-context 4/4, standalone-override 3/3, guarded 6/6, not-emergency
+   2/2. Residuals: f04 (the M8 FIR-copy recall miss), f24 (rti:19
+   ranking).
+4. *Emergency tense fix:* "he hit me last year" no longer routes to a
+   helpline ("last year|month" added to the historical frame; "last
+   week" deliberately kept on the emergency side). 40-case matrix still
+   green.
+
+**End state:** control 0.8623 / 0.9796 (unchanged, `q19` only); citizen
+recall@5 **0.7448**, MRR 0.5656, top-1 0.4448, abstention **0.8562**,
+zero false accepts, 45 false abstains. Remaining taxonomy: G_gate 32
+(all now score-depressed below the floor/ceiling squeeze — a
+representation problem), F_ranking 29, E_one_pool 32, E_both 9.
+
+**Embedding fine-tune m12_run2 — validated on held-out data, first time.**
+The remaining failure mass is representation-shaped, and the labelled
+pool (402 groups) is 2.6× run1's fatally-small 153. Same infra, same
+group-separated splits (train 1682 / val 340 / test 368 triplets,
+leakage-checked), 4 epochs MNRL from the production checkpoint. On the
+**test-split-only** queries (never trained or selected on): citizen
+recall@5 0.6171 → **0.7024**, MRR 0.4837 → 0.5833, top-1 0.3902 →
+0.4878, abstention 0.7561 → 0.8293; original-set MRR/top-1 up,
+recall@5 equal, one new false ABSTAIN (`q17`, the historically
+unreachable `constitution:20` — conservative direction). Safety screen
+over all 362 rows: hard-negative recall 28/29 → **29/29**, wrong-Act
+top-1 46 → **22**, zero end-to-end false accepts (every abstain-side row
+whose gate score rose is blocked by the model-independent raw-text
+guards; emergency routing never touches embeddings). **Not yet flipped
+into production:** doing so means distributing a ~90 MB model artifact
+(git, HF upload, or object storage) — a deployment decision recorded for
+the user. Reproduce with `python services/ai/finetune/build_dataset.py
+&& python services/ai/finetune/train.py --run-name m12_run2 && python
+services/ai/finetune/eval_heldout.py --run-name m12_run2` (seeded,
+deterministic splits). To deploy once distributed: set
+`DENSE_EMBEDDING_MODEL` to the artifact path and re-run
+`scripts/ingest_corpus.py`.

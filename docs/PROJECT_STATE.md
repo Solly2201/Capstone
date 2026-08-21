@@ -784,6 +784,50 @@ order) and f04 (FIR copy — the same recall miss M8 documented).
 Counts after M11: Python 349 → 363, API unit 298 → 318, web 266 → 278,
 integration 22 unchanged. Typecheck and production build clean.
 
+### M12 — accuracy & evaluation: production-path measurement, taxonomy-driven fixes, validated fine-tune
+
+Feature work paused; this milestone measured why CAT misses queries and
+fixed only what the evidence named. Full method and numbers in
+`docs/RETRIEVAL_EVALUATION.md`'s M12 section; the short version:
+
+- **Production-path evaluation series** (`run_eval.py --production-path`)
+  closes M9's known measurement gap — retrieval measured on the
+  normalised text production actually searches. Historical raw-query
+  numbers untouched and still reproduce exactly.
+- **Failure taxonomy** over every production-path failure: gate 35 /
+  ranking 23 / BM25-vocabulary 40 / representation 14 at baseline.
+- **Promoted (one variable at a time, control set byte-identical
+  throughout, zero false accepts throughout):** a curated spelling layer
+  (generic edit-distance corrector built and rejected — statutory
+  vocabulary ≠ English), seven probe-verified normalisation rules plus
+  two child-rule extensions, gate floor 0.42→0.41 (the abstain-side
+  production-path ceiling is 0.399; tune/validation split, no leakage),
+  follow-up detection refinements, and an emergency-tense fix ("he hit
+  me last year" is no longer a helpline redirect; "last week"
+  deliberately still is). One M7 ambiguity pin narrowed with the eval
+  label as ground truth: "someone took my phone" now expands to theft;
+  police-subject phrasings still never do (both directions pinned).
+- **Rejected on measurement, documented:** the generic spelling
+  corrector; an agreement-branch confidence gate (+5 good, +2 wrong-Act
+  — both retrieval methods can agree on the same wrong chunk).
+- **Citizen production-path: recall@5 0.7199 → 0.7448, abstention
+  0.8307 → 0.8562**, false abstains 53 → 45. Follow-up benchmark grown
+  18 → 40 corpus-verified rows: condition follow-ups 19/21 (fragment
+  baseline 3/21), every safety/behaviour category green.
+- **Fine-tune m12_run2: the first candidate to generalise.** Against
+  run1's honest wash, the 402-group pool trains a model that improves
+  every quality metric on strictly held-out queries (citizen recall@5
+  0.6171 → 0.7024) and passes every mandatory safety gate
+  (hard-negative 29/29, wrong-Act top-1 46 → 22, zero false accepts,
+  emergency untouched by construction). **Not flipped into production**:
+  that requires distributing a ~90 MB model artifact — a deployment
+  decision recorded, with exact reproduction and deployment steps, in
+  the evaluation doc.
+
+Counts after M12: Python 363 → 364 (net: taxonomy-driven test updates),
+follow-up eval 40 rows. Node suites, typecheck, build untouched by this
+milestone's changes (AI service only).
+
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core, the authority workflow and deterministic duplicate handling are built** (see M2, M3 and M10 above). Do not build DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.

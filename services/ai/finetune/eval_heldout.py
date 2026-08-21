@@ -74,6 +74,12 @@ def evaluate_model(model_path_or_name: str, label: str, held_out: dict[str, set[
 
 
 def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-name", default="run1")
+    args = parser.parse_args()
+
     held_out = held_out_query_ids()
     print("Held-out (test-split) query ids:", held_out)
     print()
@@ -83,14 +89,16 @@ def main() -> None:
     print(json.dumps(base_results, indent=2))
 
     print()
-    print("=== CANDIDATE model (run1) on held-out queries ===")
+    print(f"=== CANDIDATE model ({args.run_name}) on held-out queries ===")
     candidate_results = evaluate_model(
-        os.path.join(os.path.dirname(__file__), "output", "run1", "model"), "candidate_heldout", held_out
+        os.path.join(os.path.dirname(__file__), "output", args.run_name, "model"),
+        "candidate_heldout",
+        held_out,
     )
     print(json.dumps(candidate_results, indent=2))
 
     out = {"base": base_results, "candidate": candidate_results, "held_out_ids": {k: sorted(v) for k, v in held_out.items()}}
-    out_path = os.path.join(os.path.dirname(__file__), "output", "run1", "heldout_eval_results.json")
+    out_path = os.path.join(os.path.dirname(__file__), "output", args.run_name, "heldout_eval_results.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
     print(f"\nWritten to {out_path}")
