@@ -203,6 +203,101 @@ describe("ReportPage", () => {
   });
 });
 
+describe("ReportPage duplicate handling", () => {
+  const potentialDuplicateError = () => ({
+    response: {
+      status: 409,
+      data: {
+        message: "A similar issue was recently reported near this location.",
+        code: "POTENTIAL_DUPLICATE",
+        potentialDuplicates: [
+          {
+            id: "report-9",
+            title: "Big pothole near college gate",
+            category: "pothole",
+            status: "UNDER_REVIEW",
+            distanceMeters: 42,
+            createdAt: "2026-08-15T09:00:00.000Z"
+          }
+        ]
+      }
+    }
+  });
+
+  it("shows nearby existing reports and lets the citizen decide", async () => {
+    mockApi.post.mockRejectedValue(potentialDuplicateError());
+
+    renderPage();
+    fillValidForm();
+    submit();
+
+    await waitFor(() => expect(screen.getByText("Is this the same problem?")).toBeTruthy());
+    expect(screen.getByText("Big pothole near college gate")).toBeTruthy();
+    expect(screen.getByText(/about 42 m from your location/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Submit my report anyway/ })).toBeTruthy();
+    // The citizen has not been navigated anywhere; nothing was created.
+    expect(screen.queryByText("Report detail screen")).toBeNull();
+  });
+
+  it("re-submits with the acknowledgement when the citizen chooses to continue", async () => {
+    mockApi.post
+      .mockRejectedValueOnce(potentialDuplicateError())
+      .mockResolvedValueOnce({ data: { report: createdReport } });
+
+    renderPage();
+    fillValidForm();
+    submit();
+
+    await waitFor(() => expect(screen.getByText("Is this the same problem?")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /Submit my report anyway/ }));
+
+    await waitFor(() => expect(screen.getByText("Report detail screen")).toBeTruthy());
+    expect(mockApi.post).toHaveBeenCalledTimes(2);
+    const secondBody = mockApi.post.mock.calls[1][1] as FormData;
+    expect(secondBody.get("acknowledgeDuplicates")).toBe("true");
+    // The first attempt never claimed acknowledgement.
+    const firstBody = mockApi.post.mock.calls[0][1] as FormData;
+    expect(firstBody.get("acknowledgeDuplicates")).toBeNull();
+  });
+
+  it("lets the citizen dismiss the warning without submitting", async () => {
+    mockApi.post.mockRejectedValue(potentialDuplicateError());
+
+    renderPage();
+    fillValidForm();
+    submit();
+
+    await waitFor(() => expect(screen.getByText("Is this the same problem?")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /Don.t submit/ }));
+
+    await waitFor(() => expect(screen.queryByText("Is this the same problem?")).toBeNull());
+    expect(mockApi.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("links to the citizen's own report on an exact resubmission", async () => {
+    mockApi.post.mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          message: "You have already submitted this report.",
+          code: "DUPLICATE_REPORT",
+          reportId: "report-1"
+        }
+      }
+    });
+
+    renderPage();
+    fillValidForm();
+    submit();
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain("You have already submitted this report.")
+    );
+    const link = screen.getByRole("link", { name: /View your existing report/ }) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe("/reports/report-1");
+  });
+});
+
 describe("ReportPage route protection", () => {
   it("sends an unauthenticated visitor to the login screen", async () => {
     render(

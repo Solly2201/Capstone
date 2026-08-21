@@ -22,6 +22,11 @@ import {
   applyStatusTransition,
   workflowStatusCode
 } from "../services/civic-workflow.js";
+import {
+  civicReportFingerprint,
+  findPotentialDuplicates,
+  isDuplicateKeyError
+} from "../services/civic-duplicates.js";
 
 // Civic reporting: citizen submission plus the authority workflow. A
 // deterministic state machine over MongoDB; no AI service in this path.
@@ -87,6 +92,51 @@ civicRouter.post(
       // From the verified JWT only; the schema carries no reporterId.
       const reporterId = request.auth!.userId;
 
+      // SLA clock starts at submission; the same instant anchors the
+      // duplicate fingerprint's time bucket.
+      const createdAt = new Date();
+
+      // Exact resubmission by this citizen (double click, retry): refuse
+      // and point at their own existing report. The unique index below is
+      // the race-proof guarantee; this lookup exists to answer with the
+      // report id before any file is written.
+      const fingerprint = civicReportFingerprint({
+        reporterId,
+        category: input.category,
+        title: input.title,
+        description: input.description,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        at: createdAt
+      });
+      const alreadySubmitted = await CivicReport.findOne({ fingerprint });
+      if (alreadySubmitted) {
+        return response.status(409).json({
+          message: "You have already submitted this report.",
+          code: "DUPLICATE_REPORT",
+          reportId: alreadySubmitted.id
+        });
+      }
+
+      // A nearby recent same-category report by anyone is a warning, not
+      // a refusal: independent reports of the same problem are legitimate.
+      // Checked before the image is persisted so declining costs nothing.
+      if (!input.acknowledgeDuplicates) {
+        const potentialDuplicates = await findPotentialDuplicates({
+          category: input.category,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          now: createdAt
+        });
+        if (potentialDuplicates.length > 0) {
+          return response.status(409).json({
+            message: "A similar issue was recently reported near this location.",
+            code: "POTENTIAL_DUPLICATE",
+            potentialDuplicates
+          });
+        }
+      }
+
       const media = [];
       if (request.file) {
         const sanitised = stripImageMetadata(request.file.buffer);
@@ -111,24 +161,39 @@ civicRouter.post(
         });
       }
 
-      // SLA clock starts at submission; MEDIUM until an authority sets it.
-      const createdAt = new Date();
-      const report = await CivicReport.create({
-        reporterId,
-        category: input.category,
-        title: input.title,
-        description: input.description,
-        // GeoJSON order is [longitude, latitude].
-        location: { type: "Point", coordinates: [input.longitude, input.latitude] },
-        ...(input.landmark ? { landmark: input.landmark } : {}),
-        status: "SUBMITTED",
-        priority: "MEDIUM",
-        dueAt: computeCivicDueAt(createdAt, "MEDIUM"),
-        media,
-        history: []
-      });
+      // MEDIUM until an authority sets a priority.
+      try {
+        const report = await CivicReport.create({
+          reporterId,
+          category: input.category,
+          title: input.title,
+          description: input.description,
+          // GeoJSON order is [longitude, latitude].
+          location: { type: "Point", coordinates: [input.longitude, input.latitude] },
+          ...(input.landmark ? { landmark: input.landmark } : {}),
+          status: "SUBMITTED",
+          priority: "MEDIUM",
+          fingerprint,
+          dueAt: computeCivicDueAt(createdAt, "MEDIUM"),
+          media,
+          history: []
+        });
 
-      return response.status(201).json({ report: toPublicCivicReport(report, viewerFrom(request)) });
+        return response.status(201).json({ report: toPublicCivicReport(report, viewerFrom(request)) });
+      } catch (error) {
+        // Two racing identical submissions: the unique fingerprint index
+        // rejected the loser. (The stored image from this losing request
+        // becomes unreferenced — same as any failed create today.)
+        if (isDuplicateKeyError(error)) {
+          const winner = await CivicReport.findOne({ fingerprint });
+          return response.status(409).json({
+            message: "You have already submitted this report.",
+            code: "DUPLICATE_REPORT",
+            ...(winner ? { reportId: winner.id } : {})
+          });
+        }
+        throw error;
+      }
     } catch (error) {
       return next(error);
     }

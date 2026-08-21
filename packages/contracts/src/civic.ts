@@ -57,10 +57,61 @@ export const createCivicReportSchema = z.object({
   description: z.string().trim().min(10).max(2000),
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
-  landmark: z.string().trim().max(200).optional()
+  landmark: z.string().trim().max(200).optional(),
+  // Set only when the citizen has seen the potential-duplicate warning
+  // and chosen to submit anyway. Arrives as the string "true" over
+  // multipart, so a strict literal check rather than boolean coercion
+  // (z.coerce.boolean would read the string "false" as true).
+  acknowledgeDuplicates: z.preprocess((value) => value === true || value === "true", z.boolean()).optional()
 });
 
 export type CreateCivicReportInput = z.infer<typeof createCivicReportSchema>;
+
+// --- Duplicate handling ------------------------------------------------
+//
+// Two different situations, deliberately kept apart:
+//
+// 1. The same citizen re-submitting the same report (double click, retry,
+//    impatience). Detected by a deterministic fingerprint and refused
+//    outright — the citizen is pointed at their own existing report.
+// 2. Different citizens describing the same real-world problem. That is
+//    legitimate independent evidence, so it is a warning the citizen can
+//    override with acknowledgeDuplicates, never a refusal.
+
+/** How near a recent same-category report must be to count as a potential duplicate. */
+export const civicDuplicateRadiusMeters = 200;
+/** How far back the potential-duplicate search looks. */
+export const civicDuplicateWindowDays = 30;
+/** Cap on the number of potential duplicates a warning carries. */
+export const civicDuplicateMaxCandidates = 5;
+
+// A deliberately redacted view of someone else's report: enough for a
+// citizen to judge "is this my problem?", nothing more. No description,
+// no landmark, no coordinates, no reporter, no media — a citizen cannot
+// open another citizen's report, and this warning must not become a
+// side-channel around that boundary.
+export type CivicDuplicateSummary = {
+  id: string;
+  title: string;
+  category: CivicCategory;
+  status: CivicStatus;
+  /** Distance from the location the citizen is submitting, rounded. */
+  distanceMeters: number;
+  createdAt: string;
+};
+
+export type CivicPotentialDuplicateResponse = {
+  message: string;
+  code: "POTENTIAL_DUPLICATE";
+  potentialDuplicates: CivicDuplicateSummary[];
+};
+
+export type CivicExactDuplicateResponse = {
+  message: string;
+  code: "DUPLICATE_REPORT";
+  /** The citizen's own earlier report, safe to link to. */
+  reportId?: string;
+};
 
 // Same union as UserRole, redeclared so this module stays self-contained.
 export type UserRoleName = "CITIZEN" | "AUTHORITY" | "ADMIN";

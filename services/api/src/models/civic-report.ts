@@ -61,6 +61,13 @@ export type CivicReportDocument = {
   priority: CivicPriority;
   media: CivicMediaSubdocument[];
   history: CivicHistorySubdocument[];
+  /**
+   * Deterministic exact-resubmission fingerprint: SHA-256 over reporter,
+   * category, normalised text, quantised location and an hourly time
+   * bucket (see services/civic-duplicates.ts). Optional because reports
+   * created before the field existed have none.
+   */
+  fingerprint?: string;
   /** SLA deadline: createdAt + the window for the current priority. */
   dueAt?: Date;
   createdAt: Date;
@@ -115,6 +122,7 @@ const civicReportSchema = new Schema<CivicReportDocument>(
     priority: { type: String, required: true, enum: [...civicPriorities], default: "MEDIUM" },
     media: { type: [mediaSchema], default: [] },
     history: { type: [historySchema], default: [] },
+    fingerprint: { type: String },
     dueAt: { type: Date }
   },
   { timestamps: true }
@@ -126,7 +134,16 @@ civicReportSchema.index({ reporterId: 1, createdAt: -1 });
 civicReportSchema.index({ createdAt: -1 });
 // The authority queue filters on status and orders by deadline.
 civicReportSchema.index({ status: 1, dueAt: 1 });
-// Reserved for nearby-report and clustering queries.
+// Nearby-report queries: the potential-duplicate check drives off this.
 civicReportSchema.index({ location: "2dsphere" });
+// Exact-resubmission guard. The fingerprint embeds the reporter id, so
+// this can only ever collide for the *same* citizen re-submitting the
+// same content at the same place within the same hour — two citizens
+// reporting the same pothole always hash differently. Sparse because
+// pre-existing reports carry no fingerprint, and the database (not
+// application logic) is what wins the race between two in-flight
+// submissions. Enforced at startup: CivicReport is in server.ts's
+// indexedModels, so the API refuses to serve if this index cannot build.
+civicReportSchema.index({ fingerprint: 1 }, { unique: true, sparse: true });
 
 export const CivicReport = model<CivicReportDocument>("CivicReport", civicReportSchema);

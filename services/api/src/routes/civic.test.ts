@@ -12,6 +12,7 @@ vi.mock("../models/civic-report.js", () => ({
   CivicReport: {
     create: vi.fn(),
     find: vi.fn(),
+    findOne: vi.fn(),
     findById: vi.fn()
   }
 }));
@@ -26,6 +27,7 @@ vi.mock("../services/local-file-storage.js", () => ({
 const reportModel = CivicReport as unknown as {
   create: ReturnType<typeof vi.fn>;
   find: ReturnType<typeof vi.fn>;
+  findOne: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
 };
 
@@ -66,9 +68,13 @@ const mediaSubdocument = () => ({
   uploadedAt: new Date("2026-08-18T10:00:00Z")
 });
 
-/** `CivicReport.find().sort().limit()` is chainable and awaited. */
+/**
+ * `CivicReport.find()` chains: `.sort().limit()` for listings, bare
+ * `.limit()` for the potential-duplicate geo query.
+ */
 const listQuery = (value: unknown) => ({
-  sort: () => ({ limit: () => Promise.resolve(value) })
+  sort: () => ({ limit: () => Promise.resolve(value) }),
+  limit: () => Promise.resolve(value)
 });
 
 const validFields = {
@@ -104,6 +110,10 @@ const pngWithMetadata = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   reportModel.create.mockImplementation(async (doc: Record<string, unknown>) => fakeReport(doc));
+  // Duplicate checks on creation: no earlier identical submission, no
+  // nearby reports, unless a test says otherwise.
+  reportModel.findOne.mockResolvedValue(null);
+  reportModel.find.mockReturnValue(listQuery([]));
   saveMock.mockResolvedValue({ scope: "originals", storedName: "generated-name.png" });
 });
 
@@ -251,6 +261,101 @@ describe("POST /api/civic/reports", () => {
     expect(response.status).toBe(415);
     expect(saveMock).not.toHaveBeenCalled();
   });
+});
+
+describe("POST /api/civic/reports — duplicate handling", () => {
+  const nearbyReport = () =>
+    fakeReport({
+      id: "64b7f9c2e1a2b3c4d5e6f7cc",
+      reporterId: OTHER_CITIZEN_ID,
+      title: "Big pothole near college gate",
+      status: "UNDER_REVIEW",
+      createdAt: new Date("2026-08-15T09:00:00Z")
+    });
+
+  it("warns about a nearby recent same-category report instead of creating", async () => {
+    reportModel.find.mockReturnValue(listQuery([nearbyReport()]));
+
+    const response = await postReport(citizenToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe("POTENTIAL_DUPLICATE");
+    expect(response.body.potentialDuplicates).toHaveLength(1);
+    expect(reportModel.create).not.toHaveBeenCalled();
+    expect(saveMock).not.toHaveBeenCalled();
+
+    // Redacted summary only: another citizen's report body must not leak
+    // through the warning (their detail page answers 404 to this viewer).
+    const summary = response.body.potentialDuplicates[0];
+    expect(summary.title).toBe("Big pothole near college gate");
+    expect(summary.status).toBe("UNDER_REVIEW");
+    expect(typeof summary.distanceMeters).toBe("number");
+    expect(summary).not.toHaveProperty("description");
+    expect(summary).not.toHaveProperty("reporterId");
+    expect(summary).not.toHaveProperty("media");
+    expect(summary).not.toHaveProperty("landmark");
+  });
+
+  it("scopes the potential-duplicate query to category, recency, distance and non-rejected status", async () => {
+    await postReport(citizenToken);
+
+    const filter = reportModel.find.mock.calls[0][0];
+    expect(filter.category).toBe("pothole");
+    expect(filter.status).toEqual({ $ne: "REJECTED" });
+    expect(filter.createdAt.$gte).toBeInstanceOf(Date);
+    expect(filter.location.$nearSphere.$maxDistance).toBe(200);
+    expect(filter.location.$nearSphere.$geometry.coordinates).toEqual([72.87742, 19.07609]);
+  });
+
+  it("creates the report when the citizen acknowledges the warning", async () => {
+    // Would warn without the acknowledgement…
+    reportModel.find.mockReturnValue(listQuery([nearbyReport()]));
+
+    const response = await postReport(citizenToken, {
+      ...validFields,
+      acknowledgeDuplicates: "true"
+    });
+
+    expect(response.status).toBe(201);
+    // …and with it the geo query is skipped entirely.
+    expect(reportModel.find).not.toHaveBeenCalled();
+    expect(reportModel.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("attaches a deterministic fingerprint to the created report", async () => {
+    await postReport(citizenToken);
+
+    const created = reportModel.create.mock.calls[0][0] as { fingerprint?: string };
+    expect(created.fingerprint).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("refuses an exact resubmission by the same citizen, pointing at the existing report", async () => {
+    reportModel.findOne.mockResolvedValue(fakeReport());
+
+    const response = await postReport(citizenToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe("DUPLICATE_REPORT");
+    expect(response.body.reportId).toBe(REPORT_ID);
+    expect(reportModel.create).not.toHaveBeenCalled();
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 when the unique index rejects the loser of a racing resubmission", async () => {
+    // The pre-check saw nothing, but by create time the winner landed.
+    reportModel.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(fakeReport());
+    reportModel.create.mockRejectedValue(Object.assign(new Error("E11000 duplicate key"), { code: 11000 }));
+
+    const response = await postReport(citizenToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe("DUPLICATE_REPORT");
+    expect(response.body.reportId).toBe(REPORT_ID);
+  });
+
+  // The no-duplicates happy path (409 never fires, report created) is
+  // already pinned by "lets an authenticated citizen create a report"
+  // above, which now runs through both duplicate checks.
 });
 
 describe("GET /api/civic/reports/mine", () => {

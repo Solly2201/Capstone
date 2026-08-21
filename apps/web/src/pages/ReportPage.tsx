@@ -8,7 +8,9 @@ import {
   civicCategoryLabels,
   civicMediaAllowedMimeTypes,
   civicMediaMaxBytes,
+  civicStatusLabels,
   createCivicReportSchema,
+  type CivicDuplicateSummary,
   type CivicMediaMimeType,
   type CivicReportResponse,
   type CreateCivicReportInput
@@ -18,11 +20,26 @@ import { api, apiErrorMessage } from "../lib/api";
 
 type GeoState = "idle" | "locating" | "denied" | "unsupported";
 
+/** The API's machine-readable duplicate answer, when the error carries one. */
+const duplicatePayload = (
+  error: unknown
+): { code?: string; reportId?: string; potentialDuplicates?: CivicDuplicateSummary[] } => {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const data = (error as { response?: { data?: unknown } }).response?.data;
+    if (typeof data === "object" && data !== null) {
+      return data as { code?: string; reportId?: string; potentialDuplicates?: CivicDuplicateSummary[] };
+    }
+  }
+  return {};
+};
+
 export function ReportPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [geoState, setGeoState] = useState<GeoState>("idle");
+  const [potentialDuplicates, setPotentialDuplicates] = useState<CivicDuplicateSummary[] | null>(null);
+  const [existingReportId, setExistingReportId] = useState<string | null>(null);
 
   const {
     register,
@@ -75,7 +92,9 @@ export function ReportPage() {
     setFile(selected);
   };
 
-  const onSubmit = async (values: CreateCivicReportInput) => {
+  const submitReport = async (values: CreateCivicReportInput, acknowledgeDuplicates: boolean) => {
+    setPotentialDuplicates(null);
+    setExistingReportId(null);
     try {
       const form = new FormData();
       form.append("category", values.category);
@@ -84,16 +103,34 @@ export function ReportPage() {
       form.append("latitude", String(values.latitude));
       form.append("longitude", String(values.longitude));
       if (values.landmark) form.append("landmark", values.landmark);
+      if (acknowledgeDuplicates) form.append("acknowledgeDuplicates", "true");
       if (file) form.append("image", file);
 
       const response = await api.post<CivicReportResponse>("/civic/reports", form);
       navigate(`/reports/${response.data.report.id}`, { replace: true });
     } catch (error) {
+      const payload = duplicatePayload(error);
+      // Someone nearby may already have reported this: show them and let
+      // the citizen decide. Their independent report is still welcome.
+      if (payload.code === "POTENTIAL_DUPLICATE" && Array.isArray(payload.potentialDuplicates)) {
+        setPotentialDuplicates(payload.potentialDuplicates);
+        return;
+      }
+      // Their own earlier identical report: point them at it.
+      if (payload.code === "DUPLICATE_REPORT") {
+        setExistingReportId(payload.reportId ?? null);
+        setError("root", {
+          message: apiErrorMessage(error, "You have already submitted this report.")
+        });
+        return;
+      }
       setError("root", {
         message: apiErrorMessage(error, "We could not submit your report. Please try again.")
       });
     }
   };
+
+  const onSubmit = (values: CreateCivicReportInput) => submitReport(values, false);
 
   return (
     <SiteShell>
@@ -223,9 +260,61 @@ export function ReportPage() {
             <p className="mt-3 text-xs text-ink/55">JPEG or PNG, up to 5 MB.</p>
           </div>
 
+          {potentialDuplicates && (
+            <div
+              role="alert"
+              className="rounded-xl border border-clay/40 bg-sandstone/50 p-4 text-sm leading-6"
+            >
+              <p className="font-semibold">Is this the same problem?</p>
+              <p className="mt-1 text-ink/75">
+                A similar issue was reported near this location recently. If it is the same problem, it
+                is already on the authority&rsquo;s queue. If yours is different — or you want to add your
+                own report anyway — you can still submit.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {potentialDuplicates.map((duplicate) => (
+                  <li key={duplicate.id} className="rounded-lg border border-ink/10 bg-parchment px-3 py-2">
+                    <p className="font-semibold">{duplicate.title}</p>
+                    <p className="text-xs text-ink/60">
+                      {civicCategoryLabels[duplicate.category]} &middot; {civicStatusLabels[duplicate.status]}{" "}
+                      &middot; about {duplicate.distanceMeters} m from your location &middot; reported{" "}
+                      {new Date(duplicate.createdAt).toLocaleDateString()}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleSubmit((values) => submitReport(values, true))}
+                  className="rounded-lg bg-ink px-4 py-2.5 text-sm font-bold text-parchment transition hover:bg-coal disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Submit my report anyway
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPotentialDuplicates(null)}
+                  className="rounded-lg border border-ink/20 px-4 py-2.5 text-sm font-semibold transition hover:bg-sandstone"
+                >
+                  Don&rsquo;t submit
+                </button>
+              </div>
+            </div>
+          )}
+
           {errors.root && (
             <p role="alert" className="rounded-lg border border-clay/30 bg-sandstone/50 px-4 py-3 text-sm leading-6">
               {errors.root.message}
+              {existingReportId && (
+                <>
+                  {" "}
+                  <Link to={`/reports/${existingReportId}`} className="font-semibold underline">
+                    View your existing report
+                  </Link>
+                  .
+                </>
+              )}
             </p>
           )}
 
