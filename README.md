@@ -33,7 +33,9 @@ Increments 1-6 are complete. Increment 6's engineering hardening is verified aga
 
 - **Engineering hardening** (Increment 6): token-version revocation with stored-role re-checks on privileged routes, production guards that refuse to boot with a placeholder `JWT_SECRET` or a wildcard CORS origin, redacted structured request logging, separate liveness and readiness health checks, graceful shutdown, a CPU-only PyTorch AI image, and `.dockerignore` files that cut the build contexts from 330 MB to 0.9 MB and 112 MB to 0.1 MB.
 
-Not built: duplicate detection, civic vision/ML, automatic categorisation or priority prediction, the petition recommendation agent, notifications and analytics. Email verification is development-mode only (no mail transport), and there is no token refresh — access tokens last 15 minutes and can be revoked by bumping the account's `tokenVersion`.
+- **Product completion** (M10): deterministic civic duplicate handling — an exact-resubmission fingerprint (SHA-256 over reporter, category, normalised text, quantised location and an hourly bucket, enforced by a unique sparse index) plus a nearby-recent-same-category warning the citizen can override, never a refusal of an independent report; the Legal Assistant now links Learn articles and FAQs grounded in the very provisions it cited (an exact `sourceId:unitNumber` metadata join, no similarity model); petition and report screens resynchronise after a 409 instead of stranding stale state; the authority's formal petition response gets its own panel; the authority queues paginate and filter both goal directions; an ADMIN signature recount implements the documented count-drift recovery; and navigation, denial copy, session-expiry messaging and the 404 page are role- and reality-aware.
+
+Not built: civic vision/ML, automatic categorisation or priority prediction, the petition recommendation agent, notifications and analytics. Email verification is development-mode only (no mail transport), and there is no token refresh — access tokens last 15 minutes and can be revoked by bumping the account's `tokenVersion`.
 
 ## Prerequisites
 

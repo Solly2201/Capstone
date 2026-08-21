@@ -611,9 +611,97 @@ login-specific one.
 Retrieval parameters, embedding model, RRF weights, candidate pool and
 confidence thresholds were not touched anywhere in this increment.
 
+### M10 — product completion: civic duplicates, Legal Assistant ↔ Learn, state-sync and navigation
+
+The product-completion milestone the M9 handover authorised. **The frozen
+RAG system was not touched**: nothing under `services/ai/` changed —
+retrieval, thresholds, safety guards, corpus, index, embeddings and
+evaluation sets are byte-identical, and the 349-test Python suite is
+unchanged and green.
+
+- **Civic duplicate handling — built, deterministically.** Two mechanisms,
+  deliberately kept apart (`services/api/src/services/civic-duplicates.ts`):
+  - *Exact resubmission*: SHA-256 fingerprint over reporter id, category,
+    normalised title+description (lowercase, punctuation/whitespace
+    collapsed, NFKC), coordinates quantised to 4 decimal places (~11 m
+    cells) and an hourly time bucket. Stored on the report and enforced by
+    a **unique sparse index** (`models/civic-report.ts`), so the database —
+    not application logic — wins the race between two in-flight identical
+    submissions; `CivicReport` was already in `server.ts`'s `indexedModels`,
+    so the API refuses to serve if the index cannot build. The fingerprint
+    embeds the reporter id, so two citizens reporting the same pothole can
+    never collide — only the same citizen re-submitting the same content in
+    the same hour. The API answers 409 `DUPLICATE_REPORT` with the citizen's
+    own earlier report id, and the form links to it.
+  - *Potential same real-world incident*: before anything is persisted,
+    a `$nearSphere` query over the existing 2dsphere index finds
+    non-rejected same-category reports within 200 m from the last 30 days.
+    A match is a **warning, never a refusal**: the API answers 409
+    `POTENTIAL_DUPLICATE` with deliberately redacted summaries (id, title,
+    category, status, rounded distance, date — no body, no landmark, no
+    reporter, no coordinates, preserving the 404-not-yours boundary), and
+    the form shows them with "Submit my report anyway", which re-submits
+    with `acknowledgeDuplicates` (a strict `"true"` literal check — not
+    boolean coercion, which would read `"false"` as true). Independent
+    reports of a real problem are legitimate evidence and are never
+    suppressed. Verified against real MongoDB in
+    `civic-duplicates.integration.test.ts` (index existence/uniqueness/
+    sparseness, E11000 on identical resubmit, different citizens allowed,
+    legacy no-fingerprint documents coexist, real geo query with distance
+    ordering and radius/category/recency/status exclusions).
+- **Legal Assistant ↔ Learn — connected by exact metadata.** The AI
+  service's `chunk_id` is `"{source_id}:{unit_number}"` and every Learn
+  citation is the structured `{ sourceId, unitNumber }` in the same
+  vocabulary, so `relatedLearnContent()` (`content/learn/index.ts`) is an
+  exact-key join over a map built once from the static content — no
+  similarity model, no invented relationship, and a provision without
+  Learn coverage honestly renders nothing (the page keeps its generic
+  Learn links). Round-trip tests assert every authored article and FAQ
+  citation reaches its own content back. FAQ deep links exist now:
+  `FaqPanel` carries `id="faq-<id>"`, and `/learn#faq-<id>` opens that FAQ
+  expanded and scrolled into view.
+- **Stale-state deadlocks fixed.** A 409 on sign/withdraw/transition
+  (petitions) or transition/priority (reports) now refetches, so the page
+  shows the state that actually exists instead of a button that can only
+  fail again beside a message saying to reload. The authority's formal
+  `ANSWERED` note gets its own "The authority's response" panel rather than
+  being one grey history row. The citizen report page gained a "Check for
+  updates" refresh; every list/detail error state gained a retry button.
+- **Authority queues completed.** The report queue paginates (it printed
+  "Showing n of total" while being unable to reach past 25), distinguishes
+  an empty database from an unmatched filter, and keeps the
+  overdue/terminal-status filters mutually exclusive (a closed report is
+  never overdue, so the combination could only match nothing). The petition
+  queue's goal filter became a three-way select — the API always supported
+  `goalMet=false` but the checkbox could not express it.
+- **Signature recount — the documented recovery, implemented.**
+  `POST /api/petitions/:id/signatures/recount` (ADMIN, fresh-role checked)
+  sets `signatureCount` from a real `Signature` row count. Count drift was
+  by design one-directional and recoverable "by one aggregation" — that
+  aggregation now exists, tested against real MongoDB.
+- **Navigation and copy made role- and reality-aware.** `/report` is
+  citizen-only in the route guard to match the API (staff could previously
+  fill the whole form, upload a photo and only then meet a 403); the nav
+  hides Civic report / My reports / My petitions from staff, whose work
+  lives in the queues; `ProtectedRoute` derives its denial copy from the
+  declared roles (a citizen-only page no longer tells an authority officer
+  it is "for civic authority staff"); the home page finally links the
+  Legal Assistant (four pathways, not three); a typo'd URL gets a real
+  404 page instead of "planned module" (`PlaceholderPage` deleted); an
+  expired session says so on the login screen instead of presenting as a
+  fresh visit (`sessionExpired` in `AuthContext`); the account page links
+  each role to its actual spaces and drops its stale "later increments"
+  copy; the document browser reports a too-short query instead of silently
+  ignoring the submit, and its loading/error states carry `role=` for
+  screen readers.
+
+Counts after M10: API unit tests 272 → 298, web 247 → 266, integration
+15 → 22 (all against real `mongod`), Python 349 unchanged. Typecheck and
+production build clean.
+
 ## Do NOT do yet
 
-- Module 2 (civic reporting): the **citizen reporting core and the authority workflow are built** (see M2 and M3 above). Do not build duplicate detection, DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
+- Module 2 (civic reporting): the **citizen reporting core, the authority workflow and deterministic duplicate handling are built** (see M2, M3 and M10 above). Do not build DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
 - Module 3 (petitions): the **citizen petition core, signatures and the authority moderation workflow are built** (see M4 above). Do not build a petition recommendation agent, DBSCAN clustering over petitions, petition-to-report linking, petition comments/discussion, identity or constituency verification of signers, or petition analytics without a new instruction.
 - The Learn module is **expanded and complete for the current corpus**: 63 grounded articles and 189 quiz questions across eleven categories in `apps/web/src/content/learn/`. Remaining Learn gaps are content the corpus cannot support: RTI (un-ingested), workplace/labour rights (no labour legislation ingested), sexual offences against children (POCSO un-ingested), and IT Act sections 43/43A/66 (absent from the ingested PDF). Do not write content for those without ingesting a source first.
 - Do not redesign the architecture without a concrete reason.
