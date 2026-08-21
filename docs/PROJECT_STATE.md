@@ -699,6 +699,91 @@ Counts after M10: API unit tests 272 → 298, web 247 → 266, integration
 15 → 22 (all against real `mongod`), Python 349 unchanged. Typecheck and
 production build clean.
 
+### M11 — session refresh, remaining product gaps, and the deterministic multi-turn context layer
+
+Two halves. M11-A closed the highest-impact product gaps left after M10;
+M11-C/D built the first deterministic NLP/context capability beyond
+single-turn normalisation. **No generative LLM anywhere, unchanged**;
+retrieval parameters, embeddings, RRF weights, thresholds and the corpus
+are untouched, and both single-turn eval baselines reproduce exactly
+(control recall@5 0.8188 / abstention 0.9796 with q19 the sole false
+abstain; citizen 0.6274 / 0.8307).
+
+**M11-A — product gaps.**
+- *Token refresh.* Login now issues a 7-day refresh token alongside the
+  15-minute access token (distinct JWT audience, so the two can never be
+  substituted for one another; the refresh token carries no role).
+  `POST /auth/refresh` re-reads the account on every use — tokenVersion
+  revocation still kills the whole session, and the new access token
+  carries the *stored* role, so promotions/demotions take effect at the
+  next refresh. The web app renews transparently: a 401 with a presented
+  token triggers one single-flight refresh and a replay of the failed
+  request; only a failed refresh ends the session. Login-401s never
+  touch the stored session.
+- *Verification email.* `SMTP_URL` (optional env) activates a nodemailer
+  transport; register/resend then mail the same single-use hashed token
+  the development flow uses. No provider is assumed — a deployment brings
+  its own SMTP endpoint. In production with no transport configured,
+  registration answers 503 instead of creating accounts nobody can ever
+  activate; development keeps the token-in-response flow either way.
+- *My Reports pagination* (limit/offset + total; the old fixed 100 cap
+  silently truncated), *petition free-text search* (`q` over
+  title/description, regex-escaped, case-insensitive, public status floor
+  intact — search on submit, not per keystroke), and *staff history actor
+  names*: actorIds on civic/petition history resolve to display names in
+  one batched read, staff viewers only, id kept as fallback for deleted
+  accounts.
+- *Withdraw drift* — deliberately unchanged, now correctly documented:
+  the decrement-then-delete order is the inverse of signing on purpose
+  (flipping it would let a crash inflate the count, violating the one
+  safety invariant), the rare crash-retry double-decrement stays
+  conservative-only, and the M10 ADMIN recount is the recovery.
+- *Notifications* — deferred again, deliberately: no clean minimal
+  implementation exists inside the current architecture (it needs
+  storage, read-state and a delivery surface), and the report page's
+  refresh affordance covers the acute need.
+
+**M11-C/D — deterministic multi-turn context (`app/query/context.py`).**
+The Legal Assistant now understands safe follow-ups with zero model
+calls. The client sends back its previous question; the service decides,
+by rules alone: a *standalone* question passes through untouched (context
+never overrides new intent); a *follow-up* ("what if I'm a minor?", "and
+at night?", "what if he breaks it?") is resolved by **pure text
+composition** — previous question + fragment concatenated, nothing
+inferred or generated — and the combined text is shown back to the user
+("Read together with your previous question: …") so no interpretation is
+invisible; a follow-up that *cannot* be resolved ("what about this?", or
+no previous question) gets a clarification request (`needs_context`),
+never a guess. Detection is deliberately conservative: a dependent opener
+alone is not enough ("what happens when you're arrested?" stays
+standalone), and a scan test pins that none of the 362 single-turn eval
+queries is misread as a follow-up.
+
+**Safety: client context is untrusted input.** Every deterministic guard
+(risk, topic, coverage) re-runs over the combined text, stricter outcome
+wins — a divorce question the coverage guard refused in turn one cannot
+become answerable through an innocuous follow-up, and a harmful request
+split across turns is still refused before retrieval. Both are pinned by
+tests and eval rows.
+
+**Measured** (`eval/queries_followup.jsonl`, 18 rows, every expected
+chunk verified against real corpus text; `eval/run_context_eval.py` runs
+the production pipeline for both arms): condition follow-ups hit@5
+**0/10 fragment-only baseline → 8/10 with context**; ambiguous and
+no-context follow-ups 4/4 clarified; standalone-override 2/2 (context
+correctly not applied); guarded follow-ups 2/2 blocked. Two narrow
+CONTEXT-GATED normalisation rules were added for turn-spanning signals
+(breach of protection order → pwdva:31; consumer limitation →
+cpa2019:69), each probe-verified to rank 1–2, keyed on phrases that occur
+in exactly one Act, and proven inert on all 362 single-turn queries by a
+scan test. The two residual misses are known representation limits: f01
+(arrest + "minor" cannot reach the JJ Act — the child normalize rule is
+sentence-bounded and its signals sit in different turns in the wrong
+order) and f04 (FIR copy — the same recall miss M8 documented).
+
+Counts after M11: Python 349 → 363, API unit 298 → 318, web 266 → 278,
+integration 22 unchanged. Typecheck and production build clean.
+
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core, the authority workflow and deterministic duplicate handling are built** (see M2, M3 and M10 above). Do not build DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
