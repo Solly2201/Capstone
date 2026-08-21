@@ -9,9 +9,11 @@ import {
   civicStatusLabels,
   civicStatuses,
   formatCivicLocation,
+  isTerminalCivicStatus,
   type CivicQueueResponse,
   type CivicQueueSort,
-  type CivicReport
+  type CivicReport,
+  type CivicStatus
 } from "@cap/contracts";
 import { SiteShell } from "../components/SiteShell";
 import { StatusBadge } from "../components/StatusBadge";
@@ -40,6 +42,21 @@ export function AuthorityDashboardPage() {
   const [priority, setPriority] = useState("");
   const [overdue, setOverdue] = useState(false);
   const [sort, setSort] = useState<CivicQueueSort>("newest");
+  const [offset, setOffset] = useState(0);
+  const limit = 25;
+
+  // A closed report is never overdue by definition, so the two filters
+  // together can only ever match nothing. Keep them mutually exclusive
+  // instead of letting the queue answer a contradiction with silence.
+  const terminalStatusSelected = status !== "" && isTerminalCivicStatus(status as CivicStatus);
+
+  const hasActiveFilters = Boolean(status || category || priority || overdue);
+
+  // Any filter change starts again from the first page.
+  const applyFilter = (apply: () => void) => {
+    apply();
+    setOffset(0);
+  };
 
   const load = useCallback(async () => {
     setState("loading");
@@ -50,7 +67,9 @@ export function AuthorityDashboardPage() {
           ...(category ? { category } : {}),
           ...(priority ? { priority } : {}),
           ...(overdue ? { overdue: "true" } : {}),
-          sort
+          sort,
+          limit,
+          offset
         }
       });
       setReports(response.data.reports);
@@ -60,7 +79,7 @@ export function AuthorityDashboardPage() {
       setErrorMessage(apiErrorMessage(error, "We could not load the report queue. Please try again."));
       setState("error");
     }
-  }, [status, category, priority, overdue, sort]);
+  }, [status, category, priority, overdue, sort, offset]);
 
   useEffect(() => {
     void load();
@@ -79,7 +98,17 @@ export function AuthorityDashboardPage() {
         <div className="mt-8 grid gap-4 rounded-xl border border-ink/15 bg-white/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="block text-sm font-semibold">
             Status
-            <select className="field" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <select
+              className="field"
+              value={status}
+              onChange={(event) =>
+                applyFilter(() => {
+                  const next = event.target.value;
+                  setStatus(next);
+                  if (next !== "" && isTerminalCivicStatus(next as CivicStatus)) setOverdue(false);
+                })
+              }
+            >
               <option value="">All statuses</option>
               {civicStatuses.map((value) => (
                 <option key={value} value={value}>
@@ -90,7 +119,11 @@ export function AuthorityDashboardPage() {
           </label>
           <label className="block text-sm font-semibold">
             Category
-            <select className="field" value={category} onChange={(event) => setCategory(event.target.value)}>
+            <select
+              className="field"
+              value={category}
+              onChange={(event) => applyFilter(() => setCategory(event.target.value))}
+            >
               <option value="">All categories</option>
               {civicCategories.map((value) => (
                 <option key={value} value={value}>
@@ -101,7 +134,11 @@ export function AuthorityDashboardPage() {
           </label>
           <label className="block text-sm font-semibold">
             Priority
-            <select className="field" value={priority} onChange={(event) => setPriority(event.target.value)}>
+            <select
+              className="field"
+              value={priority}
+              onChange={(event) => applyFilter(() => setPriority(event.target.value))}
+            >
               <option value="">All priorities</option>
               {civicPriorities.map((value) => (
                 <option key={value} value={value}>
@@ -115,7 +152,7 @@ export function AuthorityDashboardPage() {
             <select
               className="field"
               value={sort}
-              onChange={(event) => setSort(event.target.value as CivicQueueSort)}
+              onChange={(event) => applyFilter(() => setSort(event.target.value as CivicQueueSort))}
             >
               {civicQueueSortOptions.map((value) => (
                 <option key={value} value={value}>
@@ -124,14 +161,22 @@ export function AuthorityDashboardPage() {
               ))}
             </select>
           </label>
-          <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+          <label
+            className={`flex items-center gap-2 text-sm font-semibold sm:col-span-2 ${
+              terminalStatusSelected ? "text-ink/40" : ""
+            }`}
+          >
             <input
               type="checkbox"
               className="size-4"
               checked={overdue}
-              onChange={(event) => setOverdue(event.target.checked)}
+              disabled={terminalStatusSelected}
+              onChange={(event) => applyFilter(() => setOverdue(event.target.checked))}
             />
             Only past their deadline
+            {terminalStatusSelected && (
+              <span className="text-xs font-normal">(closed reports are never overdue)</span>
+            )}
           </label>
         </div>
 
@@ -142,23 +187,41 @@ export function AuthorityDashboardPage() {
         )}
 
         {state === "error" && (
-          <p role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
-            {errorMessage}
-          </p>
+          <div role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="mt-3 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {state === "ready" && reports.length === 0 && (
           <div className="mt-10 rounded-xl border border-ink/10 bg-white/60 p-8 text-center">
             <Inbox className="mx-auto text-clay" size={28} aria-hidden="true" />
-            <p className="mt-4 font-serif text-xl font-semibold">Nothing matches these filters.</p>
-            <p className="mt-2 text-sm leading-6 text-ink/70">Clear a filter to see more of the queue.</p>
+            {hasActiveFilters ? (
+              <>
+                <p className="mt-4 font-serif text-xl font-semibold">Nothing matches these filters.</p>
+                <p className="mt-2 text-sm leading-6 text-ink/70">Clear a filter to see more of the queue.</p>
+              </>
+            ) : (
+              <>
+                <p className="mt-4 font-serif text-xl font-semibold">The queue is empty.</p>
+                <p className="mt-2 text-sm leading-6 text-ink/70">
+                  New citizen reports will appear here as they are submitted.
+                </p>
+              </>
+            )}
           </div>
         )}
 
         {state === "ready" && reports.length > 0 && (
           <>
             <p className="mt-10 text-sm text-ink/60">
-              Showing {reports.length} of {total} report{total === 1 ? "" : "s"}.
+              Showing {offset + 1}&ndash;{offset + reports.length} of {total} report{total === 1 ? "" : "s"}.
             </p>
             <ul className="mt-4 space-y-4">
               {reports.map((report) => (
@@ -187,6 +250,30 @@ export function AuthorityDashboardPage() {
                 </li>
               ))}
             </ul>
+
+            {total > limit && (
+              <div className="mt-6 flex items-center justify-between">
+                <button
+                  type="button"
+                  disabled={offset === 0}
+                  onClick={() => setOffset(Math.max(0, offset - limit))}
+                  className="rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <p className="text-sm text-ink/60">
+                  Page {Math.floor(offset / limit) + 1} of {Math.max(1, Math.ceil(total / limit))}
+                </p>
+                <button
+                  type="button"
+                  disabled={offset + limit >= total}
+                  onClick={() => setOffset(offset + limit)}
+                  className="rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </>
         )}
       </section>

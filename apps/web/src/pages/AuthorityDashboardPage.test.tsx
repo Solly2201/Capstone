@@ -86,7 +86,7 @@ describe("AuthorityDashboardPage", () => {
     expect(entry.textContent).toContain("Submitted");
     expect(entry.textContent).toContain("Priority: MEDIUM");
     expect(entry.textContent).toMatch(/Due /);
-    expect(screen.getByText(/Showing 1 of 1 report\./)).toBeTruthy();
+    expect(screen.getByText(/Showing 1–1 of 1 report\./)).toBeTruthy();
   });
 
   it("flags a report that is past its deadline", async () => {
@@ -123,10 +123,14 @@ describe("AuthorityDashboardPage", () => {
     });
   });
 
-  it("shows an empty state when nothing matches", async () => {
+  it("tells an empty unfiltered queue apart from an unmatched filter", async () => {
     withQueue([]);
     renderDashboard();
 
+    // No filter set: an empty database is not the operator's fault.
+    await waitFor(() => expect(screen.getByText("The queue is empty.")).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "garbage" } });
     await waitFor(() => expect(screen.getByText("Nothing matches these filters.")).toBeTruthy());
   });
 

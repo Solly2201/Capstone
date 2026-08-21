@@ -35,7 +35,9 @@ export function AuthorityPetitionsPage() {
 
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
-  const [goalMet, setGoalMet] = useState(false);
+  // "" = any, "true" = goal reached, "false" = still short of its goal.
+  // The API supports both directions; a checkbox could only express one.
+  const [goalMet, setGoalMet] = useState("");
   const [sort, setSort] = useState<PetitionSort>("newest");
   const [offset, setOffset] = useState(0);
 
@@ -46,7 +48,7 @@ export function AuthorityPetitionsPage() {
         params: {
           ...(status ? { status } : {}),
           ...(category ? { category } : {}),
-          ...(goalMet ? { goalMet: "true" } : {}),
+          ...(goalMet ? { goalMet } : {}),
           sort,
           limit: PAGE_SIZE,
           offset
@@ -125,14 +127,17 @@ export function AuthorityPetitionsPage() {
               ))}
             </select>
           </label>
-          <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
-            <input
-              type="checkbox"
-              className="size-4"
-              checked={goalMet}
-              onChange={(event) => changeFilter(() => setGoalMet(event.target.checked))}
-            />
-            Only petitions that reached their signature goal
+          <label className="block text-sm font-semibold">
+            Signature goal
+            <select
+              className="field"
+              value={goalMet}
+              onChange={(event) => changeFilter(() => setGoalMet(event.target.value))}
+            >
+              <option value="">All petitions</option>
+              <option value="true">Goal reached</option>
+              <option value="false">Goal not yet reached</option>
+            </select>
           </label>
         </div>
 
@@ -143,16 +148,34 @@ export function AuthorityPetitionsPage() {
         )}
 
         {state === "error" && (
-          <p role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
-            {errorMessage}
-          </p>
+          <div role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="mt-3 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {state === "ready" && petitions.length === 0 && (
           <div className="mt-10 rounded-xl border border-ink/10 bg-white/60 p-8 text-center">
             <Inbox className="mx-auto text-clay" size={28} aria-hidden="true" />
-            <p className="mt-4 font-serif text-xl font-semibold">Nothing matches these filters.</p>
-            <p className="mt-2 text-sm leading-6 text-ink/70">Clear a filter to see more of the queue.</p>
+            {status || category || goalMet ? (
+              <>
+                <p className="mt-4 font-serif text-xl font-semibold">Nothing matches these filters.</p>
+                <p className="mt-2 text-sm leading-6 text-ink/70">Clear a filter to see more of the queue.</p>
+              </>
+            ) : (
+              <>
+                <p className="mt-4 font-serif text-xl font-semibold">The queue is empty.</p>
+                <p className="mt-2 text-sm leading-6 text-ink/70">
+                  Petitions residents publish will appear here.
+                </p>
+              </>
+            )}
           </div>
         )}
 

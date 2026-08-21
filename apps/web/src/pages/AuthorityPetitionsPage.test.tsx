@@ -111,16 +111,23 @@ describe("AuthorityPetitionsPage", () => {
     expect(options.map((option) => option.textContent)).toContain("Removed");
   });
 
-  it("asks the server for the goal-reached filter", async () => {
+  it("asks the server for the goal filter in both directions", async () => {
     await renderPage();
     await waitFor(() => expect(mockApi.get).toHaveBeenCalledWith("/petitions/authority", expect.anything()));
 
-    fireEvent.click(screen.getByLabelText(/Only petitions that reached their signature goal/));
-
+    fireEvent.change(screen.getByLabelText("Signature goal"), { target: { value: "true" } });
     await waitFor(() => {
       const [path, config] = mockApi.get.mock.calls.at(-1) as [string, { params: Record<string, unknown> }];
       expect(path).toBe("/petitions/authority");
       expect(config.params.goalMet).toBe("true");
+    });
+
+    // The API supports the inverse triage too — petitions still short of
+    // their goal — which a checkbox could never express.
+    fireEvent.change(screen.getByLabelText("Signature goal"), { target: { value: "false" } });
+    await waitFor(() => {
+      const [, config] = mockApi.get.mock.calls.at(-1) as [string, { params: Record<string, unknown> }];
+      expect(config.params.goalMet).toBe("false");
     });
   });
 
@@ -139,6 +146,11 @@ describe("AuthorityPetitionsPage", () => {
   it("shows a loading state and then an empty state when nothing matches", async () => {
     await renderPage("AUTHORITY", listResponse([]));
 
+    // No filter set: an empty database is reported as such…
+    await waitFor(() => expect(screen.getByText("The queue is empty.")).toBeTruthy());
+
+    // …and an unmatched filter as an unmatched filter.
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "UNDER_REVIEW" } });
     await waitFor(() => expect(screen.getByText("Nothing matches these filters.")).toBeTruthy());
   });
 
