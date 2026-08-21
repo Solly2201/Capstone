@@ -1,34 +1,174 @@
-# Retrieval evaluation: BM25 vs dense vs hybrid
+# Retrieval evaluation: from BM25 to a fine-tuned hybrid production path
 
-This records how CAP decided to move from BM25-only retrieval to hybrid
-(BM25 + dense + Reciprocal Rank Fusion) retrieval, with real measurements
-against this project's actual ingested corpus -- not a synthetic
-benchmark, and not added because "hybrid sounds better." See
-`docs/PROJECT_STATE.md` for where this sits in the project timeline and
-`docs/ARCHITECTURE.md` for how it fits the overall pipeline.
+> **Read this first.** This document is a **chronological research
+> record**, not a summary of the current system. It runs from the
+> original BM25-vs-hybrid decision through RRF tuning, citizen-language
+> evaluation, several **failed and rejected** experiments, embedding
+> fine-tuning, and finally to the deployed model. Numbers appear in the
+> order they were measured, against the corpus and eval sets that existed
+> at the time.
+>
+> **The final, authoritative numbers are in the "FINAL PRODUCTION
+> EVALUATION" section immediately below, and in the M12/M13 sections at
+> the end.** Every number between them is historical. Do not quote a
+> mid-document figure as a current result.
 
-**No generative LLM is involved anywhere in this evaluation or in what
-it evaluates.** `services/ai/eval/run_eval.py` calls only
+This records how CAT decided to move from BM25-only retrieval to hybrid
+(BM25 + dense + Reciprocal Rank Fusion) retrieval and then to a
+fine-tuned dense model, with real measurements against this project's
+actual ingested corpus -- not a synthetic benchmark, and not added
+because "hybrid sounds better." See `docs/PROJECT_STATE.md` for where
+this sits in the project timeline and `docs/ARCHITECTURE.md` for how it
+fits the overall pipeline.
+
+**No generative LLM is involved anywhere in this evaluation or in what it
+evaluates.** `services/ai/eval/run_eval.py` calls only
 `app.retrieval.search` and `app.generation.pipeline.handle_legal_query`
--- both pure-retrieval/deterministic. Reproduce any number below with:
+-- both pure-retrieval/deterministic.
+
+---
+
+## FINAL PRODUCTION EVALUATION (authoritative)
+
+The frozen system: corpus **1,827 chunks across 10 Acts**, dense model
+**`data/models/m12_run2`** (384-dim, fine-tuned from
+`sentence-transformers/all-MiniLM-L6-v2`), hybrid retrieval with a top-50
+candidate pool per method, weighted RRF (k=5, dense 3.0 / BM25 1.0),
+top_k 5, and a hybrid confidence floor of **0.41** applied to the top
+hit's `dense_score`.
+
+### The four measurement series, and what each one actually measures
+
+This document contains four series that are **not comparable to each
+other**. Mixing them produces false claims.
+
+| # | Series | What it measures | Where |
+| --- | --- | --- | --- |
+| 1 | **Historical raw-query series** | Retrieval quality on the *raw* query text, before `app.query.normalize` runs. It measures the retrieval layer in isolation, **not the path the product runs.** Reproduced by the default `run_eval.py`. Every historical number in the body of this document belongs to this series. | body of this doc |
+| 2 | **M12 production-path baseline** | The same pipeline the product runs (`--production-path` retrieves on the normalised text), with the **base** `all-MiniLM-L6-v2` model. This is the *before* column of the final comparison. | M12 section |
+| 3 | **Final deployed `m12_run2`** | The same production path with the promoted fine-tuned model. **These sets contain queries the fine-tune was trained on** -- they are the deployed system's benchmark, not generalisation evidence. | M13 section |
+| 4 | **Held-out production-path evaluation** | Series 2 vs 3 restricted to ids in `finetune/data/test.jsonl`, never trained or selected on. **This, and only this, is the generalisation claim.** | M13 section |
+
+Series 1 and series 2/3/4 differ in the text being retrieved on, so their
+absolute numbers are not comparable even for the same model. Series 3 and
+series 4 differ in which queries are scored. A jump between series is not
+a result.
+
+### Series 3 — final deployed benchmark (contains trained-on queries)
+
+Same corpus, queries, normalisation, guards, gate floor, fusion weights
+and scoring code on both sides; **the only variable is the embedding
+model behind the dense index.** Every candidate number was reproduced
+twice, byte-identically.
+
+| Metric | Citizen 281: baseline -> m12_run2 | Control 46: baseline -> m12_run2 |
+| --- | --- | --- |
+| recall@5 | 0.7448 -> **0.9554** | 0.8623 -> **0.9674** |
+| MRR | 0.5656 -> **0.8800** | 0.7341 -> **0.9246** |
+| nDCG@5 | 0.6040 -> **0.8984** | 0.7476 -> **0.9261** |
+| top-1 citation correctness | 0.4448 -> **0.8185** | 0.6522 -> **0.8913** |
+| abstention accuracy | 0.8562 -> **0.9233** | 0.9796 -> 0.9592 |
+| false accepts | 0 -> **0** | 0 -> **0** |
+| false abstains | 45 -> **24** | 1 (q19) -> 2 (q19, q17) |
+| wrong-Act top-1 | 43 -> **19** | 3 -> 3 (no new) |
+| hard-negative recall | 28/29 -> **29/29** | -- |
+
+Citizen 281 = the 281 non-abstain rows of the 313-row
+`eval/queries_human.jsonl`. Control 46 = the 46 non-abstain rows of the
+49-row `eval/queries.jsonl`.
+
+> **NEVER present the 281-query benchmark as a held-out generalisation
+> result.** The fine-tune's training pool was drawn from these labelled
+> sets. It is the correct number for "how well does the deployed system
+> do on our benchmark" and the wrong number for "how well does it
+> generalise".
+
+### Series 4 — held-out generalisation (never trained or selected on)
+
+| Metric | Citizen 41 | Control 9 |
+| --- | --- | --- |
+| recall@5 | 0.7634 -> **0.8732** | 0.8333 -> 0.8333 (equal) |
+| MRR | 0.5687 -> **0.7122** | 0.7259 -> **0.8000** |
+| top-1 citation correctness | 0.4634 -> **0.6098** | 0.6667 -> **0.7778** |
+| abstention accuracy | 0.7561 -> **0.8293** | -- |
+| false accepts | 0 -> **0** | -- |
+| false abstains | 10 -> **7** | -- |
+
+The held-out improvement reproduces on the path production actually runs.
+Held-out wrong-Act moved 4 to 8 and every case was inspected
+individually -- see the M13 section for the per-case severity analysis
+(two abstain rather than answer, one is a label gap, one is a genuine
+mild adjacent-domain regression).
+
+### Series C — follow-up / context benchmark (40 rows)
+
+Condition follow-ups 19/21 with context (fragment-only baseline 6/21),
+ambiguous 4/4, no-context 4/4, guarded 6/6 with byte-identical reasons,
+not-emergency 2/2, standalone override 2/3. `f04` -- the long-standing M8
+FIR-copy recall miss -- is fixed. Residuals: `f22` (ranking), `f24`
+(`rti:19`), `f35` (now abstains; conservative direction).
+
+### Reproduction
 
 ```bash
 cd services/ai
-python scripts/ingest_corpus.py            # rebuild bm25.pkl + dense_vectors.npy
-python eval/run_eval.py                    # bm25 vs dense vs hybrid, top_k=5
+export DENSE_EMBEDDING_MODEL=data/models/m12_run2
+python scripts/ingest_corpus.py                                   # 1,827 chunks, mode=hybrid
+
+# Series 2/3 -- the final production-path numbers above
+python eval/run_eval.py --production-path --mode hybrid           # control 46
+python eval/run_eval.py --production-path --mode hybrid --human   # citizen 281
+python eval/run_context_eval.py                                   # follow-up 40
+
+# Series 1 -- the historical raw-query series in the body of this document
+python eval/run_eval.py                                           # bm25 vs dense vs hybrid, top_k=5
 python eval/run_eval.py --mode hybrid --top-k 10
-python eval/run_eval.py --json eval/last_run.json   # full per-query dump
+python eval/run_eval.py --json eval/last_run.json                 # full per-query dump
+
+# Reproduce the model artifact itself (seeded, deterministic splits)
+python finetune/build_dataset.py
+python finetune/train.py --run-name m12_run2
+python finetune/eval_heldout.py --run-name m12_run2
 ```
+
+Swapping the model back to the base checkpoint to reproduce the baseline
+column is `DENSE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2`
+plus a re-ingest -- and note that the Python test suite rebuilds the real
+index, so `tests/conftest.py` pins the variable to whatever the on-disk
+manifest records (see the M13 section's incident write-up).
+
+### What was measured and REJECTED
+
+Kept because a rejected result is evidence too, and because each of these
+gets re-proposed on intuition:
+
+| Rejected | Why |
+| --- | --- |
+| Cross-encoder reranking (`ms-marco-MiniLM`) | `hard_negative` recall 0.966 -> 0.793, abstention accuracy 0.7764 -> 0.6677, worse on every metric on the control set, ~8x latency. A general-purpose reranker has no notion that the BNS and the BNSS are different statutes. |
+| A separate citizen-language concept index | -0.082 / -0.157 / -0.246 at top-1/2/3 concept, and `hard_negative` recall 0.966 -> 0.724. |
+| Generic edit-distance spelling correction | Statutes do not contain ordinary English, so "unknown token" is not "misspelled token" ("texting" -> "testing", "goons" -> "goods"). |
+| Agreement-branch confidence gate | +5 good answers for +2 wrong-Act answers: both retrieval methods can agree on the same wrong chunk. |
+| RRF weight retuning at M9 | Not a clean win; not applied. |
+| FAISS | Brute-force NumPy cosine is sub-millisecond at this corpus size. |
+| Raising the global confidence threshold again | The true-positive and wrong-Act score distributions overlap almost completely (medians 0.456 vs 0.442); no operating point dominates. Solved instead by the non-score-based topic-relevance and corpus-coverage guards. |
+
+---
+
+# PART B: HISTORICAL RESEARCH RECORD
 
 ## Evaluation set
 
-> **Since updated:** `eval/queries.jsonl` now has 49 queries covering
-> all 9 ingested sources (added `ambiguous` and `source_specific`
-> categories; RTI is excluded except as an abstain-expected control).
-> The set and counts below describe the original evaluation this
-> document records, at the point BM25 vs hybrid was decided -- see
-> `docs/PROJECT_STATE.md`'s "Retrieval/evaluation hardening" for the
-> current set and its results.
+> **Since updated. The counts in this section are the ORIGINAL ones and
+> are historical.** `eval/queries.jsonl` finally has **49 queries (46
+> non-abstain, 3 abstain-expected)**, spanning all ten ingested sources
+> -- the `ambiguous` and `source_specific` categories were added later,
+> and RTI, which was not yet ingested when this set was rebuilt, appears
+> in it only as a single labelled target plus abstain-expected controls.
+> The corpus those 49 queries now run against is **1,827 chunks across 10
+> Acts**, not the 395 described below. The section that follows describes
+> the original evaluation this document records, at the point BM25 vs
+> hybrid was decided -- see the FINAL PRODUCTION EVALUATION section at
+> the top of this file for the current sets and their results.
 
 `services/ai/eval/queries.jsonl` -- 30 hand-curated queries against the
 actually-ingested corpus (395 chunks across Constitution, BNS, BNSS,
@@ -1716,15 +1856,27 @@ fine-tune could also cause, and it would be caught the same way.
 
 **No training has been started, and none is authorised.**
 
-## Remaining limitations
+## Remaining limitations (as recorded at M9 -- see the note below)
 
-- The confidence-gate thresholds (all three modes) are tuned against a
-  49-query hand-curated set (`eval/queries.jsonl`, rebuilt to cover all
-  9 ingested sources) over a 1,783-chunk corpus -- real floors, backed
-  by real numbers, but still not statistically robust the way a much
-  larger labeled eval set would be. Re-run `python eval/run_eval.py`
-  and re-sweep after any significant corpus growth (see
-  `docs/PROJECT_STATE.md`'s ingestion gaps).
+> **Historical, with one item since superseded.** This list was written
+> at M9. The first bullet no longer describes the deployed
+> configuration: the hybrid floor was recalibrated in M12 against the
+> production path over the final 1,827-chunk corpus and the 402-group
+> labelled pool, and is now **0.41**, not 0.42. The remaining bullets
+> still hold. The final limitation list is in `docs/PROJECT_STATE.md`
+> Part A, section 9.
+
+- ~~The confidence-gate thresholds (all three modes) are tuned against a
+  49-query hand-curated set over a 1,783-chunk corpus~~ -- **superseded
+  in M12.** The hybrid floor is now swept on the production path (the
+  normalised text the product actually retrieves on) against a 362-row
+  labelled pool, on a tune split with held-out validation, and sits at
+  **0.41** over the final **1,827-chunk** corpus. The underlying caveat
+  survives the recalibration and is worth keeping: these are real floors
+  backed by real numbers, but a much larger labelled set would make them
+  statistically robust in a way they still are not. Re-run
+  `python eval/run_eval.py --production-path --mode hybrid` and re-sweep
+  after any significant corpus growth.
 - The hybrid floor was raised 0.40->0.42 after stress-testing
   out-of-domain queries against the expanded corpus found real false
   positives (see `docs/PROJECT_STATE.md`'s "Retrieval/evaluation
@@ -1766,13 +1918,21 @@ experiment below has been started. It exists so a later session begins
 from measured evidence rather than from intuition, and so the two
 approaches already tested and rejected are not silently retried.
 
-### The frozen baseline
+### The frozen baseline (M6-era; NOT the final system)
 
-The production path is BM25 + dense (`all-MiniLM-L6-v2`, 384-dim) fused
-with weighted RRF (dense weight 3.0, k=5), behind the risk/UPL,
+> **Historical.** "Frozen baseline" here means "frozen for the purposes
+> of the M6-era experiments proposed below" -- it is **not** the frozen
+> final system. Since this was written the dense model became
+> `data/models/m12_run2`, the hybrid floor became 0.41, the corpus grew
+> to 1,827 chunks, and every metric below was superseded. The final
+> numbers are at the top of this file. Read the table below only as the
+> bar those proposed experiments were asked to clear.
+
+At M6 the production path was BM25 + dense (`all-MiniLM-L6-v2`, 384-dim)
+fused with weighted RRF (dense weight 3.0, k=5), behind the risk/UPL,
 topic-relevance and corpus-coverage guards, with a hybrid confidence
-floor of 0.42. Measured numbers, restated here so an experiment has
-something to beat:
+floor of 0.42. Measured numbers **of that era**, restated here so an
+experiment had something to beat:
 
 | Metric | 313-query citizen set | 49-query control |
 | --- | --- | --- |
@@ -1892,6 +2052,10 @@ correctly returned `redirect_adviser`. Burglary-in-progress is plausibly
 inside the documented "active crime" emergency category. This was **not
 changed** — the safety gates are frozen — but it is a concrete candidate
 for the hard-negative/safety expansion in the work above.
+
+---
+
+# PART C: FINAL MILESTONES (authoritative)
 
 ## M12 — production-path evaluation, failure taxonomy, and a fine-tune that finally generalises
 

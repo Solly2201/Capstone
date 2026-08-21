@@ -1,8 +1,13 @@
-# Initial legal-source inventory
+# Legal-source inventory (final)
 
-CAP accepts legal RAG evidence only from an Admin-approved official-source allow-list. Every imported document must retain its official URL, publisher, document version or “as on” date, import date, checksum, and extraction status.
+> **Final.** This inventory describes the corpus at the frozen commit
+> `c24eda2`: **10 ingested Acts, 1,827 chunks.** The per-source counts in
+> "Ingestion status" below are the final ones, verified against
+> `services/ai/data/index/chunk_manifest.jsonl`.
 
-## Initial approved sources
+CAT accepts legal RAG evidence only from an Admin-approved official-source allow-list. Every imported document must retain its official URL, publisher, document version or “as on” date, import date, checksum, and extraction status.
+
+## Approved sources
 
 | Source | Official record | Initial use |
 | --- | --- | --- |
@@ -19,13 +24,18 @@ CAP accepts legal RAG evidence only from an Admin-approved official-source allow
 | India Code | [Official catalogue](https://www.indiacode.nic.in/) | Later approved Acts and official amendments |
 | Supreme Court of India | [Official site](https://www.sci.gov.in/) | Official judgments when explicitly approved and versioned |
 
-The initial corpus is deliberately limited. CAP must not claim to cover all Indian law until each source is approved, indexed, evaluated, and versioned.
+The corpus is deliberately limited, and it stayed limited. **CAT does not claim to cover all Indian law**, and does not claim complete coverage of the Acts it does ingest — see "Deferred and unsupported domains" and the per-source coverage notes below. The last two rows of the table above (India Code, Supreme Court of India) are the approved *catalogues* for future additions; **no judgment and no Act beyond the ten listed below has been ingested.**
 
 > **Correction (Increment 2):** the BNSS PDF originally supplied for ingestion was *"AS INTRODUCED IN LOK SABHA"* (Bill No. 122 of 2023) — a superseded draft, not the enacted Sanhita. Section numbering and text differ from the enacted Act No. 46 of 2023. It has been replaced with the official India Code text above. The BNS and Constitution PDFs supplied were verified as the actual enacted/official text and did not need replacing.
 
-## Ingestion status
+## Ingestion status (final — 10 sources, 1,827 chunks)
 
-Run `python services/ai/scripts/ingest_corpus.py` to regenerate this from source. As of Increment 2:
+Run `python services/ai/scripts/ingest_corpus.py` to regenerate the index
+from source. The counts below are the **final** ones and match
+`data/index/index_manifest.json` (`chunk_count: 1827`) and a per-source
+count over `chunk_manifest.jsonl`. The narrative in each row records how
+that source reached its final state, so some of it reads historically;
+the numbers do not.
 
 | Source | Chunks ingested | Coverage |
 | --- | --- | --- |
@@ -39,6 +49,54 @@ Run `python services/ai/scripts/ingest_corpus.py` to regenerate this from source
 | Consumer Protection Act, 2019 | 107 sections | **Full**, single-column source, titles recovered for all 107 sections (100%). |
 | Juvenile Justice (Care and Protection of Children) Act, 2015 | 110 sections | **Full**, single-column source, titles recovered for 110 of 112 sections (98.2%) — see "New single-column PDFs" for the two-section residual gap. |
 | Right to Information Act, 2005 | 26 sections | Chapters I–VI from the Central Information Commission's published copy, excluding the Schedules. Four sections are deliberately excluded: **ss.13, 16 and 27**, which the RTI (Amendment) Act 2019 replaced and which this pre-2019 copy still states in superseded form, and **s.25** (Monitoring and reporting), dropped for measured retrieval harm — see below. s.14 is not chunked (the source omits the full stop before the em-dash the section-header pattern needs). |
+| **Total** | **1,827 chunks** | 10 ingested Acts. Verified against `data/index/chunk_manifest.jsonl`: bnss 531, constitution 366, bns 356, bsa 170, jj2015 110, cpa2019 107, it_act 92, pwdva 37, lsa 32, rti 26. |
+
+### Deferred and unsupported domains
+
+Named here rather than left as a silent absence. **Two different
+mechanisms keep these from being answered, and the distinction is
+deliberate.**
+
+**(a) Named by the corpus-coverage guard.** These are the subjects where
+the 313-query citizen evaluation *demonstrated* a confident wrong-Act
+answer: the query is a real legal question in this service's subject
+area, shares vocabulary with ingested statutes, and therefore cleared the
+confidence floor from the wrong Act. `app/safety/corpus_coverage.py`
+matches them by name **before retrieval runs** and returns a "not in this
+corpus" message pointing at a more appropriate route.
+
+| Domain | Guard category | Why it is not covered |
+| --- | --- | --- |
+| Sexual offences against children | `pocso` | Governed principally by POCSO, which is not ingested. |
+| Motor vehicles / driving | `motor_vehicles` | Not ingested. |
+| Matrimonial law (divorce and related) | `matrimonial` | Not ingested. |
+| SC/ST (Prevention of Atrocities) | `sc_st_atrocities` | Not ingested; "atrocities" occurs nowhere in the corpus. |
+| Court fees and civil procedure (CPC) | `court_fees_civil_procedure` | Not ingested. |
+| Information Commissioners' terms of service | `rti_amended_service_provisions` | ss.13/16/27, which this pre-2019 RTI copy states in superseded form and which are therefore excluded at ingestion. Returns a distinct "deliberately excluded provision" message. |
+
+**(b) Not ingested, and deliberately left to the confidence gate.** The
+guard is emphatically **not** a list of every Indian Act. It carries one
+entry per demonstrated failure and nothing else. For the subjects below,
+a probe confirmed the confidence gate already abstains correctly with no
+guard at all — all seven labour and civic-service questions in it
+abstained — so adding patterns would have been speculative rather than
+evidence-driven. The Learn module additionally states each of these as a
+`deferredTopics` entry on the relevant category, so a citizen browsing is
+told the gap exists rather than left to infer it.
+
+| Domain | Why it is not covered |
+| --- | --- |
+| Workplace and labour rights (including minimum wages, notice periods) | No labour legislation is ingested. |
+| Tenancy and rent control | Governed by State legislation outside the ingested corpus. |
+| Data protection | India's dedicated data-protection legislation is not ingested, and ss.43 and 43A are missing from the ingested IT Act PDF. |
+| Stamp duty, arbitration, municipal services | Not ingested. |
+| RTI fee amounts | The Act says only "such fee as may be prescribed"; the figures live in rules made under it, which are not ingested. No fee amount is stated anywhere in the product. |
+| Case law of any kind | No judgment is ingested. CAT answers from statute only. |
+
+If a future confidence-threshold change turns any group (b) subject into
+a confident wrong answer, the rule to add is that specific one — the same
+"curated, extend only when evaluation names a case" discipline the guard
+was built under.
 
 Coverage gaps are also surfaced live via each source's `coverage_note` field on `/corpus/sources` and on every search/section result, so the UI never implies more coverage than actually exists.
 
@@ -144,10 +202,13 @@ cleaner single-column source PDFs exist for them (see above).
 - Recorded in each affected source's `coverage_note` and surfaced live
   via `/corpus/sources`, not just in this doc.
 
-The **Right to Information Act, 2005** is ingested from the Central
-Information Commission's own published copy, which is the file in the
-corpus folder. Three things about it are worth recording, because each
-is a deliberate decision rather than an oversight.
+### Right to Information Act, 2005 — known limitations of the ingested copy
+
+The RTI Act is ingested from the Central Information Commission's own
+published copy, which is the file in the corpus folder. **26 sections are
+in the corpus; four are deliberately excluded and one is not chunked.**
+Three things about the source are worth recording, because each is a
+deliberate decision rather than an oversight.
 
 **It predates the 2019 amendment.** The RTI (Amendment) Act, 2019 (Act
 24 of 2019) replaced ss.13, 16 and 27, which govern the term of office

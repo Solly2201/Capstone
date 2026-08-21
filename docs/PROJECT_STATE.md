@@ -1,7 +1,14 @@
-# Citizen Assistance Technology — Project State
+# Citizen Assistance Technology (CAT) — Project State
 
-This file is the "where am I?" doc. Read this before touching anything.
-Update it at the end of every increment.
+**This is the authoritative current-state document for CAT.**
+
+> **CAT IS FROZEN** at commit `c24eda2`. M10, M11, M12 and M13 are
+> complete. Part A below describes the final frozen system and is
+> authoritative. Part B preserves the milestone-by-milestone history,
+> including superseded numbers, clearly labelled as historical.
+>
+> Read Part A before touching anything. Where the two parts disagree,
+> Part A wins.
 
 ## Source of truth
 
@@ -9,8 +16,344 @@ Update it at the end of every increment.
 - **Requirements:** the user's latest decisions win over the original CAP overview document when they conflict.
 - **Law:** official India Code text only (see `docs/LEGAL_SOURCES.md`). Never a bill draft, never an unofficial mirror.
 - **Design:** current product requirements win over any old screenshot/template.
+- **Final state:** commit `c24eda2` and the evaluation artifacts it produced. Where an older milestone summary conflicts with the frozen code, the index manifest or the final evaluation output, the artifact wins and the summary is historical.
 
-## Current commit lineage
+---
+
+# PART A — FINAL FROZEN STATE (authoritative)
+
+> Everything in Part A describes the system as it exists at the frozen
+> commit. Where an older milestone entry in Part B disagrees with Part A,
+> **Part A wins** — Part B is preserved as the historical record of how
+> the project got here, not as a statement of current fact.
+
+## 1. Final frozen state
+
+| | |
+| --- | --- |
+| **Frozen commit** | `c24eda25cf44d66f41e6e9badbe9a58440e94bb2` ("deploy: promote m12_run2 to the production retrieval path (M13 freeze)") |
+| **Remote** | `https://github.com/Solly2201/CAT` |
+| **Milestones complete** | M10, M11, M12, M13 |
+| **Status** | **FROZEN.** CAT is the experimental system of record. No feature, retrieval, model or corpus changes. |
+
+M13 promoted the M12 fine-tuned embedding candidate onto the real
+production retrieval path after a full one-variable evaluation against
+the reproduced M12 baseline, fixed a real defect the deployment surfaced
+(the test suite silently reverting the production index), and froze the
+system.
+
+**What the four final milestones delivered:**
+
+- **M10 — product completion.** Deterministic civic duplicate handling, the Legal Assistant to Learn provision join, post-409 state resynchronisation, the authority petition-response panel, paginated/filtered authority queues, ADMIN signature recount, and role- and reality-aware navigation/denial/session copy.
+- **M11 — session, mail, search, multi-turn context.** 7-day refresh token renewing a 15-minute access token (revocable via `tokenVersion`, stored role re-read on every refresh), verification email over any configured `SMTP_URL`, My Reports pagination, deterministic petition free-text search, acting-staff names in history, and the deterministic multi-turn context layer.
+- **M12 — accuracy and evaluation.** The production-path measurement series, the 112-row failure taxonomy, a curated spelling layer plus probe-verified normalisation rules, the gate floor recalibration 0.42 to 0.41, the follow-up benchmark grown 18 to 40 rows, and the `m12_run2` fine-tune validated on held-out data.
+- **M13 — promotion and freeze.** `m12_run2` deployed on the production path, promoted against all nine gate conditions, verified live against the running Docker stack, and frozen.
+
+## 2. Final architecture
+
+Three services behind one API boundary:
+
+- `apps/web` — React 18 + TypeScript + Vite + Tailwind citizen UI.
+- `services/api` — Node 20 + Express + Mongoose. Owns auth/RBAC and every business workflow (civic, petitions, media). Proxies legal calls to the AI service; the browser never reaches the AI service directly.
+- `services/ai` — Python 3.11 + FastAPI. Ingestion, index build, retrieval, the deterministic safety layer, and answer assembly. Owns no user data.
+- `packages/contracts` — shared Zod contracts.
+- MongoDB for domain data; local disk for media; Redis provisioned in Compose but **not connected to by any code** (see section 9).
+
+**The final legal-answer pipeline** (`handle_legal_query`):
+
+```text
+USER QUESTION
+  -> Risk / UPL policy        harmful_request -> refuse
+  |                           emergency       -> official helpline, no retrieval
+  |                           serious         -> caution first, retrieval still runs
+  -> Context resolution       fold in the previous turn deterministically,
+  |                           or ask for a restatement; never guess
+  -> Guard re-run             context is client-supplied and untrusted, so every
+  |                           guard re-runs on the combined text; stricter wins
+  -> Topic relevance          known out-of-domain subject -> abstain pre-retrieval
+  -> Corpus coverage          names an Act this corpus lacks -> abstain pre-retrieval
+  -> Query normalization      statutory vocabulary appended to the RETRIEVAL text only
+  -> BM25 + dense retrieval   top-50 candidate pool each
+  -> Weighted RRF             k=5, dense 3.0 / BM25 1.0 -> top-5
+  -> Confidence / evidence    hybrid floor 0.41 on the top hit's dense score
+  -> Citation verification    structural manifest metadata, never generated text
+  -> DETERMINISTIC RESPONSE   verbatim excerpt(s) + citations + disclaimer
+```
+
+Insufficient evidence produces **ABSTAIN**, **CLARIFY** or **ROUTE** — never a filled gap.
+
+**Standing decision, unchanged and final: 0% generative LLM in the
+legal-answer pipeline.** Not as a generator, reranker, fallback or
+classifier. The LLM-generation direction was built (provider
+abstraction, a working Gemini integration, citation validation over
+generated text) and deliberately discarded on hallucination-risk grounds.
+`sentence-transformers` is used strictly as an encoder.
+
+Normalisation placement is deliberate and load-bearing: every safety and
+coverage guard inspects the **raw** question, so appended vocabulary can
+never talk retrieval past a safety decision, and the answer is assembled
+from the retrieved chunks themselves, so normalised text never reaches
+the citizen, the citations, or the excerpt.
+
+## 3. Final model and configuration
+
+| | |
+| --- | --- |
+| **Production dense model** | `data/models/m12_run2` (service-root-relative) |
+| **Base checkpoint** | `sentence-transformers/all-MiniLM-L6-v2` |
+| **Training** | MultipleNegativesRankingLoss, 4 epochs, batch 16, lr 2e-5, seed 42, 1682 train / 340 val triplets |
+| **Dimension** | 384 |
+| **Artifact hash** | `model.safetensors` SHA-256 `d61d077b4287c2cd1075045dccec0139981751fc1125e1bcd92dc29e0a0ce801`; aggregate over all 11 files `8a15eb039e298e44b25959903c79808f51c9194b75b92f410d567300981c95fa`; 91,861,927 bytes |
+| **Distribution** | Gitignored build artifact, reproduced by the seeded `finetune/` pipeline. Never committed. |
+| **Selection** | `DENSE_EMBEDDING_MODEL`; `embeddings.resolve_model_path()` resolves the relative path at load time only, so one manifest works on the host and in the container |
+| **Retrieval mode** | `hybrid` |
+| **Candidate pool** | 50 per method |
+| **Fusion** | weighted RRF, k=5, dense weight 3.0, BM25 weight 1.0 |
+| **top_k** | 5 |
+| **Confidence floors** | hybrid **0.41** (on the top hit's `dense_score`), bm25 3.0, dense 0.45; overridable via `LEGAL_CHAT_MIN_SCORE` |
+
+At query time the service always follows `index_manifest.json`'s
+`dense_embedding_model`, so a running service can never encode queries
+with a model different from the one that built its index. The container
+mounts `./services/ai/data` read-only at `/app/data`, so a model or index
+change needs **no image rebuild**.
+
+## 4. Final corpus
+
+**10 official Acts, 1,827 chunks**, verified from
+`services/ai/data/index/chunk_manifest.jsonl`:
+
+| Source id | Act | Chunks |
+| --- | --- | ---: |
+| `bnss` | Bharatiya Nagarik Suraksha Sanhita, 2023 | 531 |
+| `constitution` | Constitution of India | 366 |
+| `bns` | Bharatiya Nyaya Sanhita, 2023 | 356 |
+| `bsa` | Bharatiya Sakshya Adhiniyam, 2023 | 170 |
+| `jj2015` | Juvenile Justice (Care and Protection of Children) Act, 2015 | 110 |
+| `cpa2019` | Consumer Protection Act, 2019 | 107 |
+| `it_act` | Information Technology Act, 2000 | 92 |
+| `pwdva` | Protection of Women from Domestic Violence Act, 2005 | 37 |
+| `lsa` | Legal Services Authorities Act, 1987 | 32 |
+| `rti` | Right to Information Act, 2005 | 26 |
+| | **Total** | **1,827** |
+
+Per-source coverage notes, exclusions and extraction limitations are in
+`docs/LEGAL_SOURCES.md` and are surfaced live on `/corpus/sources` and on
+every search result.
+
+**Learn content, counted from `apps/web/src/content/learn/`:** 71
+learning articles across 12 categories, 216 quiz questions, 35 FAQs.
+Every article paragraph and every FAQ `legalBasis` paragraph carries a
+structured `{ sourceId, unitNumber, label }` citation resolved against
+the same source registry the corpus uses; the citation tests fail if any
+of them stops resolving. Learn content is static and authored — the
+frontend never calls the AI service to render it, so an article or FAQ
+cannot change under a reader or say something its cited provision does
+not.
+
+## 5. Final evaluation
+
+Three distinct benchmark families. **They measure different things and
+must not be compared to each other or merged.**
+
+### A. Final production benchmark (contains trained-on queries)
+
+`run_eval.py --production-path --mode hybrid`. Same corpus, queries,
+normalisation, guards, gate floor and scoring on both sides; the only
+variable is the embedding model. Reproduced twice, byte-identically.
+
+| Metric | Citizen 281 baseline -> m12_run2 | Control 46 baseline -> m12_run2 |
+| --- | --- | --- |
+| recall@5 | 0.7448 -> **0.9554** | 0.8623 -> **0.9674** |
+| MRR | 0.5656 -> **0.8800** | 0.7341 -> **0.9246** |
+| nDCG@5 | 0.6040 -> **0.8984** | 0.7476 -> **0.9261** |
+| top-1 citation | 0.4448 -> **0.8185** | 0.6522 -> **0.8913** |
+| abstention accuracy | 0.8562 -> **0.9233** | 0.9796 -> 0.9592 |
+| false accepts | 0 -> **0** | 0 -> **0** |
+| false abstains | 45 -> **24** | 1 -> 2 |
+| wrong-Act top-1 | 43 -> **19** | 3 -> 3 (no new) |
+
+Citizen 281 = the 281 non-abstain rows of the 313-row
+`eval/queries_human.jsonl`. Control 46 = the 46 non-abstain rows of the
+49-row `eval/queries.jsonl`.
+
+**These are the deployed system's benchmark numbers. They are NOT a
+generalisation result** — the fine-tune's training pool was drawn from
+these labelled sets.
+
+### B. Held-out generalisation evaluation
+
+Restricted to ids in `finetune/data/test.jsonl`, never trained or
+selected on.
+
+| Metric | Citizen 41 | Control 9 |
+| --- | --- | --- |
+| recall@5 | 0.7634 -> **0.8732** | 0.8333 -> 0.8333 (equal) |
+| MRR | 0.5687 -> **0.7122** | 0.7259 -> **0.8000** |
+| top-1 citation | 0.4634 -> **0.6098** | 0.6667 -> **0.7778** |
+| abstention accuracy | 0.7561 -> **0.8293** | — |
+| false accepts | 0 -> **0** | — |
+| false abstains | 10 -> **7** | — |
+
+This — and only this — is the generalisation claim. Held-out wrong-Act
+moved 4 to 8 and each case was inspected individually: two abstain
+rather than answer (the wrong top-1 is never shown), one is a label gap
+(`rti:21` is genuinely the RTI Act's identically-titled protection
+section, on a row predating RTI ingestion), and one (h252) is a real mild
+adjacent-domain ranking regression.
+
+### C. Follow-up / context benchmark (40 rows)
+
+`eval/queries_followup.jsonl`, all targets corpus-verified. See section 7.
+
+### Split sizes
+
+| Set | Rows |
+| --- | ---: |
+| `eval/queries.jsonl` (control) | 49 (46 non-abstain, 3 abstain-expected) |
+| `eval/queries_human.jsonl` (citizen) | 313 (281 non-abstain, 32 abstain-expected) |
+| `eval/queries_followup.jsonl` | 40 |
+| `finetune/data/train.jsonl` | 1,682 triplets |
+| `finetune/data/val.jsonl` | 340 triplets |
+| `finetune/data/test.jsonl` | 368 triplets |
+
+## 6. Final safety results
+
+- **Zero false accepts** on both final evaluation sets and on the held-out set. Nothing that should abstain is answered.
+- **Hard-negative recall 29/29** (up from 28/29), including the bidirectional BNS/BNSS decoy pair. This is the single most important number in the project: it measures not confidently citing a superficially similar but legally wrong provision.
+- **Wrong-Act top-1 43 to 19** on citizen 281; no new wrong-Act answers on the control set.
+- **Guards are byte-identical** across the model change. Every deterministic guard operates on raw text, so promoting the embedding model could not and did not move safety behaviour.
+- **Live battery on the deployed index, 9/9:** supported query answered (`constitution:14` top-1), citizen-language stolen-phone complaint answered (`bnss:106`), misspelled "bale" answered (`bnss:482`/`480`), ambiguous answered, out-of-domain abstained, un-ingested Act (divorce) abstained via the coverage guard, emergency redirected, UPL personal-outcome abstained, harmful request refused.
+- **Citation integrity:** every returned excerpt's `chunk_id` resolves in `chunk_manifest.jsonl`, with real source / act_no / unit / official-URL citations. A 33-probe audit across every pipeline route found zero defects over 100 excerpts, and the property is pinned permanently at `Chunk.citation()` by `tests/test_citation_integrity.py`.
+- **Fabricated-action templates:** `app/safety/fabrication.py` is a regression check over the fixed hand-written strings. There is no per-request output to check, because nothing generates any.
+- **Live-stack smoke: 23/23** end-to-end checks across legal, auth, civic and petitions against the running Docker stack.
+
+## 7. Final context / follow-up results
+
+Deterministic composition with the previous question. No model, no LLM.
+The combined text is shown back verbatim, and every guard re-runs on it
+with the stricter outcome winning, so context can never carry a query
+past a safety or coverage decision the first turn already lost.
+
+| Category | Rows | Result |
+| --- | ---: | --- |
+| condition follow-up | 21 | **19/21** with context (6/21 fragment-only baseline) |
+| ambiguous follow-up | 4 | 4/4 |
+| no-context follow-up | 4 | 4/4 |
+| guarded follow-up | 6 | 6/6, reasons byte-identical |
+| not-emergency | 2 | 2/2 |
+| standalone override | 3 | 2/3 |
+
+`f04` — the long-standing M8 FIR-copy recall miss — is **fixed** by the
+final model. Residuals recorded, not papered over: `f22` newly misses on
+ranking, `f24` (`rti:19`) unchanged, and `f35` now abstains instead of
+answering (conservative direction).
+
+## 8. Final engineering verification
+
+Re-run and confirmed at the freeze:
+
+| Check | Result |
+| --- | --- |
+| Python (AI service) — `python -m pytest tests/ -q` | **369 passed** |
+| API unit — `npm test -w @cap/api` | **318 passed** |
+| Web unit — `npm test -w @cap/web` | **278 passed** |
+| Monorepo typecheck — `npm run typecheck` | clean |
+| Production build — `npm run build` | clean |
+| Database integration (real MongoDB) | CI job (`integration` in `ci.yml`); needs a live MongoDB, so not part of the local unit run |
+| Compose stack build + smoke | `.github/workflows/integration.yml`, on demand and weekly |
+| Live-stack end-to-end smoke | 23/23 at M13 |
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request:
+typecheck, `npm test`, production build, `git diff --check`, the MongoDB
+integration job, and the Python suite. The retrieval evaluation is
+deliberately excluded from CI — it is an offline research workflow, not a
+per-commit check.
+
+**A real defect M13 found and fixed:** `tests/test_retrieval.py` and
+`tests/test_hybrid_retrieval.py` deliberately rebuild the real
+`data/index`; with `DENSE_EMBEDDING_MODEL` unset, that rebuild used the
+*default base model* and silently reverted the production index.
+`tests/conftest.py` now pins the variable to whatever the on-disk
+manifest records before any test runs (explicit env still wins; a
+recorded-but-absent artifact falls through to the default). Verified by
+running the whole suite env-unset and checking the manifest and vectors
+afterwards. New unit tests: `tests/test_embeddings_config.py`.
+
+## 9. Known limitations (final)
+
+Carried forward as true at the freeze. The full historical gap register,
+including everything since closed, is in "Known gaps / next steps" below.
+
+**Legal coverage**
+
+1. **Coverage is partial and deliberately so.** 10 Acts. Two different mechanisms keep un-ingested subjects from being answered, and conflating them would overstate the guard. **Named by `app/safety/corpus_coverage.py`, abstained on before retrieval:** POCSO, motor vehicles, matrimonial law, SC/ST atrocities, court fees/CPC, and the RTI service provisions excluded at ingestion. **Not ingested and deliberately left to the confidence gate:** labour/workplace, tenancy/rent control, data protection, stamp duty, arbitration, municipal services — a probe confirmed the gate abstains on all seven labour and civic-service probes correctly with no guard at all, so writing patterns for them would have been speculative rather than evidence-driven. **No case law of any kind is ingested;** CAT answers from statute only.
+2. **RTI is the Central Information Commission's pre-2019 copy.** ss.13, 16 and 27 (replaced by the RTI (Amendment) Act 2019) are excluded rather than served as current law; s.25 is excluded for measured retrieval harm; s.14 is not chunked (a source formatting quirk); no RTI fee amount is stated anywhere, because the Act leaves the figures to rules that are not ingested.
+3. **Four sections merge into the preceding chunk** (BNS 217/255, JJ Act 61/86) because of a source-PDF layout quirk. The text is present verbatim; the defect is citation attribution for those four sections, not content loss.
+4. **Constitution section titles are not generally recovered** (two-column gazette layout); a hand-verified table covers Part III. Article numbers and body text are exact throughout.
+
+**Retrieval**
+
+5. **One residual top-1 preference:** "can an officer be penalized for not providing information" ranks `it_act:44` above `rti:20`. Both are genuine penalty-for-not-furnishing-information provisions and the query names no Act, so the preference is ambiguous by construction; the RTI section stays in the window the citizen sees, and the test asserts presence-in-window for that phrasing under the same convention as the BNSS s.43 window test. No normalisation rule was added for it — tuning the production path against a single probe after the numbers were finalised would invalidate the published comparison.
+6. **`h286`** ("how do I file an application for information from a government office") remains the shape a deterministic phrase guard cannot catch: a subject the query never names.
+7. **Genuinely ambiguous phrasings have no normalisation rule by design.** Where no discriminating signal exists, retrieval sees the raw query — guessing would move it confidently toward one wrong Act.
+
+**Platform**
+
+8. **Rate limiting is in-process** (`express-rate-limit`'s memory store), correct for the single API instance this project deploys. `REDIS_URL` is validated at boot and Redis runs in Compose, but no application code connects to it.
+9. **Media is disk-backed and volume-persisted, not streamed.**
+10. **Email verification needs a configured `SMTP_URL`;** production self-registration answers 503 rather than issuing a challenge nobody can receive.
+11. **A Socket.IO server is mounted** and emits a readiness handshake; no product feature uses real-time updates.
+12. **English only.**
+13. **The API rate limiter bounds bulk end-to-end testing** (100 requests / 15 min / IP), so a full manual smoke run must be split across API restarts.
+
+## 10. Reproduction instructions
+
+```bash
+# Corpus + index (from services/ai/)
+export DENSE_EMBEDDING_MODEL=data/models/m12_run2
+python scripts/ingest_corpus.py          # -> 1,827 chunks, mode=hybrid
+
+# Final production-path evaluation
+python eval/run_eval.py --production-path --mode hybrid           # control 46
+python eval/run_eval.py --production-path --mode hybrid --human   # citizen 281
+python eval/run_context_eval.py                                   # follow-up 40
+
+# Historical raw-query series (unchanged, still reproduces every old number)
+python eval/run_eval.py                   # bm25 vs dense vs hybrid, top_k=5
+
+# Reproduce the model artifact itself (seeded, deterministic splits)
+python finetune/build_dataset.py
+python finetune/train.py --run-name m12_run2
+python finetune/eval_heldout.py --run-name m12_run2
+
+# Engineering verification
+python -m pytest tests/ -q                # 369
+npm run typecheck && npm test && npm run build
+```
+
+Re-ingestion is required after any corpus change and after any change to
+`DENSE_EMBEDDING_MODEL`. Nothing downstream hardcodes the embedding
+dimension — it is read from the model at build time and recorded in the
+manifest.
+
+---
+
+# PART B — HISTORICAL MILESTONE RECORD
+
+> **Everything below this line is historical.** It records what was true
+> at each milestone, including numbers that later milestones superseded
+> (corpus sizes of 554 / 1,783 / 1,801 chunks, the base
+> `all-MiniLM-L6-v2` embedding model, earlier eval-set sizes, earlier
+> recall/MRR/abstention figures, and earlier test counts). These are kept
+> deliberately, because the reasoning behind a rejected or superseded
+> decision is worth as much as the decision that replaced it.
+>
+> **Do not read any number below as a current or final value.** Part A
+> above is the authoritative current state.
+
+
+## Historical commit lineage
 
 - `7971e01` — Increment 1 (foundation)
 - `6c4ffe3` — Increment 2 / Module 1A (legal ingestion + learning library)
@@ -38,7 +381,7 @@ The application milestones below were tracked in the "Completed" section before 
 - `c3075eb` — M4 petitions and public participation (petition lifecycle, database-enforced signature uniqueness, moderation queue)
 - **M5 — Live stack integration, real-database validation and end-to-end hardening (this commit):** the first milestone verified against a *running* system rather than against mocks. Four integration defects were found and fixed (all outside the retrieval pipeline); the RAG/retrieval system itself was frozen and is byte-identical. See "M5" under Completed.
 
-## Completed
+## Completed (historical milestone timeline)
 
 **Increment 1 — Foundation**
 Monorepo, React+TS frontend, Tailwind, React Router, Node+Express backend, FastAPI AI-service boundary, auth/RBAC (Citizen/Authority/Admin), landing + login pages, shared contracts, Docker config, GitHub Actions CI, local storage abstraction, seed accounts, architecture + legal-source docs, basic tests.
@@ -880,7 +1223,19 @@ intermediate M12 ones.
 - Do not redesign the architecture without a concrete reason.
 - Do not re-ask questions already answered in prior chat history — check the conversation/spec first.
 
-## Known gaps / next steps
+## Known gaps / next steps (historical register)
+
+> **Historical, and append-only.** This register grew by appending: a
+> later item that resolves an earlier one usually cites it by number
+> ("gap #23", "gap #59") rather than editing the original, and items
+> struck through were closed in place. **A numbered item here being
+> un-struck does not mean it is still open at the freeze** — several
+> were closed by a later milestone whose entry appears further down, or
+> in the "Completed" timeline above.
+>
+> **For the list of limitations that are actually still true at the
+> freeze, read Part A, section 9.** That list is authoritative; this one
+> is the record of how the project reasoned about each gap at the time.
 
 **Module 1A corpus**
 1. ~~**BNSS**: ingest Chapter XIII (investigation/FIR) and Chapter XXXV (bail and bonds)~~ — resolved this session: BNSS is now fully ingested (533/533 sections), see "Corpus expansion" above.
@@ -900,8 +1255,8 @@ intermediate M12 ones.
 13. ~~No query preprocessing (synonym expansion, misspelling correction) yet~~ — partially resolved: `app/retrieval/query_expand.py` now expands 2 known Indian-legal abbreviations (FIR, NCR) after evaluation demonstrated a concrete need (see "Retrieval/evaluation hardening" above). Still no general synonym expansion or misspelling correction — this remains a narrow, curated exception, not a new preprocessing stage, and should stay that way unless evaluation demonstrates another specific, named gap.
 14. Reranking (the architecture diagram's optional stage) was evaluated as a candidate and deferred with documented reasoning — hybrid already beat the BM25 baseline on every metric, and the remaining misses look like embedding-model/vocabulary gaps rather than reranking-shaped ranking-order problems. Re-evaluated again after the Constitution-title/RRF-retune fix and still not justified — see `docs/RETRIEVAL_EVALUATION.md`'s "Reranking: deferred" and "Failure-analysis-driven fixes" for what would justify revisiting this.
 15. No FAISS/ANN index — a deliberate choice, not an oversight: brute-force NumPy cosine similarity over ~400 chunks runs in sub-millisecond time, so an approximate-nearest-neighbor index has no measured benefit yet. `app/retrieval/embeddings.py` was kept swap-compatible with one for when/if the corpus grows by orders of magnitude.
-16. ~~Two-column gazette PDFs not ingested~~ — resolved: BNS, BNSS, BSA, Consumer Protection Act 2019, and Juvenile Justice Act 2015 are all now fully ingested via `extract_gazette_body_text()`, with section titles best-effort recovered for 40-57% of their sections via the independent `extract_gazette_titles()` pass; see `docs/LEGAL_SOURCES.md`'s "Two-column gazette PDFs". One residual limitation remains: one BNSS section (337) is mislabeled as a duplicate 338.
-17. RTI Act 2005 still not ingested. The supplied PDF has a font-encoding defect (digit "1" renders as "/" in most subsection markers); a user-supplied "replacement" PDF turned out to be byte-identical to the original (same defect, same SHA-256) — the swap didn't actually happen. Needs a genuinely different PDF, not a code fix — do not spend further effort on the same file.
+16. ~~Two-column gazette PDFs not ingested~~ — resolved: BNS, BNSS, BSA, Consumer Protection Act 2019, and Juvenile Justice Act 2015 are all now fully ingested via `extract_gazette_body_text()`, with section titles best-effort recovered for 40-57% of their sections via the independent `extract_gazette_titles()` pass; see `docs/LEGAL_SOURCES.md`'s "Two-column gazette PDFs". One residual limitation remained at the time: one BNSS section (337) mislabeled as a duplicate 338 — **since fixed outright** by replacing all five sources with single-column "bare Act" PDFs (the new BNSS source has no such duplicate; its 531 sections match the official count with no gaps or collisions). Section-title recovery rose from 40-57% to 98-100% in the same change. A different, narrower residual took its place: four sections across two sources (BNS 217/255, JJ Act 61/86) merge into the preceding chunk — see `docs/LEGAL_SOURCES.md` and Part A section 9.
+17. ~~RTI Act 2005 still not ingested. The supplied PDF has a font-encoding defect (digit "1" renders as "/" in most subsection markers); a user-supplied "replacement" PDF turned out to be byte-identical to the original (same defect, same SHA-256) — the swap didn't actually happen. Needs a genuinely different PDF, not a code fix — do not spend further effort on the same file.~~ — **resolved in M8, exactly as predicted: by a genuinely different source file, not a code fix.** The Central Information Commission's own published copy is now ingested as **26 sections** in the final corpus. The OCR defect described above survives in that copy too and was handled by leaving the bracketed markers exactly as extracted (rewriting them all to "(1)" would relabel s.2's definition clauses as sub-sections); only two garbled *titles* were repaired. Four sections are deliberately excluded and one is not chunked — see `docs/LEGAL_SOURCES.md`'s RTI section, and Part A section 9 for what that still costs a citizen.
 18. ~~`eval/queries.jsonl` (30 queries) doesn't cover the 5 new/expanded two-column sources~~ — resolved: rebuilt to 49 queries covering all 9 ingested sources (see "Retrieval/evaluation hardening" above).
 19. ~~The hybrid confidence-gate raise (0.40→0.42) closed one demonstrated out-of-domain false-answer ("register a company") but not all of them~~ — resolved this session: `app/safety/topic_relevance.py` adds a curated deterministic topic-relevance guard (see "Topic-relevance guard" above) that catches "income tax slab", "driving licence", and other well-known out-of-domain subjects before retrieval, independent of the score threshold. Not exhaustive by design (a curated set, extend only when evaluation names a new specific gap) — genuinely novel out-of-domain phrasings not matching any curated pattern still fall through to the confidence gate unchanged.
 20. `eval/queries.jsonl`'s "estoppel" (q07) title-dependent query and the multi-source/ambiguous categories are new this round and only lightly stress-tested (a handful of hand-picked cases, not systematic) — worth another pass once the corpus grows again.

@@ -1,4 +1,9 @@
-# CAP architecture and agent workflow
+# CAT architecture
+
+> **Status: final.** This document describes the frozen system at commit
+> `c24eda2`. Sections explicitly labelled *historical* or *original plan*
+> describe intentions or earlier states and are kept for the record;
+> everything else is current.
 
 ## Service boundary
 
@@ -6,14 +11,180 @@
 flowchart LR
   Web["React web application"] <--> Api["Node / Express API"]
   Api <--> Mongo[(MongoDB)]
-  Api <--> Redis[(Redis)]
   Api <--> Files["Local storage adapter"]
   Api <--> Ai["FastAPI AI service"]
-  Ai <--> Index["BM25 + local dense embeddings\n(RRF-fused), official legal corpus"]
-  Ai <--> Files
+  Ai <--> Index["BM25 + fine-tuned dense embeddings\n(m12_run2, RRF-fused)\n1,827 chunks, 10 official Acts"]
 ```
 
-## AI orchestrator workflow
+The browser never reaches the AI service directly. Every legal call is
+`web -> POST /api/legal/answer (Node) -> POST /legal/answer (FastAPI)`,
+so the AI boundary stays replaceable and unauthenticated legal traffic
+still passes the API's rate limiting, structured logging and disclaimer
+handling.
+
+**Redis** runs as a Compose service and `REDIS_URL` is validated at boot,
+but no application code connects to it: rate limiting uses
+`express-rate-limit`'s in-process store, which is correct for the single
+API instance this project deploys. It is drawn out of the diagram above
+deliberately, so the diagram does not imply a dependency that does not
+exist. A **Socket.IO** server is mounted on the HTTP server and emits a
+`system:ready` handshake; no product feature uses real-time updates.
+
+## The legal-answer pipeline (final)
+
+This is the pipeline `app.generation.pipeline.handle_legal_query`
+implements, in the exact order it runs. `POST /legal/answer` and its Node
+proxy `POST /api/legal/answer` wrap this function and nothing else.
+
+```mermaid
+flowchart TD
+  Q["Citizen question"] --> Risk["Risk / UPL policy\n(subject x framing x immediacy, deterministic)"]
+  Risk -->|harmful_request| Refuse["Refuse: obstruction/fabrication\n+ lawyer / legal-aid route"]
+  Risk -->|emergency| Emg["Redirect: 112 / 181 / 1098 / 1930 / cybercrime.gov.in"]
+  Risk -->|serious| Ctx
+  Risk -->|normal| Ctx["Context resolution\n(app.query.context, deterministic)"]
+  Ctx -->|unresolvable follow-up| Clarify["Ask for a restatement\n(never guess what it refers to)"]
+  Ctx -->|context applied| Rerun["Guard re-run on the combined text\n(client-supplied = untrusted; stricter outcome wins)"]
+  Ctx -->|standalone| Topic
+  Rerun --> Topic["Topic-relevance guard\n(curated out-of-domain subjects)"]
+  Topic -->|known unrelated subject| Abstain2["Abstain: not covered by this service"]
+  Topic -->|no match| Coverage["Corpus-coverage guard\n(names an Act this corpus lacks)"]
+  Coverage -->|un-ingested Act| Abstain3["Abstain: not in this corpus\n+ point at the right route"]
+  Coverage -->|covered| Norm["Query normalisation\n(app.query.normalize, RETRIEVAL TEXT ONLY)"]
+  Norm --> Search["app.retrieval.search\nBM25 top-50 + dense top-50"]
+  Search --> Fuse["Weighted RRF\nk=5, dense 3.0 / BM25 1.0 -> top-5"]
+  Fuse --> Gate{"Confidence / evidence gate\nhybrid floor 0.41 on the top hit's dense_score"}
+  Gate -->|below floor / no results| Abstain["Abstain: No verified information found"]
+  Gate -->|passes| Cite["Citation verification\nstructural manifest metadata, never generated text"]
+  Cite --> Resp["Deterministic response:\nexact retrieved excerpt(s) + real citations + disclaimer"]
+```
+
+Insufficient evidence always resolves to one of three honest outcomes --
+**ABSTAIN**, **CLARIFY** or **ROUTE** -- never to a filled gap.
+
+### 0% GENERATIVE LLM IN THE LEGAL-ANSWER PIPELINE
+
+**No generative LLM runs anywhere in this pipeline. Not as a generator,
+not as a reranker, not as a fallback, not as a classifier. This is a
+standing project decision, not a temporary state, and it is final.**
+
+An LLM-generation direction was fully implemented early in the project --
+provider abstraction, a real Gemini integration verified against the live
+API, citation and index validation over generated text, prompt-injection
+defenses -- behind these same Risk/UPL checks. It was deliberately
+discarded once weighed against hallucination risk in a legal-information
+context (architecture pivot `75e2fff`; see `docs/PROJECT_STATE.md`).
+**A future session must not reintroduce generation here without the user
+explicitly asking again.**
+
+What replaced it is not a smaller model. It is the absence of one:
+
+- Every user-visible legal sentence is either a **verbatim chunk of an official Act** or one of a small set of hand-written templates pinned by `tests/test_template_safety.py`.
+- There is no free text to validate against reality, because nothing writes any. `app/safety/fabrication.py` exists as a regression check over those fixed templates, not as a runtime output filter -- there is no per-request output to filter.
+- Multiple or differing sources are **never merged into one synthesised paragraph**. Each retrieved chunk is returned as its own excerpt with its own citation, so conflicting or overlapping evidence is preserved by construction rather than needing reconciliation logic.
+- `sentence-transformers` appears in this system strictly as an **encoder**: it maps text to 384-dim vectors for similarity search and emits no words.
+- The one place a language model *was* introduced -- a cross-encoder reranker -- was measured and **rejected** on legal-safety grounds (see `docs/RETRIEVAL_EVALUATION.md`).
+
+### Order matters, and is load-bearing
+
+Two placement decisions in the diagram above are correctness properties,
+not style:
+
+**Every guard inspects the raw question, before normalisation.** Query
+normalisation appends statutory vocabulary to the text handed to
+retrieval only. Because the safety policy and both guards have already
+run against the raw question, nothing normalisation appends can talk
+retrieval past a safety decision or past an abstention. And because
+`build_legal_answer` assembles the response from the retrieved chunks
+themselves, the normalised text can never reach the answer, the
+citations, or the user.
+
+**Context is untrusted, so every guard re-runs on the combined text.**
+The previous question arrives from the client. When it is folded in, the
+combined text is re-assessed by the risk policy, the topic guard and the
+coverage guard, and the stricter outcome wins. A first turn about divorce
+-- correctly refused by the coverage guard -- therefore cannot be reached
+through an innocuous-looking follow-up.
+
+## Final retrieval configuration
+
+| Setting | Value | Where |
+| --- | --- | --- |
+| Corpus | 1,827 chunks, 10 official Acts | `data/index/chunk_manifest.jsonl` |
+| Mode | `hybrid` (BM25 + dense) | `index_manifest.json`, `RETRIEVAL_MODE` |
+| Dense model | `data/models/m12_run2`, 384-dim | `DENSE_EMBEDDING_MODEL` |
+| Candidate pool | 50 per method | `search.py` `_FUSION_CANDIDATE_POOL` |
+| Fusion | weighted RRF, k=5, dense 3.0 / BM25 1.0 | `fusion.py` |
+| Returned | top_k 5 | `search.py` |
+| Confidence floor | hybrid **0.41** on the top hit's `dense_score`; bm25 3.0; dense 0.45 | `pipeline.py` `DEFAULT_MIN_SCORE_BY_MODE` |
+
+The hybrid gate reads the top hit's `dense_score`, **not** its fused RRF
+score. RRF's score is a sum of `1/(k+rank)` terms, so it reflects a
+chunk's relative rank position inside a small candidate pool rather than
+its absolute relevance -- on this corpus it compresses into a ~0.027-0.033
+band for the top hit regardless of whether the query is genuinely
+covered, which makes it useless as a confidence signal.
+
+## Final model and deployment mechanism
+
+The production dense model is **`data/models/m12_run2`**: a fine-tune of
+`sentence-transformers/all-MiniLM-L6-v2` (384-dim,
+MultipleNegativesRankingLoss, 4 epochs, batch 16, lr 2e-5, seed 42,
+1682/340 train/val triplets), promoted in M13 after a one-variable
+production-path evaluation. `model.safetensors` SHA-256
+`d61d077b...0ce801`.
+
+`DENSE_EMBEDDING_MODEL` names it as a **service-root-relative** path, and
+that relative form is what `index_manifest.json` records.
+`embeddings.resolve_model_path()` resolves it against the service root at
+load time only, so one manifest works on the host (from any CWD) and
+inside the container, where `docker-compose.yml` mounts
+`./services/ai/data` at `/app/data` read-only. Consequences worth stating
+explicitly:
+
+- **A model or index change needs no image rebuild.** `data/` is mounted, not baked in; the container picks both up on restart.
+- **The service can never encode queries with a different model than built its index.** Query-time model selection is manifest-driven (`search.py` reads `dense_embedding_model`).
+- **The model is a gitignored build artifact, not an accidental local file.** It is reproduced deterministically by the seeded pipeline in `services/ai/finetune/`, under the same policy as the index, and its expected hashes are recorded in `docs/RETRIEVAL_EVALUATION.md`. A ~90 MB binary is deliberately not committed.
+- **The test suite pins it.** `tests/test_retrieval.py` and `tests/test_hybrid_retrieval.py` rebuild the real index by design; `tests/conftest.py` pins `DENSE_EMBEDDING_MODEL` to whatever the on-disk manifest records before any test runs, so a test run reproduces the deployed configuration instead of silently downgrading it to the base model.
+
+Migration to any other embedding model is therefore one variable plus a
+re-ingest: nothing downstream hardcodes the dimension, which is read from
+the model at build time and recorded in the manifest.
+
+## Guardrails
+
+1. **The Risk / UPL policy runs before everything else**, including before context resolution and before retrieval.
+2. **Context resolution never guesses.** An unresolvable follow-up asks for a restatement; a resolved one is shown back to the citizen verbatim, so nothing is interpreted invisibly.
+3. **Every deterministic guard re-runs on client-supplied context**, stricter outcome winning.
+4. **Two non-score-based guards run before retrieval**: the topic-relevance guard (known out-of-domain subjects) and the corpus-coverage guard (real legal questions naming an Act this corpus does not contain). Both abstain before spending a retrieval call, because no score from that retrieval could be trusted as a confidence signal.
+5. **The legal-answer path never uses a generative LLM.** The response is always verbatim retrieved text, never a generated or paraphrased claim.
+6. **Every response records provenance**: source identifiers, sections/articles, source URLs, verification dates, confidence and the policy decision.
+7. **Citations are structural, not textual.** They are built by `Chunk.citation()` from the source manifest, so the Act named to the reader and the section number beside it cannot drift from the chunk the text came from. Pinned permanently by `tests/test_citation_integrity.py`.
+8. The civic and petition workflows make recommendations, never external government submissions or emergency calls.
+9. The language pipeline is English-only; the service boundary keeps multilingual expansion isolated.
+
+---
+
+# Original plan and earlier states (historical)
+
+> The next two sections only -- the agent workflow and the increment
+> table -- are historical. The agent workflow is the **original
+> multi-agent plan**; the increment table records status as of M6.
+> Neither describes the final system: the sections above do. Everything
+> after "Legal corpus ingestion" is current implementation
+> documentation again.
+
+## AI orchestrator workflow (ORIGINAL PLAN -- largely not built)
+
+> **Historical.** Of the agents below, only the Risk/UPL policy and the
+> legal retrieval path were built, and the legal path was rebuilt as pure
+> deterministic retrieval (see "The legal-answer pipeline (final)"
+> above). The **civic vision agent, the severity/triage agent, the
+> petition recommendation agent and the explainability agent were never
+> built and will not be** -- civic categorisation and priority are
+> citizen- and staff-set, and petitions have no AI of any kind. Duplicate
+> handling is a deterministic fingerprint plus a proximity warning, not a
+> clustering model.
 
 ```mermaid
 flowchart TD
@@ -39,26 +210,33 @@ flowchart TD
   PetitionOutput --> Audit
 ```
 
-## Guardrails
+## Increment path (historical -- status as of M6)
 
-1. The **Risk / UPL agent runs before legal retrieval**, followed by a deterministic topic-relevance guard (also before retrieval) that abstains on queries matching a curated set of known out-of-domain subjects rather than letting an off-topic query reach the confidence gate at all — see the "Legal-answer pipeline" diagram below.
-2. **The legal-answer path never uses a generative LLM** (standing decision — hallucination risk in a legal-information context is unacceptable; see `docs/PROJECT_STATE.md`). The legal agent returns a response only when official-source retrieval and its confidence gate pass configured thresholds; the response is always the verbatim retrieved text, never a generated or paraphrased claim.
-3. The system records source identifiers, sections/articles, source URLs, verification dates, confidence, and the policy decision behind every legal response.
-4. The civic and petition agents make recommendations, never external government submissions or emergency calls.
-5. The language pipeline is English-only in the first release; its service boundary keeps multilingual expansion isolated.
+> **Historical.** This table records where each increment stood at M6.
+> Increments 2-6 all completed afterwards, and M7-M13 followed. For the
+> final state see `docs/PROJECT_STATE.md` Part A.
 
-## Increment path
 
 | Increment | Outcome |
 | --- | --- |
 | 1 | Foundation, public UI, auth/RBAC boundary, CI and operational documentation — **done** |
-| 2 | Legal learning paths and official-source ingestion — **in progress**: ingestion pipeline (raw.txt or raw.pdf, including a coordinate-based extractor for two-column India Code gazette PDFs — see `docs/LEGAL_SOURCES.md`), hybrid retrieval (BM25 + local dense embeddings, RRF-fused, evaluated against a BM25 baseline — see `docs/RETRIEVAL_EVALUATION.md`), document browser, and a categorised Learn module is built and tested; BNS/BNSS/BSA are now fully ingested (FIR, bail, and offences-against-property chapters included), and the Learn module now carries 29 grounded articles across five categories, including the FIR-vs-NCR and bail-procedure topics |
+| 2 | Legal learning paths and official-source ingestion — **since completed**: ingestion pipeline (raw.txt or raw.pdf, including a coordinate-based extractor for two-column India Code gazette PDFs — see `docs/LEGAL_SOURCES.md`), hybrid retrieval (BM25 + local dense embeddings, RRF-fused, evaluated against a BM25 baseline — see `docs/RETRIEVAL_EVALUATION.md`), document browser, and a categorised Learn module is built and tested; BNS/BNSS/BSA are now fully ingested (FIR, bail, and offences-against-property chapters included), and the Learn module carried 29 grounded articles across five categories at this point, including the FIR-vs-NCR and bail-procedure topics. **The final Learn library is 71 articles across 12 categories, 216 quiz questions and 35 FAQs** |
 | 3 | Deterministic legal answers, UPL/risk guardrails, evaluation harness — **done**: `POST /legal/answer` / `POST /api/legal/answer` implements Risk/UPL → hybrid retrieval → confidence gate → deterministic structured response (exact retrieved excerpts + citations, no generative LLM anywhere in the path — see "No-generation principle" below); the retrieval evaluation harness (`services/ai/eval/`, Recall@K, Precision@K, MRR, nDCG, top-1 citation correctness, abstention accuracy) is built and was used to choose hybrid over BM25-only, and to tune its fusion/gate parameters, with real measured results. The browser-facing half landed in the M1 usability milestone: `/legal-assistant` renders this endpoint's response verbatim, and the auth/email-verification frontend integration shipped alongside it (see "Authentication and account activation" below) |
 | 4 | Civic reporting, image privacy processing, duplicates, SLA and Authority UI — **citizen core done** (M2): report creation with optional photo, ownership-scoped retrieval, metadata stripping and local media storage (see "Civic reporting" below); the authority workflow is now built too (M3): a declared transition table, server-controlled status history, staff-assigned priority with SLA deadlines, and an authority queue/detail UI. Duplicate detection, vision and notifications are not built |
 | 5 | Petitions, signatures, moderation and recommendation agent — **petitions, signatures and moderation done** (M4): a capability-keyed transition table, a separate `Signature` collection whose unique compound index enforces one signature per citizen per petition, a public browse/detail surface, and an authority moderation queue (see "Petitions and public participation" below). **The recommendation agent is not built**, and no AI of any kind is involved in this module |
 | 6 | Evaluation, observability and deployment preparation — **engineering hardening done** (M6): token-version revocation and stored-role re-checks on privileged routes, production guards on `JWT_SECRET`/`WEB_ORIGIN`, redacted structured request logging, liveness vs readiness health checks, graceful shutdown, CPU-only PyTorch in the AI image, `.dockerignore` for both build contexts, and a separate Docker integration workflow (see "Engineering hardening (M6)" below). Duplicate detection, vision, notifications and the recommendation agent remain unbuilt |
 
-## Legal corpus ingestion (Increment 2)
+---
+
+# Current implementation (resumes here)
+
+## Legal corpus ingestion
+
+The pipeline below is current and unchanged since Increment 2. It
+produced the final corpus: **1,827 chunks across 10 official Acts** (see
+`docs/LEGAL_SOURCES.md` for the per-source breakdown and coverage
+limitations).
+
 
 ```mermaid
 flowchart LR
@@ -89,10 +267,15 @@ anywhere else.
 
 `app/retrieval/search.py` supports three modes (`bm25` | `dense` |
 `hybrid`, selectable per call or via `RETRIEVAL_MODE`; `hybrid` is the
-default whenever a dense index exists). Dense embeddings
-(`sentence-transformers/all-MiniLM-L6-v2`, 384-dim, local, no paid API
-— see `app/retrieval/embeddings.py`) are built at ingest time into a
-persistent, L2-normalized `data/index/dense_vectors.npy`; hybrid mode
+default whenever a dense index exists). Dense embeddings are built at
+ingest time into a persistent, L2-normalized
+`data/index/dense_vectors.npy`. The production encoder is the promoted
+fine-tuned artifact **`data/models/m12_run2`** (384-dim, local, no paid
+API — see `app/retrieval/embeddings.py` and "Final model and deployment
+mechanism" above); its base checkpoint,
+`sentence-transformers/all-MiniLM-L6-v2`, remains the code default and is
+what the historical measurements further down this file were taken
+against. hybrid mode
 combines BM25 and dense candidate rankings with weighted Reciprocal
 Rank Fusion (`app/retrieval/fusion.py`) rather than concatenating
 result lists. Every result keeps its raw `bm25_score`/`bm25_rank` and
@@ -107,20 +290,12 @@ rather than added.
 
 **Standing decision: no generative LLM in the legal-answer path.** An earlier direction prototyped an LLM-generation pipeline (provider abstraction, a real Gemini integration, citation/index validation on generated text) behind these same Risk/UPL checks. It was deliberately abandoned once weighed against hallucination risk in a legal-information context — see `docs/PROJECT_STATE.md`. The final design instead returns the verbatim retrieved text directly; there is no free-text output to validate against reality because nothing invents one.
 
-```mermaid
-flowchart LR
-  Q["Citizen question"] --> Risk["Query-safety policy\n(subject x framing x immediacy, deterministic)"]
-  Risk -->|harmful_request| Refuse["Refuse: obstruction/fabrication\n+ lawyer / legal-aid route"]
-  Risk -->|emergency| Emg["Redirect: 112 / 181 / 1098 / 1930 / cybercrime.gov.in"]
-  Risk -->|serious| Adv["Caution + Tele-Law / Nyaya Bandhu / DLSA,\nthen retrieval for the general law"]
-  Adv --> Topic
-  Risk -->|normal| Topic["Topic-relevance guard\n(curated out-of-domain phrases, deterministic)"]
-  Topic -->|matches known unrelated topic| Abstain2["Abstain: not covered by this service"]
-  Topic -->|no match| Search["app.retrieval.search\n(hybrid BM25+dense, RRF-fused)"]
-  Search --> Gate{"Confidence gate\nLEGAL_CHAT_MIN_SCORE, mode-aware"}
-  Gate -->|below floor / no results| Abstain["Abstain: No verified information found"]
-  Gate -->|passes| Resp["Deterministic response:\nexact retrieved excerpt(s) + real citations + disclaimer"]
-```
+> **The pipeline diagram that used to sit here has been replaced by
+> "The legal-answer pipeline (final)" at the top of this document.**
+> The old diagram predated multi-turn context resolution, the guard
+> re-run on combined text and the corpus-coverage guard, so it
+> described a pipeline the product no longer runs.
+
 
 Multiple or differing sources are never merged into one synthesized paragraph -- each retrieved chunk is returned as its own excerpt with its own citation, so conflicting or overlapping evidence is preserved by construction rather than needing separate reconciliation logic.
 
@@ -160,6 +335,13 @@ retrieval. It lives in its own package, deliberately outside
 `app/retrieval/`: it changes no retrieval parameter, index, threshold or
 ranking rule, and the answer is still assembled verbatim from retrieved
 chunks, so it cannot invent or colour legal content.
+
+> **The measurements in the rest of this subsection are historical
+> (M7-era, raw-query series, base embedding model).** They are what
+> justified building the normalisation layer. The layer itself is
+> current and still runs exactly where the diagram above puts it; its
+> final contribution is folded into the production-path numbers in
+> `docs/RETRIEVAL_EVALUATION.md`.
 
 It exists because citizens do not use statutory words. On the 313-query
 citizen-language set, recall@5 was 0.958 for `direct_lexical` phrasing but
@@ -212,7 +394,8 @@ rule carries the same information deterministically, at no latency, and
 narrow enough to reach a section title. Do not re-propose this without a
 mechanism that addresses the measured cause.
 
-**Result of the change**, harness metrics, mode=hybrid:
+**Result of the change** (M7, historical; harness metrics on the
+raw-query series, base embedding model, 1,801-chunk corpus):
 
 | Set | recall@5 | recall@1 | abstention |
 | --- | --- | --- | --- |
@@ -223,6 +406,38 @@ mechanism that addresses the measured cause.
 from 0.1957 to 0.1886, and `direct_lexical` and `ambiguous` are both
 unchanged — the layer helps the phrasings it was built for and leaves the
 rest alone.
+
+**Multi-turn context resolution (`app/query/context.py`):** runs
+immediately after the safety policy and before every other guard. A
+citizen asking "what if I'm a minor?" is asking a real question, but the
+words carry no retrievable subject on their own. The layer resolves it by
+**deterministic composition** with the previous question -- no model, no
+LLM, no summarisation. Three properties make that safe:
+
+- **It never guesses.** A follow-up whose referent cannot be resolved returns a clarification request (`reason="needs_context"`), not a best guess. A standalone question with explicit new intent passes through untouched: context never overrides what the citizen actually asked.
+- **The combined text is shown back verbatim.** `context_applied` and `resolved_question` travel on the API response, so the frontend can display exactly what was answered. Nothing is interpreted invisibly.
+- **The context is client-supplied and therefore untrusted.** When it is folded in, `assess_query` re-runs on the combined text and both guards below re-run on it too, with the stricter outcome winning. A first turn about divorce -- correctly refused by the coverage guard -- cannot be reached through an innocuous-looking follow-up, and a combined text that reads as an emergency is routed as one even if neither turn did alone.
+
+Measured on the 40-row `eval/queries_followup.jsonl` benchmark: condition
+follow-ups 19/21 with context against a 6/21 fragment-only baseline,
+ambiguous 4/4, no-context 4/4, guarded 6/6 with byte-identical reasons,
+not-emergency 2/2, standalone override 2/3.
+
+**Corpus-coverage guard (`app/safety/corpus_coverage.py`):** runs third,
+after the topic guard and still before retrieval. It handles the harder
+case the 313-query citizen evaluation exposed, which the topic guard by
+construction cannot: a query that genuinely **is** a legal question in
+this service's subject area, but names an Act the corpus does not contain
+-- POCSO, Motor Vehicles, matrimonial law, SC/ST Atrocities, Court Fees.
+Those share real legal vocabulary with real legal content, so they clear
+the dense-score floor comfortably and get answered *confidently from the
+wrong Act*, which is the worst failure this product can have. Because it
+returns a different message from the topic guard -- "try a government
+services portal" is the wrong advice for someone asking a real legal
+question -- the abstention still points somewhere useful. Measured
+effect: hybrid false accepts 7 -> 1, abstention accuracy 0.7572 ->
+0.7764, zero false fires across all 362 labelled queries. Deliberately
+narrow, extended only when an evaluation names a specific new gap.
 
 **Topic-relevance guard (`app/safety/topic_relevance.py`):** runs after Risk/UPL and before retrieval, same placement and same deterministic-rules-only design. It exists because the confidence gate's bounded dense-score threshold cannot separate every out-of-domain query from a genuine low-confidence legal paraphrase — both can land in the same ~0.42-0.49 band on this corpus (see `docs/RETRIEVAL_EVALUATION.md`'s "Remaining limitations"). Rather than raising that single global threshold (which would cost genuine coverage), a small curated set of phrase patterns for well-known non-legal-information subjects (company/business registration, income tax, driving licence/vehicle registration, identity documents, everyday non-civic topics) is checked first; a match aborts before spending a retrieval call. Anything it doesn't recognize still falls through unchanged to the existing confidence gate — this guard is deliberately narrow (extend only when evaluation names a specific new gap, same rule as `app/retrieval/query_expand.py`'s abbreviation dict), not a general topic classifier.
 
