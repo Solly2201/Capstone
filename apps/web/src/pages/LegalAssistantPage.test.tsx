@@ -241,6 +241,42 @@ describe("LegalAssistantPage", () => {
     expect(screen.queryByRole("heading", { name: /the law/i })).toBeNull();
   });
 
+  it("links Learn material grounded in the same provision the answer cited", async () => {
+    // bnss:173 is cited by the "What is an FIR?" article and the
+    // "police won't register my FIR" FAQ — an exact metadata join.
+    mockApi.post.mockResolvedValue({
+      data: {
+        ...answeredResponse,
+        excerpts: [{ ...answeredResponse.excerpts[0], chunk_id: "bnss:173", unit: "Section 173" }]
+      }
+    });
+
+    renderPage();
+    ask("How do I file an FIR?");
+
+    await waitFor(() => expect(screen.getByText("Go deeper in Learn")).toBeTruthy());
+    const articleLink = screen.getByRole("link", { name: /What is an FIR/i }) as HTMLAnchorElement;
+    expect(articleLink.getAttribute("href")).toBe("/learn/what-is-an-fir");
+    const faqLink = screen.getByRole("link", { name: /won.t register my FIR/i }) as HTMLAnchorElement;
+    expect(faqLink.getAttribute("href")).toBe("/learn#faq-police-refuse-fir");
+  });
+
+  it("shows no related-content panel when no Learn material covers the cited provision", async () => {
+    // bnss:500 has no Learn coverage: honesty over a loose topical guess.
+    mockApi.post.mockResolvedValue({
+      data: {
+        ...answeredResponse,
+        excerpts: [{ ...answeredResponse.excerpts[0], chunk_id: "bnss:500", unit: "Section 500" }]
+      }
+    });
+
+    renderPage();
+    ask("Can a woman be arrested at night?");
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "What the law says" })).toBeTruthy());
+    expect(screen.queryByText("Go deeper in Learn")).toBeNull();
+  });
+
   it("handles an unavailable AI service", async () => {
     mockApi.post.mockRejectedValue({ response: { status: 503, data: { message: "AI service is unreachable." } } });
 

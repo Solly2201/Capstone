@@ -1,8 +1,19 @@
-import { AlertTriangle, ExternalLink, Info, MessagesSquare, Phone, Scale, ShieldAlert } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  ExternalLink,
+  Info,
+  LifeBuoy,
+  MessagesSquare,
+  Phone,
+  Scale,
+  ShieldAlert
+} from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { disclaimerText, type LegalAnswerResponse } from "@cap/contracts";
 import { SiteShell } from "../components/SiteShell";
+import { relatedLearnContent } from "../content/learn";
 import { api, apiErrorMessage, apiErrorStatus } from "../lib/api";
 
 // Frontend for the deterministic legal-answer endpoint.
@@ -199,12 +210,68 @@ function AnswerPanel({ answer, question }: { answer: LegalAnswerResponse; questi
               </ul>
             </div>
           )}
+
+          <RelatedLearnPanel chunkIds={answer.excerpts.map((excerpt) => excerpt.chunk_id)} />
         </>
       )}
 
       <p className="mt-8 border-t border-ink/10 pt-5 text-xs leading-5 text-ink/60">
         {answer.disclaimer_text} <span className="text-ink/40">(disclaimer {answer.disclaimer_version})</span>
       </p>
+    </div>
+  );
+}
+
+// Learn material grounded in the same provisions the answer cited. The
+// relationship is an exact metadata join — an article or FAQ appears here
+// only if one of its own citations names a provision shown above — so
+// nothing here is inferred, ranked or generated. Most provisions have no
+// Learn coverage yet; then this renders nothing rather than a loose
+// topical guess (the page already links the Learn library generically).
+function RelatedLearnPanel({ chunkIds }: { chunkIds: string[] }) {
+  const related = relatedLearnContent(chunkIds);
+  if (related.articles.length === 0 && related.faqs.length === 0) return null;
+
+  return (
+    <div className="mt-6 rounded-xl border border-ink/10 bg-white/40 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-clay">Go deeper in Learn</p>
+      <p className="mt-2 text-sm leading-6 text-ink/70">
+        Plain-language material written against the same {chunkIds.length === 1 ? "provision" : "provisions"} cited
+        above.
+      </p>
+      {related.articles.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {related.articles.map((article) => (
+            <li key={article.slug} className="flex items-start gap-2 text-sm">
+              <BookOpen size={15} aria-hidden="true" className="mt-1 shrink-0 text-clay" />
+              <span>
+                <Link
+                  to={`/learn/${article.slug}`}
+                  className="font-semibold text-clay underline underline-offset-4"
+                >
+                  {article.title}
+                </Link>{" "}
+                <span className="text-ink/60">— {article.summary}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {related.faqs.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {related.faqs.map((faq) => (
+            <li key={faq.id} className="flex items-start gap-2 text-sm">
+              <LifeBuoy size={15} aria-hidden="true" className="mt-1 shrink-0 text-clay" />
+              <Link
+                to={`/learn#faq-${faq.id}`}
+                className="font-semibold text-clay underline underline-offset-4"
+              >
+                {faq.question}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

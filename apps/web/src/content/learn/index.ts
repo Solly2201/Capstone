@@ -218,6 +218,95 @@ export const matchesQuery = (article: LearningArticle, query: string): boolean =
 
 export const sourceLabel = (citation: Citation): string => legalSources[citation.sourceId].label;
 
+// --- Related Learn content for cited provisions -------------------------
+//
+// The Legal Assistant's excerpts carry `chunk_id = "{source_id}:{unit}"`,
+// and every Learn citation is the structured `{ sourceId, unitNumber }`
+// in the same vocabulary (the source registry mirrors the corpus
+// directories byte for byte). So "which Learn material covers this
+// provision?" is an exact-key lookup over metadata that already exists —
+// no similarity model, no invented relationships. A provision no Learn
+// content cites simply maps to nothing.
+
+/**
+ * Splits an AI-service chunk id into a citation key, or null when it is
+ * not one of this app's known sources. Split on the first colon only:
+ * unit numbers never contain colons, but defensiveness costs nothing.
+ */
+export const parseChunkId = (
+  chunkId: string
+): { sourceId: LegalSourceId; unitNumber: string } | null => {
+  const separator = chunkId.indexOf(":");
+  if (separator <= 0) return null;
+  const sourceId = chunkId.slice(0, separator) as LegalSourceId;
+  const unitNumber = chunkId.slice(separator + 1);
+  if (!unitNumber || !(sourceId in legalSources)) return null;
+  return { sourceId, unitNumber };
+};
+
+const provisionKey = (sourceId: LegalSourceId, unitNumber: string): string =>
+  `${sourceId}:${unitNumber}`;
+
+// Built once from the static content arrays; order within each entry is
+// authoring order, which the callers preserve.
+const provisionIndex: Map<string, { articleSlugs: string[]; faqIds: string[] }> = (() => {
+  const index = new Map<string, { articleSlugs: string[]; faqIds: string[] }>();
+  const entryFor = (key: string) => {
+    let entry = index.get(key);
+    if (!entry) {
+      entry = { articleSlugs: [], faqIds: [] };
+      index.set(key, entry);
+    }
+    return entry;
+  };
+  for (const article of learningArticles) {
+    for (const paragraph of article.paragraphs) {
+      if (!paragraph.citation) continue;
+      const entry = entryFor(provisionKey(paragraph.citation.sourceId, paragraph.citation.unitNumber));
+      if (!entry.articleSlugs.includes(article.slug)) entry.articleSlugs.push(article.slug);
+    }
+  }
+  for (const faq of allFaqs) {
+    for (const paragraph of faq.legalBasis) {
+      if (!paragraph.citation) continue;
+      const entry = entryFor(provisionKey(paragraph.citation.sourceId, paragraph.citation.unitNumber));
+      if (!entry.faqIds.includes(faq.id)) entry.faqIds.push(faq.id);
+    }
+  }
+  return index;
+})();
+
+export type RelatedLearnContent = {
+  articles: LearningArticle[];
+  faqs: Faq[];
+};
+
+/**
+ * The Learn articles and FAQs whose citations cover any of the given
+ * chunk ids. Deduplicated, in the order the provisions were given and
+ * then in authoring order. Empty arrays when nothing covers them — the
+ * corpus is far larger than the Learn library, and an honest "nothing
+ * yet" beats a loose topical guess.
+ */
+export const relatedLearnContent = (chunkIds: string[]): RelatedLearnContent => {
+  const articleSlugs: string[] = [];
+  const faqIds: string[] = [];
+  for (const chunkId of chunkIds) {
+    const parsed = parseChunkId(chunkId);
+    if (!parsed) continue;
+    const entry = provisionIndex.get(provisionKey(parsed.sourceId, parsed.unitNumber));
+    if (!entry) continue;
+    for (const slug of entry.articleSlugs) if (!articleSlugs.includes(slug)) articleSlugs.push(slug);
+    for (const id of entry.faqIds) if (!faqIds.includes(id)) faqIds.push(id);
+  }
+  return {
+    articles: articleSlugs
+      .map((slug) => findArticle(slug))
+      .filter((article): article is LearningArticle => article !== undefined),
+    faqs: faqIds.map((id) => findFaq(id)).filter((faq): faq is Faq => faq !== undefined)
+  };
+};
+
 // --- Quiz ---------------------------------------------------------------
 // Questions live alongside the articles they are drawn from, and are
 // looked up by article slug. There is no server round-trip and no stored

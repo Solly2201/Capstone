@@ -23,14 +23,16 @@ const urgencyCopy: Record<NonNullable<Faq["urgency"]>, { heading: string; body: 
   },
 };
 
-export function FaqPanel({ faq }: { faq: Faq }) {
-  const [open, setOpen] = useState(false);
+export function FaqPanel({ faq, initiallyOpen = false }: { faq: Faq; initiallyOpen?: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen);
   const sourceIds = faqSourceIds(faq);
   const urgency = faq.urgency ? urgencyCopy[faq.urgency] : undefined;
   const Icon = faq.urgency === "emergency" ? Phone : faq.urgency === "serious" ? Info : HelpCircle;
 
   return (
-    <article className="rounded-2xl border border-ink/10 bg-white/60">
+    // The id makes /learn#faq-<id> a stable deep link, which is how the
+    // Legal Assistant's related-content panel reaches a specific FAQ.
+    <article id={`faq-${faq.id}`} className="rounded-2xl border border-ink/10 bg-white/60">
       <h3>
         <button
           type="button"

@@ -22,6 +22,24 @@ function renderPage() {
 }
 
 describe("LearnPage", () => {
+  it("opens a deep-linked FAQ from a #faq- hash", () => {
+    // The Legal Assistant's related-content panel links /learn#faq-<id>;
+    // the target FAQ must arrive already expanded, not as a closed row
+    // the visitor has to find again.
+    render(
+      <MemoryRouter initialEntries={["/learn#faq-police-refuse-fir"]}>
+        <AuthProvider>
+          <LearnPage />
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    const panel = document.getElementById("faq-police-refuse-fir");
+    expect(panel).toBeTruthy();
+    // Expanded content (the legal-basis heading) is visible without a click.
+    expect(within(panel as HTMLElement).getByText("What the law says")).toBeTruthy();
+  });
+
   it("groups the library by category", () => {
     renderPage();
 

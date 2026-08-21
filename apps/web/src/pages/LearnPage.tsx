@@ -1,6 +1,6 @@
 import { BookOpen, HelpCircle, Info, LifeBuoy, MessagesSquare, Search } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { disclaimerText } from "@cap/contracts";
 import { FaqPanel } from "../components/FaqPanel";
 import { SiteShell } from "../components/SiteShell";
@@ -24,6 +24,18 @@ type Filter = LearnCategoryId | "all";
 export function LearnPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+
+  // /learn#faq-<id> deep links (from the Legal Assistant's related-content
+  // panel) land with that FAQ already open and scrolled into view. With
+  // no search or filter active, every FAQ renders, so the target exists.
+  const { hash } = useLocation();
+  const highlightedFaqId = hash.startsWith("#faq-") ? hash.slice("#faq-".length) : null;
+  useEffect(() => {
+    if (!highlightedFaqId) return;
+    // Optional call twice over: the element may be absent, and jsdom has
+    // no scrollIntoView.
+    document.getElementById(`faq-${highlightedFaqId}`)?.scrollIntoView?.({ block: "start" });
+  }, [highlightedFaqId]);
 
   const sections = useMemo(
     () =>
@@ -153,7 +165,7 @@ export function LearnPage() {
             </p>
             <div className="mt-5 space-y-3">
               {matchingFaqs.map((faq) => (
-                <FaqPanel key={faq.id} faq={faq} />
+                <FaqPanel key={faq.id} faq={faq} initiallyOpen={faq.id === highlightedFaqId} />
               ))}
             </div>
           </section>
