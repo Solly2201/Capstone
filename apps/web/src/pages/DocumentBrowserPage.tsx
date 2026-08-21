@@ -22,10 +22,16 @@ export function DocumentBrowserPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (query.trim().length < 2) return;
+    if (query.trim().length < 2) {
+      // Say so, rather than silently doing nothing on a too-short query.
+      setValidationMessage("Type at least two characters to search.");
+      return;
+    }
+    setValidationMessage(null);
     setStatus("loading");
     try {
       const response = await api.get<SearchResult[]>("/corpus/search", { params: { q: query, top_k: 8 } });
@@ -44,7 +50,7 @@ export function DocumentBrowserPage() {
         </Link>
         <h1 className="mt-6 font-serif text-4xl font-semibold sm:text-5xl">Search the source documents</h1>
         <p className="mt-4 text-lg leading-8 text-ink/70">
-          This searches the exact ingested text of the Constitution, BNS, BNSS, and BSA — no
+          This searches the exact ingested text of the Constitution and every ingested Act — no
           summarising, no generation. Every result is a real section with its citation attached.
         </p>
 
@@ -62,16 +68,28 @@ export function DocumentBrowserPage() {
           </button>
         </form>
 
+        {validationMessage && (
+          <p role="alert" className="mt-4 text-sm text-ink/70">
+            {validationMessage}
+          </p>
+        )}
+
         {status === "error" && (
-          <p className="mt-6 text-sm text-red-700">
+          <p role="alert" className="mt-6 text-sm text-red-700">
             The corpus service isn't reachable right now. Try again shortly.
           </p>
         )}
 
-        {status === "loading" && <p className="mt-6 text-sm text-ink/60">Searching...</p>}
+        {status === "loading" && (
+          <p role="status" className="mt-6 text-sm text-ink/60">
+            Searching...
+          </p>
+        )}
 
         {status === "done" && results.length === 0 && (
-          <p className="mt-6 text-sm text-ink/60">No matches in the ingested corpus for that search.</p>
+          <p role="status" className="mt-6 text-sm text-ink/60">
+            No matches in the ingested corpus for that search.
+          </p>
         )}
 
         <div className="mt-8 space-y-5">

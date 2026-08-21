@@ -16,7 +16,7 @@ import { MyPetitionsPage } from "./pages/MyPetitionsPage";
 import { MyReportsPage } from "./pages/MyReportsPage";
 import { PetitionDetailPage } from "./pages/PetitionDetailPage";
 import { PetitionsPage } from "./pages/PetitionsPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ReportDetailPage } from "./pages/ReportDetailPage";
 import { ReportPage } from "./pages/ReportPage";
@@ -43,11 +43,13 @@ export function App() {
             </ProtectedRoute>
           }
         />
-        {/* Civic reporting is tied to an account: a report has an owner. */}
+        {/* Civic reporting is tied to an account: a report has an owner.
+            Citizen-only to match the API — staff process reports rather
+            than filing them, and offering them the form would only 403. */}
         <Route
           path="/report"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={["CITIZEN"]}>
               <ReportPage />
             </ProtectedRoute>
           }
@@ -114,7 +116,7 @@ export function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<PlaceholderPage title="Page not found" />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AuthProvider>
   );

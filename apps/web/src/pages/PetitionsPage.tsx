@@ -149,9 +149,16 @@ export function PetitionsPage() {
         )}
 
         {state === "error" && (
-          <p role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
-            {errorMessage}
-          </p>
+          <div role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="mt-3 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {state === "ready" && petitions.length === 0 && (

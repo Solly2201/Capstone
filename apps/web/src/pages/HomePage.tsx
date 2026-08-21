@@ -1,10 +1,11 @@
-import { ArrowRight, BookOpenCheck, FileCheck2, MapPinned, MessageSquareWarning, ShieldCheck, UsersRound } from "lucide-react";
+import { ArrowRight, BookOpenCheck, FileCheck2, MapPinned, MessageSquareWarning, MessagesSquare, ShieldCheck, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SiteShell } from "../components/SiteShell";
 
 const pathways = [
   { icon: BookOpenCheck, title: "Learn your rights", body: "Start with clear, structured legal basics—from offences and FIRs to arrest, bail, rights and procedures.", to: "/learn", action: "Explore learning" },
-  { icon: MapPinned, title: "Report a civic issue", body: "Document a local issue, protect privacy in images, and follow its progress through a simulated authority workflow.", to: "/report", action: "Report an issue" },
+  { icon: MessagesSquare, title: "Ask a legal question", body: "Ask in your own words and read the exact text of the law that matches, with its official citation—never a generated answer.", to: "/legal-assistant", action: "Ask a question" },
+  { icon: MapPinned, title: "Report a civic issue", body: "Document a local issue, protect privacy in images, and follow its progress through a simulated authority workflow. Needs an account.", to: "/report", action: "Report an issue" },
   { icon: UsersRound, title: "Support a petition", body: "Bring community concerns together, follow support milestones and make local issues visible.", to: "/petitions", action: "View petitions" }
 ];
 
@@ -43,11 +44,11 @@ export function HomePage() {
 
       <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
         <div className="flex max-w-2xl flex-col gap-4">
-          <p className="eyebrow">One platform, three pathways</p>
+          <p className="eyebrow">One platform, four pathways</p>
           <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">Find the next useful step.</h2>
           <p className="text-base leading-7 text-ink/70">Choose what brings you here. Each pathway is designed around a clear task, not legal jargon.</p>
         </div>
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {pathways.map(({ icon: Icon, title, body, to, action }) => (
             <article key={title} className="group flex min-h-72 flex-col rounded-2xl border border-ink/10 bg-white/65 p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
               <span className="grid size-11 place-items-center rounded-xl bg-sandstone text-clay"><Icon size={22} aria-hidden="true" /></span>

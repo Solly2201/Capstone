@@ -11,6 +11,8 @@ export function AccountPage() {
 
   if (!user) return null;
 
+  const isStaff = user.role === "AUTHORITY" || user.role === "ADMIN";
+
   const handleLogout = () => {
     logout();
     navigate("/", { replace: true });
@@ -40,14 +42,57 @@ export function AccountPage() {
           </div>
         </dl>
 
-        <div className="mt-8 flex items-start gap-3 rounded-xl border border-clay/25 bg-white/45 p-4 text-sm leading-6 text-ink/80">
+        <div className="mt-8 rounded-xl border border-ink/10 bg-white/60 p-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-clay">Your spaces</p>
+          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
+            {isStaff ? (
+              <>
+                <li>
+                  <Link to="/authority" className="text-clay underline underline-offset-4">
+                    Report queue
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/authority/petitions" className="text-clay underline underline-offset-4">
+                    Petition queue
+                  </Link>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <Link to="/reports/mine" className="text-clay underline underline-offset-4">
+                    My reports
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/petitions/mine" className="text-clay underline underline-offset-4">
+                    My petitions
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/report" className="text-clay underline underline-offset-4">
+                    Report a civic issue
+                  </Link>
+                </li>
+              </>
+            )}
+            <li>
+              <Link to="/learn" className="text-clay underline underline-offset-4">
+                Learn
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-clay/25 bg-white/45 p-4 text-sm leading-6 text-ink/80">
           <ShieldCheck className="mt-0.5 shrink-0 text-sage" size={20} aria-hidden="true" />
           <p>
             Legal information does not require an account — the{" "}
             <Link to="/legal-assistant" className="font-semibold text-clay underline underline-offset-4">
               legal assistant
             </Link>{" "}
-            is public. Your account is for civic reporting and petitions in later increments.
+            is public.
           </p>
         </div>
 

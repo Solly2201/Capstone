@@ -77,4 +77,43 @@ describe("ProtectedRoute", () => {
 
     await waitFor(() => expect(screen.getByText("Login screen")).toBeTruthy());
   });
+
+  it("derives its denial copy from the roles the route declares", async () => {
+    window.localStorage.setItem("cap.accessToken", "stored-token");
+    mockApi.get.mockResolvedValue({
+      data: {
+        user: {
+          id: "user-2",
+          fullName: "Ravi Officer",
+          email: "officer@example.com",
+          role: "AUTHORITY",
+          emailVerified: true
+        }
+      }
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/report"]}>
+        <AuthProvider>
+          <Routes>
+            <Route
+              path="/report"
+              element={
+                <ProtectedRoute roles={["CITIZEN"]}>
+                  <p>Report form</p>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    // A citizen-only page must not tell an authority officer that it is
+    // "for civic authority staff".
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "This area is for citizen accounts" })).toBeTruthy()
+    );
+    expect(screen.queryByText("Report form")).toBeNull();
+  });
 });

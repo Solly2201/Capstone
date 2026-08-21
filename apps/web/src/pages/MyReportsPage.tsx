@@ -1,5 +1,5 @@
 import { ImageOff, MapPin, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   civicCategoryLabels,
@@ -21,24 +21,21 @@ export function MyReportsPage() {
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    api
-      .get<CivicReportListResponse>("/civic/reports/mine")
-      .then((response) => {
-        if (!active) return;
-        setReports(response.data.reports);
-        setStatus("ready");
-      })
-      .catch((error) => {
-        if (!active) return;
-        setErrorMessage(apiErrorMessage(error, "We could not load your reports. Please try again."));
-        setStatus("error");
-      });
-    return () => {
-      active = false;
-    };
+  const load = useCallback(async () => {
+    setStatus("loading");
+    try {
+      const response = await api.get<CivicReportListResponse>("/civic/reports/mine");
+      setReports(response.data.reports);
+      setStatus("ready");
+    } catch (error) {
+      setErrorMessage(apiErrorMessage(error, "We could not load your reports. Please try again."));
+      setStatus("error");
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <SiteShell>
@@ -63,9 +60,16 @@ export function MyReportsPage() {
         )}
 
         {status === "error" && (
-          <p role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
-            {errorMessage}
-          </p>
+          <div role="alert" className="mt-10 rounded-xl border border-clay/40 bg-sandstone/50 px-5 py-4 text-sm leading-6">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="mt-3 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold transition hover:bg-sandstone"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {status === "ready" && reports.length === 0 && (

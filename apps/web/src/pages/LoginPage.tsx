@@ -8,7 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 import { apiErrorMessage, apiErrorReason } from "../lib/api";
 
 export function LoginPage() {
-  const { login, status } = useAuth();
+  const { login, status, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [needsVerification, setNeedsVerification] = useState(false);
@@ -52,6 +52,12 @@ export function LoginPage() {
           <span className="mt-10 grid size-11 place-items-center rounded-xl bg-ink text-parchment lg:mt-0"><LockKeyhole size={21} aria-hidden="true" /></span>
           <h2 className="mt-6 font-serif text-4xl font-semibold">Welcome back</h2>
           <p className="mt-3 text-sm leading-6 text-ink/70">Use a verified account to access your dashboard.</p>
+          {sessionExpired && (
+            <p role="status" className="mt-5 rounded-lg border border-clay/30 bg-sandstone/50 px-4 py-3 text-sm leading-6">
+              Your session expired, so you were signed out. Log in again to continue where you left
+              off.
+            </p>
+          )}
           <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
             <label className="block text-sm font-semibold">Email
               <input className="field" type="email" autoComplete="email" {...register("email")} />

@@ -18,6 +18,9 @@ export type AuthStatus = "loading" | "authenticated" | "anonymous";
 type AuthContextValue = {
   user: PublicUser | null;
   status: AuthStatus;
+  /** True when the last session ended because the API rejected its token,
+   *  not because the user logged out. Cleared on the next sign-in. */
+  sessionExpired: boolean;
   login: (input: LoginInput) => Promise<PublicUser>;
   register: (input: RegisterInput) => Promise<RegisterResponse>;
   logout: () => void;
@@ -28,17 +31,25 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>(() => (readToken() ? "loading" : "anonymous"));
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const logout = useCallback(() => {
     clearToken();
     setUser(null);
     setStatus("anonymous");
+    setSessionExpired(false);
   }, []);
 
   useEffect(() => {
+    // The interceptor fires only when a presented token was rejected —
+    // i.e. a session genuinely ended, as opposed to a failed login. The
+    // 15-minute token has no refresh endpoint, so this is the ordinary
+    // way a session ends and deserves to be said out loud on the login
+    // screen rather than looking like a fresh visit.
     setUnauthorizedHandler(() => {
       setUser(null);
       setStatus("anonymous");
+      setSessionExpired(true);
     });
     return () => setUnauthorizedHandler(null);
   }, []);
@@ -71,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     writeToken(response.data.token);
     setUser(response.data.user);
     setStatus("authenticated");
+    setSessionExpired(false);
     return response.data.user;
   }, []);
 
@@ -82,8 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, status, login, register, logout }),
-    [user, status, login, register, logout]
+    () => ({ user, status, sessionExpired, login, register, logout }),
+    [user, status, sessionExpired, login, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

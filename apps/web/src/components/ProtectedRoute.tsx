@@ -36,13 +36,20 @@ export function ProtectedRoute({ children, roles }: { children: React.ReactNode;
   }
 
   if (roles && user && !roles.includes(user.role)) {
+    // The denial copy is derived from the roles the route declares, so a
+    // citizen-only page does not tell an authority officer it is "for
+    // civic authority staff".
+    const staffOnly = !roles.includes("CITIZEN");
     return (
       <SiteShell>
         <section className="mx-auto max-w-3xl px-5 py-20 lg:px-8">
-          <h1 className="font-serif text-3xl font-semibold">This area is for civic authority staff</h1>
+          <h1 className="font-serif text-3xl font-semibold">
+            {staffOnly ? "This area is for civic authority staff" : "This area is for citizen accounts"}
+          </h1>
           <p className="mt-4 text-sm leading-6 text-ink/70">
-            Your account does not have access to it. If you are looking for your own reports, they are
-            under “My reports”.
+            {staffOnly
+              ? "Your account does not have access to it. If you are looking for your own reports, they are under “My reports”."
+              : "Your account does not have access to it. Authority and admin accounts work from the report and petition queues instead."}
           </p>
         </section>
       </SiteShell>

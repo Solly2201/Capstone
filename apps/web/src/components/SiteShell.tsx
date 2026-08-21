@@ -4,10 +4,9 @@ import { Link, NavLink } from "react-router-dom";
 import { disclaimerText } from "@cap/contracts";
 import { useAuth } from "../auth/AuthContext";
 
-const links = [
+const baseLinks = [
   { to: "/learn", label: "Learn" },
   { to: "/legal-assistant", label: "Legal assistant" },
-  { to: "/report", label: "Civic report" },
   { to: "/petitions", label: "Petitions" }
 ];
 
@@ -16,6 +15,14 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   const { user, status, logout } = useAuth();
   const signedIn = status === "authenticated" && user !== null;
   const isStaff = signedIn && (user.role === "AUTHORITY" || user.role === "ADMIN");
+
+  // Reporting is citizen-only at the API (staff process reports, they do
+  // not file them), so staff are not offered a form that can only 403.
+  // "My reports"/"My petitions" are likewise citizen lists — always empty
+  // for a staff account, whose work lives in the two queues instead.
+  const links = isStaff
+    ? baseLinks
+    : [...baseLinks.slice(0, 2), { to: "/report", label: "Civic report" }, baseLinks[2]];
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
@@ -34,8 +41,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               <>
                 {isStaff && <NavLink to="/authority" className="nav-link">Report queue</NavLink>}
                 {isStaff && <NavLink to="/authority/petitions" className="nav-link">Petition queue</NavLink>}
-                <NavLink to="/reports/mine" className="nav-link">My reports</NavLink>
-                <NavLink to="/petitions/mine" className="nav-link">My petitions</NavLink>
+                {!isStaff && <NavLink to="/reports/mine" className="nav-link">My reports</NavLink>}
+                {!isStaff && <NavLink to="/petitions/mine" className="nav-link">My petitions</NavLink>}
                 <NavLink to="/account" className="nav-link">{user.fullName}</NavLink>
                 <button type="button" onClick={logout} className="rounded-lg border border-ink/20 px-4 py-2.5 transition hover:bg-sandstone">Log out</button>
               </>
@@ -58,8 +65,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                 <>
                   {isStaff && <NavLink to="/authority" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>Report queue</NavLink>}
                   {isStaff && <NavLink to="/authority/petitions" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>Petition queue</NavLink>}
-                  <NavLink to="/reports/mine" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>My reports</NavLink>
-                  <NavLink to="/petitions/mine" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>My petitions</NavLink>
+                  {!isStaff && <NavLink to="/reports/mine" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>My reports</NavLink>}
+                  {!isStaff && <NavLink to="/petitions/mine" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>My petitions</NavLink>}
                   <NavLink to="/account" className="rounded-md px-3 py-2 hover:bg-sandstone" onClick={() => setMenuOpen(false)}>{user.fullName}</NavLink>
                   <button
                     type="button"
