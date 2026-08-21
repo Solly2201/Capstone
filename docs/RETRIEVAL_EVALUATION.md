@@ -1968,3 +1968,151 @@ services/ai/finetune/eval_heldout.py --run-name m12_run2` (seeded,
 deterministic splits). To deploy once distributed: set
 `DENSE_EMBEDDING_MODEL` to the artifact path and re-run
 `scripts/ingest_corpus.py`.
+
+## M13 — m12_run2 deployed to the production path, promoted, and frozen
+
+**Deployment mechanism (no new infrastructure).** The artifact was copied
+to `services/ai/data/models/m12_run2` and the index rebuilt with
+`DENSE_EMBEDDING_MODEL=data/models/m12_run2` (run from `services/ai`) —
+exactly the one-variable migration path `app/retrieval/embeddings.py`
+always documented. The model path is *service-root-relative* and that
+relative form is what `index_manifest.json` records; `embeddings.py`
+gained a `resolve_model_path()` that resolves it against the service root
+at load time only, so the same manifest works on the host (any CWD) and
+inside the Docker image, where `docker-compose.yml` already mounts
+`./services/ai/data` at `/app/data` read-only — the container picks up
+both the new index and the model on restart with **no image rebuild**.
+Query-time model selection was already manifest-driven (`search.py` reads
+`dense_embedding_model`), so the running service can never encode queries
+with a different model than the one that built the mounted index.
+`data/models/` is gitignored under the same policy as the index: a build
+artifact, reproduced by the seeded pipeline above, never committed.
+
+**Exact artifact identity.** `model.safetensors` SHA-256
+`d61d077b4287c2cd1075045dccec0139981751fc1125e1bcd92dc29e0a0ce801`;
+aggregate SHA-256 over all 11 files (sorted `relpath:file-sha` walk)
+`8a15eb039e298e44b25959903c79808f51c9194b75b92f410d567300981c95fa`;
+91,861,927 bytes. Training config as recorded in
+`finetune/output/m12_run2/train_config.json` (4 epochs, batch 16, lr 2e-5,
+seed 42, MNRL, 1682/340 train/val triplets). After deployment the stored
+`dense_vectors.npy` rows were verified to be m12_run2 encodings (cosine
+1.0 against fresh encodings of the same index text; the base MiniLM
+scores 0.78–0.93 against those rows — the check genuinely discriminates).
+
+**Protocol.** Production-path series (`run_eval.py --production-path
+--mode hybrid`), same corpus (1,827 chunks), queries, normalisation,
+guards, gate floor (0.41), fusion weights and scoring code on both sides;
+the only variable is the embedding model behind the dense index. The M12
+baseline was re-reproduced exactly before switching (citizen 0.7448 /
+0.5656 / 0.4448 / 0.8562 with 0 false accepts and 45 false abstains;
+control 0.8623 / 0.9796 with `q19` sole; follow-up 19/21, 4/4, 4/4, 3/3,
+6/6, 2/2). Every candidate number below was then reproduced **twice**,
+byte-identically (summary and per-query), after the index-overwrite
+incident described at the end of this section was found and eliminated.
+
+**Full-set results (contain trained-on queries — these are the deployed
+system's benchmark numbers, not generalisation evidence):**
+
+| citizen 281 | baseline | m12_run2 | | control 46 | baseline | m12_run2 |
+|---|---|---|---|---|---|---|
+| recall@5 | 0.7448 | **0.9554** | | recall@5 | 0.8623 | **0.9674** |
+| MRR | 0.5656 | **0.8800** | | MRR | 0.7341 | **0.9246** |
+| nDCG@5 | 0.6040 | **0.8984** | | nDCG@5 | 0.7476 | **0.9261** |
+| top-1 citation | 0.4448 | **0.8185** | | top-1 citation | 0.6522 | **0.8913** |
+| abstention | 0.8562 | **0.9233** | | abstention | 0.9796 | 0.9592 |
+| false accepts | 0 | **0** | | false accepts | 0 | **0** |
+| false abstains | 45 | **24** | | false abstains | 1 (q19) | 2 (q19, q17) |
+| wrong-Act top-1 | 43 | **19** | | wrong-Act top-1 | 3 | 3 (no new) |
+
+Citizen per-category recall@5: every category improved or equal —
+`hard_negative` 0.966 → **1.000**, `misspelling` 0.773 → 1.000,
+`ordinary_citizen` 0.745 → 0.982, `multi_source` 0.500 → 0.944,
+`ambiguous` 0.537 → 0.933, `colloquial` 0.705 → 0.886. Per-query diff 60
+fixed / 6 broken (h027, h060, h079, h194, h198, h252 — four of the six
+abstain in the candidate rather than answering wrongly). Control: q18,
+q40, q46 fixed, none broken; q17's new false abstain is the historically
+unreachable `constitution:20` query, in the conservative direction, as
+the M12 held-out screen predicted.
+
+**Held-out-only results (promotion-gate condition 1 — restricted to
+`finetune/data/test.jsonl` ids, never trained or selected on):** citizen
+41 queries: recall@5 0.7634 → **0.8732**, MRR 0.5687 → 0.7122, top-1
+0.4634 → 0.6098, abstention 0.7561 → 0.8293, false accepts 0 → 0, false
+abstains 10 → 7. Control 9 queries: recall@5 equal at 0.8333, MRR 0.7259
+→ 0.8000, top-1 0.6667 → 0.7778. The held-out improvement reproduces on
+the path production actually runs.
+
+**Held-out wrong-Act movement, inspected individually (4 → 8).** h142 and
+h148: the candidate *abstains* — the wrong-Act top-1 is never shown, and
+the user-visible change is correct-answer → abstention (conservative,
+already counted in false abstains). h258 ("protection of action taken in
+good faith", 5 labelled targets): candidate top-1 is `rti:21`, which IS
+the RTI Act's identically-titled protection section — a label gap (the
+row predates RTI ingestion), not a wrong answer; 4 of 5 labelled targets
+still in top-5. h252: a genuine mild regression — top-1 moved from
+`pwdva:17` to `bnss:144` (maintenance) on a residence/custody query; an
+adjacent-domain ranking miss, not a cross-statute confusion. No new case
+is a confidently-answered cross-Sanhita error, the full-set wrong-Act
+count *fell* 43 → 19, and `hard_negative` (including the bidirectional
+BNS/BNSS decoy pair) is 29/29.
+
+**Follow-up benchmark (40 rows):** condition follow-ups 19/21 both sides,
+with composition changed — **f04, the long-standing M8 FIR-copy recall
+miss, is fixed**; f22 newly misses on ranking; f24 (`rti:19`) unchanged.
+Ambiguous 4/4, no-context 4/4, guarded 6/6 with byte-identical reasons,
+not-emergency 2/2. Standalone override 2/3: f35 now abstains instead of
+answering — conservative direction, recorded as a residual. Fragment-only
+baseline hit@5 improved 3/21 → 6/21.
+
+**Live battery on the deployed index** (`handle_legal_query`, the exact
+function `POST /legal/answer` wraps): 9/9 — supported query answered
+(`constitution:14` top-1), citizen-language stolen-phone complaint
+answered (`bnss:106`), misspelled "bale" answered (`bnss:482`/`480`),
+ambiguous answered, out-of-domain abstained, un-ingested-Act (divorce)
+abstained via the coverage guard, emergency redirected, UPL
+personal-outcome abstained, harmful request refused. Citation integrity:
+every returned excerpt's chunk_id present in `chunk_manifest.jsonl`, real
+source/act_no/unit/official-URL citations.
+
+**One live-test residual found post-deployment** (by
+`test_corpus_coverage.py`'s RTI battery, not by either eval set): "can an
+officer be penalized for not providing information" now ranks `it_act:44`
+first (dense 0.508) and `rti:20` second (0.469) — under the baseline
+model `rti:20` was rank 1. IT Act s.44 is itself a genuine
+penalty-for-not-furnishing-information provision and the query names no
+Act, so the top-1 preference between two legitimately responsive statutes
+is ambiguous by construction; the citizen sees both excerpts (the product
+always renders the full returned window). The test now asserts
+presence-in-window for that one phrasing — same documented convention as
+the BNSS s.43 window test — and strict top-1 for the other four RTI
+phrasings, all of which still pass. Recorded in the failure taxonomy as
+an adjacent-domain top-1 preference (same class as h252), not a safety
+failure. No normalisation rule was added for it: tuning the production
+path against a single probe after the evaluation numbers were finalised
+would invalidate the published comparison.
+
+**Promotion verdict: all nine gate conditions pass — PROMOTED.** The
+gate that mattered most going in — the reranker's failure mode of
+cross-statute confusion — is where the fine-tune is strongest
+(hard-negative 29/29, wrong-Act nearly halved), which is what
+justifies promotion where `ms-marco-MiniLM` was rejected.
+
+**An incident worth recording: the test suite silently reverted the
+production index.** `tests/test_retrieval.py` and
+`tests/test_hybrid_retrieval.py` deliberately rebuild the real
+`data/index` via `ingest_all()` + `build_index()`; with
+`DENSE_EMBEDDING_MODEL` unset in the test environment that rebuild used
+the *default* base model — so the first post-deployment pytest run raced
+the candidate evaluation and put a MiniLM index back underneath it
+(caught by file mtimes plus the vector-identity probe above; the
+candidate evals had already loaded the m12_run2 index into process
+memory, which is why their numbers were unaffected — subsequently proven
+by byte-identical confirmation re-runs against a cleanly rebuilt index).
+Fix shipped in `tests/conftest.py`: before any test runs, the suite pins
+`DENSE_EMBEDDING_MODEL` to whatever the on-disk manifest records
+(explicit env still wins; a recorded-but-absent local artifact falls
+through to the default), so the tests' rebuild now reproduces the
+deployed configuration instead of downgrading it. Verified by running the
+full suite with the variable unset and checking the manifest and vectors
+afterwards. New unit tests for the path resolution:
+`tests/test_embeddings_config.py`.

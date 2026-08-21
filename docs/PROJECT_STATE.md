@@ -828,6 +828,50 @@ Counts after M12: Python 363 → 364 (net: taxonomy-driven test updates),
 follow-up eval 40 rows. Node suites, typecheck, build untouched by this
 milestone's changes (AI service only).
 
+### M13 — m12_run2 promoted to production; final engineering freeze
+
+The M12 candidate was deployed on the real production path, evaluated
+against the reproduced M12 baseline with only the embedding model
+varying, and **promoted** — full method, tables, per-case severity
+analysis and artifact hashes in `docs/RETRIEVAL_EVALUATION.md`'s M13
+section. The short version:
+
+- **Deployment = existing mechanism, no new infrastructure**: artifact at
+  `services/ai/data/models/m12_run2` (gitignored, reproduced by the
+  seeded `finetune/` pipeline; `model.safetensors` SHA-256
+  `d61d077b…0ce801`), `DENSE_EMBEDDING_MODEL=data/models/m12_run2`,
+  re-ingest. The manifest records the service-root-relative path and
+  `embeddings.resolve_model_path()` resolves it at load time, so the
+  same index works on the host and inside the Docker container (which
+  already mounts `data/` and needs no image rebuild).
+  `docker-compose.yml` and `.env.example` now record the setting.
+- **Production-path results** (citizen 281 / control 46): recall@5
+  0.7448 → **0.9554** / 0.8623 → **0.9674**, MRR 0.5656 → 0.88, top-1
+  citation 0.4448 → 0.8185, abstention 0.8562 → 0.9233, false accepts
+  **0 → 0**, wrong-Act top-1 43 → 19, hard-negative recall **29/29**.
+  Held-out-only (never trained/selected on): recall@5 0.7634 → 0.8732,
+  every quality metric up, zero false accepts — the generalisation
+  claim survives the production path. Follow-up 40-row benchmark: f04
+  (the M8 FIR-copy miss) fixed; f35 now abstains (conservative
+  residual); guards byte-identical. Every candidate number reproduced
+  twice, byte-identically.
+- **A real defect found and fixed**: running the Python test suite with
+  `DENSE_EMBEDDING_MODEL` unset silently rebuilt `data/index` with the
+  *default* base model (test_retrieval/test_hybrid_retrieval rebuild the
+  real index by design). `tests/conftest.py` now pins the env var to
+  whatever the on-disk manifest records before any test runs; verified
+  by running the suite env-unset and checking manifest + vectors after.
+  New: `tests/test_embeddings_config.py`.
+- **Deferred with reasons** (not blockers for the single-instance
+  capstone deployment): distributed rate limiting (in-process store,
+  one API instance; `REDIS_URL` is validated but nothing connects to
+  Redis), media-serving streaming (media storage itself is disk-backed
+  and volume-persisted), email transport (gap #32, unchanged).
+
+**CAT is now FROZEN as the experimental system for the research paper.**
+The paper must use these M13 production-path numbers, not the
+intermediate M12 ones.
+
 ## Do NOT do yet
 
 - Module 2 (civic reporting): the **citizen reporting core, the authority workflow and deterministic duplicate handling are built** (see M2, M3 and M10 above). Do not build DBSCAN clustering, civic vision/ML, automatic categorisation or automatic priority prediction, civic analytics, or a notification system without a new instruction.
@@ -872,7 +916,7 @@ milestone's changes (AI service only).
 27. ~~Confident wrong-Act answers on legal questions about un-ingested Acts (gap #23)~~ — **resolved this session** by `app/safety/corpus_coverage.py` (see the corpus-coverage guard entry above). Hybrid false accepts 7 → 1, abstention accuracy 0.7572 → 0.7764, zero false fires across all 362 labelled queries. **One residual remains:** `h286` ("how do I file an application for information from a government office") — the RTI question deliberately phrased without naming RTI. A deterministic phrase guard cannot recognise a subject the query never names, and closing it would require a semantic classifier, which is out of scope by standing decision. It is the sole remaining hybrid false accept. If a future evaluation surfaces more un-named-subject false accepts of this shape, that — not another curated pattern — is the signal that the guard's approach has reached its limit.
 28. ~~The confidence gate is tuned against a query population it no longer represents (gap #24)~~ — **investigated this session and deliberately left unchanged.** The gate signal is genuinely miscalibrated for citizen language, but the citizen-language true-positive and wrong-Act score distributions overlap almost completely (medians 0.456 vs 0.442), so the true-positive-per-wrong-Act ratio is flat at ~2.0 across the whole 0.30–0.46 sweep and no operating point is better than another. Alternative signals (max/mean of `dense_score` over the returned top-5) trace the same curve. `DEFAULT_MIN_SCORE_BY_MODE["hybrid"]` stays 0.42. Re-open this only if the underlying dense representation changes — a better-separated signal is a prerequisite for a better threshold, not the other way round.
 29. ~~Reranking is now supported by measurement (gap #25)~~ — **superseded: implemented, measured, and REJECTED on legal-safety grounds this session.** The candidate-pool premise was verified correct (76.9% of missed chunks reachable in the existing pool-50 set) and the intervention still failed: `hard_negative` recall 0.966 → 0.793, abstention accuracy 0.7764 → 0.6677, top-1 correctness 0.3879 → 0.3772, worse short-title artifact, and worse-on-every-metric on the 49-query control, for +1.7pp citizen-set recall@5 and an ~8x latency increase. **Do not re-propose a cross-encoder reranker on the strength of the candidate-pool argument** — that argument is already known to be true and already known to be insufficient. A future attempt must answer the actual failure mode: a general-purpose reranker has no notion that the BNS and the BNSS are different statutes (it answered two queries naming their Act in full from the other Sanhita), and it rewards short-title boilerplate that names the Act. A legal-domain-tuned cross-encoder might clear that bar; `ms-marco-MiniLM` demonstrably does not.
-30. **Embedding fine-tuning is now the next intervention worth evaluating — but it is not authorised and no training has been started.** Three of the four candidate interventions are resolved (guard shipped, gate investigated with no available operating point, reranking rejected), so the remaining failures are concentrated where the evidence always pointed: `representation_gap` (29 of 119 misses) plus `dense_embedding` (15 of 119) — 37.0% combined, unreachable by any reranker or gate change. The labelled pool is now ~362 query groups (313 + 49) against the 153 that run1 concluded was too small, and the `services/ai/finetune/` infrastructure is reusable as-is. Conditions for any future attempt, unchanged from standing discipline: held-out-only measurement, real before/after numbers on **both** eval sets, and **no promotion at all if `hard_negative` recall or the wrong-Act top-1 rate degrades** — the reranker's failure mode is exactly what a fine-tune could also cause, and it must be caught the same way.
+30. ~~Embedding fine-tuning is now the next intervention worth evaluating — but it is not authorised and no training has been started~~ — **resolved across M12/M13**: run1 failed held-out (too little data), the pool grew to 402 groups, m12_run2 generalised on held-out data with every mandatory safety gate passing (hard-negative 29/29, wrong-Act top-1 down, zero false accepts), and M13 deployed it on the real production path and **promoted** it — see the M13 entries above and in `docs/RETRIEVAL_EVALUATION.md`. The original conditions are preserved below for the record. **Embedding fine-tuning is now the next intervention worth evaluating — but it is not authorised and no training has been started.** Three of the four candidate interventions are resolved (guard shipped, gate investigated with no available operating point, reranking rejected), so the remaining failures are concentrated where the evidence always pointed: `representation_gap` (29 of 119 misses) plus `dense_embedding` (15 of 119) — 37.0% combined, unreachable by any reranker or gate change. The labelled pool is now ~362 query groups (313 + 49) against the 153 that run1 concluded was too small, and the `services/ai/finetune/` infrastructure is reusable as-is. Conditions for any future attempt, unchanged from standing discipline: held-out-only measurement, real before/after numbers on **both** eval sets, and **no promotion at all if `hard_negative` recall or the wrong-Act top-1 rate degrades** — the reranker's failure mode is exactly what a fine-tune could also cause, and it must be caught the same way.
 
 **M1 platform usability**
 31. **No token refresh.** The API issues a 15-minute access token and exposes no refresh endpoint, so a session simply ends 15 minutes after sign-in and the user is returned to `/login`. Adding refresh tokens would change the backend auth architecture and was out of scope for an integration milestone. This is the most likely first complaint from anyone actually using the app for a while.

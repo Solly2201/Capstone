@@ -28,6 +28,31 @@ os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
 DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_DIMENSION = 384
 
+# Local fine-tuned artifacts live under services/ai/data/models/<name>
+# (gitignored like the index; reproduced by finetune/train.py). They are
+# configured as service-root-relative paths ("data/models/m12_run2") so
+# the same value works on the host regardless of CWD and inside the
+# Docker image, where data/ is mounted at /app/data. The relative form
+# is what index_manifest.json records; resolution to an absolute path
+# happens only at load time, so the manifest stays portable between the
+# host that built the index and the container that queries it.
+_SERVICE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def resolve_model_path(name: str) -> str:
+    """Resolve a service-root-relative artifact path to an absolute one.
+
+    Hugging Face model ids ("sentence-transformers/all-MiniLM-L6-v2")
+    and absolute paths pass through untouched; only a relative path that
+    actually exists as a directory under the service root is rewritten.
+    """
+    if os.path.isabs(name):
+        return name
+    candidate = os.path.join(_SERVICE_ROOT, name)
+    if os.path.isdir(candidate):
+        return candidate
+    return name
+
 
 def model_name() -> str:
     """The embedding model to use, configurable without code changes.
@@ -55,7 +80,7 @@ def _get_model(name: str):
     if name not in _model_cache:
         from sentence_transformers import SentenceTransformer
 
-        _model_cache[name] = SentenceTransformer(name)
+        _model_cache[name] = SentenceTransformer(resolve_model_path(name))
     return _model_cache[name]
 
 

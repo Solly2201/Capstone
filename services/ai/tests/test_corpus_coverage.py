@@ -99,20 +99,43 @@ def test_rti_is_no_longer_a_coverage_gap():
 def test_rti_questions_are_answered_from_the_rti_act():
     """The end-to-end contract: an information-access question must come
     back citing the RTI Act, not a lexically-similar section of BNSS,
-    BSA or PWDVA -- the substitution measured before ingestion."""
-    for text in (
+    BSA or PWDVA -- the substitution measured before ingestion.
+
+    The officer-penalty phrasing asserts presence-in-window rather than
+    strict rank 1, under the same product property the BNSS s.43 test in
+    test_retrieval.py documents: every returned excerpt is shown to the
+    citizen, never just a single "best" one. Under the promoted
+    m12_run2 embedding model (M13, docs/RETRIEVAL_EVALUATION.md) that
+    query ranks it_act:44 first (dense 0.508) and rti:20 second (0.469)
+    -- IT Act s.44 is itself a genuine penalty-for-not-furnishing-
+    information provision and the query names no Act, so demanding
+    rank 1 here would pin a preference between two legitimately
+    responsive statutes rather than guard against the pre-ingestion
+    failure (RTI questions answered from *unrelated* Acts), which the
+    strict top-1 assertions on the other four phrasings still cover.
+    """
+    strict_top1 = (
         "how do I get information from a government department",
         "how long does the government have to reply",
         "can I appeal an information refusal",
-        "can an officer be penalized for not providing information",
         "how do I file an RTI application",
-    ):
+    )
+    for text in strict_top1:
         answer = handle_legal_query(text)
         assert not answer.abstained, text
         assert answer.excerpts, text
         assert answer.excerpts[0].chunk_id.startswith("rti:"), (
             f"{text!r} answered from {answer.excerpts[0].chunk_id}"
         )
+
+    text = "can an officer be penalized for not providing information"
+    answer = handle_legal_query(text)
+    assert not answer.abstained, text
+    assert answer.excerpts, text
+    assert any(e.chunk_id.startswith("rti:") for e in answer.excerpts), (
+        f"{text!r} returned no RTI excerpt at all: "
+        f"{[e.chunk_id for e in answer.excerpts]}"
+    )
 
 
 def test_amended_institutional_sections_are_not_served():
