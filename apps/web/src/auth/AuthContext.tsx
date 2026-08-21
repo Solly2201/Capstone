@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { LoginInput, LoginResponse, PublicUser, RegisterInput, RegisterResponse } from "@cap/contracts";
 import { api, setUnauthorizedHandler } from "../lib/api";
-import { clearToken, readToken, writeToken } from "../lib/auth-storage";
+import { clearToken, readToken, writeRefreshToken, writeToken } from "../lib/auth-storage";
 
 // Frontend auth state for the bearer-token API.
 //
@@ -9,9 +9,10 @@ import { clearToken, readToken, writeToken } from "../lib/auth-storage";
 // GET /auth/me on load rather than cached beside it, so a revoked token
 // cannot leave a stale "signed in" shell on screen.
 //
-// The API issues a 15-minute token and has no refresh endpoint, so a
-// session simply ends: the response interceptor clears the token on a 401
-// and returns the user to the login screen.
+// The API issues a 15-minute access token plus a 7-day refresh token.
+// The response interceptor renews the pair transparently on a 401; only
+// when refresh itself fails (expiry, revocation) does the session end and
+// the user return to the login screen.
 
 export type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (input: LoginInput) => {
     const response = await api.post<LoginResponse>("/auth/login", input);
     writeToken(response.data.token);
+    if (response.data.refreshToken) writeRefreshToken(response.data.refreshToken);
     setUser(response.data.user);
     setStatus("authenticated");
     setSessionExpired(false);

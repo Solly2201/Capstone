@@ -48,6 +48,19 @@ export type PublicUser = {
 
 export type LoginResponse = {
   token: string;
+  /** Long-lived token accepted only by POST /auth/refresh. */
+  refreshToken: string;
+  user: PublicUser;
+};
+
+export const refreshSchema = z.object({
+  refreshToken: z.string().min(1)
+});
+export type RefreshInput = z.infer<typeof refreshSchema>;
+
+export type RefreshResponse = {
+  token: string;
+  refreshToken: string;
   user: PublicUser;
 };
 
@@ -117,4 +130,16 @@ export type LegalAnswerResponse = {
   severity: LegalSeverity;
   /** The response points at an authority, helpline or legal-aid service. */
   authority_guidance: boolean;
+  /** True when the previous question was deterministically folded into
+   *  retrieval (multi-turn context). Optional: absent from responses
+   *  recorded before the context layer existed. */
+  context_applied?: boolean;
+  /** The exact combined text retrieval used when context was applied —
+   *  shown to the user so nothing is interpreted invisibly. */
+  resolved_question?: string | null;
+};
+
+/** The previous exchange, sent back with a follow-up question. */
+export type LegalQueryContext = {
+  previous_question: string;
 };

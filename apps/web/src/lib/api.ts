@@ -1,8 +1,10 @@
-import axios from "axios";
-import { clearToken, readToken } from "./auth-storage";
+import axios, { type AxiosRequestConfig } from "axios";
+import { clearToken, readRefreshToken, readToken, writeRefreshToken, writeToken } from "./auth-storage";
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:4000/api",
+  baseURL: BASE_URL,
   timeout: 10_000
 });
 
@@ -21,16 +23,57 @@ export const setUnauthorizedHandler = (handler: (() => void) | null) => {
   onUnauthorized = handler;
 };
 
+// Single-flight refresh: when several requests fail at once as an access
+// token expires, only one refresh call goes out and the rest await it.
+// Uses bare axios rather than `api`, so a 401 from the refresh endpoint
+// itself can never re-enter this interceptor.
+let refreshInFlight: Promise<string | null> | null = null;
+
+const refreshSession = (): Promise<string | null> => {
+  if (!refreshInFlight) {
+    const refreshToken = readRefreshToken();
+    refreshInFlight = (refreshToken
+      ? axios
+          .post<{ token: string; refreshToken: string }>(`${BASE_URL}/auth/refresh`, { refreshToken }, { timeout: 10_000 })
+          .then((response) => {
+            writeToken(response.data.token);
+            writeRefreshToken(response.data.refreshToken);
+            return response.data.token;
+          })
+          .catch(() => null)
+      : Promise.resolve<string | null>(null)
+    ).finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Only a session expiry if a token was actually presented: a 401 from
-    // a login attempt means "wrong password", not "your session died".
-    const presentedToken = Boolean(error?.config?.headers?.Authorization);
-    if (error?.response?.status === 401 && presentedToken) {
-      clearToken();
-      onUnauthorized?.();
+  async (error) => {
+    // Only a session concern if a token was actually presented: a 401
+    // from a login attempt means "wrong password", not "session died".
+    const config = error?.config as (AxiosRequestConfig & { _retriedAfterRefresh?: boolean }) | undefined;
+    const presentedToken = Boolean(config?.headers?.Authorization);
+    if (error?.response?.status !== 401 || !presentedToken) {
+      return Promise.reject(error);
     }
+
+    // An expired access token is ordinary now that refresh exists: renew
+    // once and replay the request. Only when refresh itself fails is the
+    // session genuinely over.
+    if (config && !config._retriedAfterRefresh) {
+      const token = await refreshSession();
+      if (token) {
+        config._retriedAfterRefresh = true;
+        config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
+        return api.request(config);
+      }
+    }
+
+    clearToken();
+    onUnauthorized?.();
     return Promise.reject(error);
   }
 );

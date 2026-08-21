@@ -16,6 +16,13 @@ const envSchema = z
     WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
     LOCAL_STORAGE_ROOT: z.string().default("../../data/uploads"),
     AI_SERVICE_URL: z.string().url().default("http://localhost:8000"),
+    // Optional SMTP transport for verification email. When unset, the
+    // development flow (token in the API response outside production)
+    // remains the only delivery path; in production, self-registration
+    // answers 503 rather than issuing a challenge nobody can receive.
+    // Format: smtp[s]://user:pass@host:port
+    SMTP_URL: z.string().min(1).optional(),
+    MAIL_FROM: z.string().min(3).default("CAP <no-reply@cap.local>"),
     // How long the API waits for the AI service before giving up.
     //
     // Without a bound, a hung AI service holds the Express request open

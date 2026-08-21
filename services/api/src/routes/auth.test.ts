@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../app.js";
 import { User } from "../models/user.js";
-import { signAccessToken } from "../lib/jwt.js";
+import { signAccessToken, signRefreshToken } from "../lib/jwt.js";
 import { hashVerificationToken } from "../lib/email-verification.js";
 
 vi.mock("../models/user.js", () => ({
@@ -252,5 +252,122 @@ describe("GET /api/auth/me", () => {
     expect(response.status).toBe(200);
     expect(response.body.user.id).toBe("user-1");
     expect(userModel.findById).toHaveBeenCalledWith("user-1");
+  });
+});
+
+describe("POST /api/auth/refresh", () => {
+  const refreshFor = (user: FakeUser, ver = 0) => signRefreshToken({ sub: user.id, ver });
+
+  it("exchanges a valid refresh token for a fresh pair", async () => {
+    const user = fakeUser({ id: "64b7f9c2e1a2b3c4d5e6f701" });
+    userModel.findById.mockReturnValue(query({ ...user, tokenVersion: 0 }));
+
+    const response = await request(createApp())
+      .post("/api/auth/refresh")
+      .send({ refreshToken: refreshFor(user) });
+
+    expect(response.status).toBe(200);
+    expect(typeof response.body.token).toBe("string");
+    expect(typeof response.body.refreshToken).toBe("string");
+    expect(response.body.user.email).toBe(user.email);
+
+    // The new access token really works as a bearer credential.
+    userModel.findById.mockReturnValue(query(user));
+    const me = await request(createApp())
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${response.body.token}`);
+    expect(me.status).toBe(200);
+  });
+
+  it("rejects an access token presented as a refresh token", async () => {
+    const user = fakeUser({ id: "64b7f9c2e1a2b3c4d5e6f701" });
+    const accessToken = signAccessToken({ sub: user.id, role: "CITIZEN", ver: 0 });
+
+    const response = await request(createApp())
+      .post("/api/auth/refresh")
+      .send({ refreshToken: accessToken });
+
+    expect(response.status).toBe(401);
+    expect(userModel.findById).not.toHaveBeenCalled();
+  });
+
+  it("rejects a refresh token as a bearer credential", async () => {
+    const user = fakeUser({ id: "64b7f9c2e1a2b3c4d5e6f701" });
+
+    const response = await request(createApp())
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${refreshFor(user)}`);
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects a refresh token whose tokenVersion was revoked", async () => {
+    const user = fakeUser({ id: "64b7f9c2e1a2b3c4d5e6f701" });
+    // Token minted at version 0; account has since been bumped to 1.
+    userModel.findById.mockReturnValue(query({ ...user, tokenVersion: 1 }));
+
+    const response = await request(createApp())
+      .post("/api/auth/refresh")
+      .send({ refreshToken: refreshFor(user, 0) });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("carries the STORED role into the new access token after a role change", async () => {
+    const user = fakeUser({ id: "64b7f9c2e1a2b3c4d5e6f701", role: "AUTHORITY" });
+    userModel.findById.mockReturnValue(query({ ...user, tokenVersion: 0 }));
+
+    const response = await request(createApp())
+      .post("/api/auth/refresh")
+      .send({ refreshToken: refreshFor(user) });
+
+    expect(response.status).toBe(200);
+    const decoded = JSON.parse(Buffer.from(response.body.token.split(".")[1], "base64url").toString());
+    expect(decoded.role).toBe("AUTHORITY");
+  });
+
+  it("rejects a deleted or unverified account", async () => {
+    const user = fakeUser({ id: "64b7f9c2e1a2b3c4d5e6f701" });
+
+    userModel.findById.mockReturnValue(query(null));
+    const deleted = await request(createApp())
+      .post("/api/auth/refresh")
+      .send({ refreshToken: refreshFor(user) });
+    expect(deleted.status).toBe(401);
+
+    userModel.findById.mockReturnValue(query({ ...user, tokenVersion: 0, emailVerified: false }));
+    const unverified = await request(createApp())
+      .post("/api/auth/refresh")
+      .send({ refreshToken: refreshFor(user) });
+    expect(unverified.status).toBe(401);
+  });
+
+  it("rejects garbage", async () => {
+    const response = await request(createApp())
+      .post("/api/auth/refresh")
+      .send({ refreshToken: "not-a-jwt" });
+
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("login refresh token issuance", () => {
+  it("returns a refresh token alongside the access token", async () => {
+    const user = fakeUser({ id: "64b7f9c2e1a2b3c4d5e6f701" });
+    userModel.findOne.mockReturnValue(query({ ...user, tokenVersion: 0 }));
+
+    const response = await request(createApp())
+      .post("/api/auth/login")
+      .send({ email: user.email, password: PASSWORD });
+
+    expect(response.status).toBe(200);
+    expect(typeof response.body.refreshToken).toBe("string");
+    const decoded = JSON.parse(
+      Buffer.from(response.body.refreshToken.split(".")[1], "base64url").toString()
+    );
+    expect(decoded.aud).toBe("cap-refresh");
+    // The refresh token carries no role: the stored role is re-read at
+    // refresh time instead of being trusted for seven days.
+    expect(decoded.role).toBeUndefined();
   });
 });
