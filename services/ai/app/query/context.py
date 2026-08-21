@@ -68,7 +68,7 @@ _FOLLOW_UP_OPENERS = (
 _ANAPHORA_ONLY = re.compile(
     r"^(what|how|and|but|so|then|why|really|ok|okay)?[\s,]*"
     r"(about|regarding)?[\s,]*"
-    r"(this|that|it|them|those|these|him|her|the same)?[\s?.!]*$"
+    r"(this|that|it|them|those|these|him|her|the same|meaning|more|details)?[\s?.!]*$"
 )
 
 # Words that carry no retrieval signal on their own; what remains after
@@ -80,7 +80,8 @@ _STOPWORDS = frozenset(
     dont for from get has have how i if in is isnt arent it me my need no not of on or so
     that the then there this to want was we what when where which who will wont would should
     shouldnt with you your they their them he she his her him its about happens happen
-    happened still same case what's whats im i'm ive id also even than then""".split()
+    happened still same case what's whats im i'm ive id also even than then
+    meaning means details elaborate explain""".split()
 )
 
 # Third-person pro-forms: inside a follow-up-shaped message they refer to
@@ -155,10 +156,20 @@ def is_follow_up(question: str) -> bool:
     has_third_person = any(token in _THIRD_PERSON for token in tokens)
 
     if _opens_as_follow_up(stripped):
-        return len(content) <= 2 or has_third_person
-    if tokens and tokens[0] in _FRAGMENT_LEADS and len(tokens) <= 6 and len(content) <= 2:
+        # Cap 3, not 2: real conditions carry legal terms ("what if the
+        # offence is non-bailable?" contributes offence/non/bailable).
+        # "what happens if/when" openers are already excluded above, so
+        # complete questions like "what happens if I refuse to tell
+        # police my name" never reach this branch.
+        return len(content) <= 3 or has_third_person
+    # A definitional opening introduces its own subject, so a later "it"
+    # is bound inside the sentence ("What is bail and how does it
+    # work?") -- never an anaphor to the previous turn.
+    if re.match(r"^(what|who|when|where|which) (is|are|was|counts?)\b|^how (do i|does|is|are)\b", lowered):
+        return False
+    if tokens and tokens[0] in _FRAGMENT_LEADS and len(tokens) <= 7 and len(content) <= 3:
         return True
-    return has_third_person and len(tokens) <= 6 and len(content) <= 2
+    return has_third_person and len(tokens) <= 8 and len(content) <= 3
 
 
 def resolve_context(question: str, context: ConversationContext | None) -> ContextResolution:

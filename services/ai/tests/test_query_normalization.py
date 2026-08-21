@@ -80,7 +80,6 @@ def test_cyber_bail_rule_does_not_fire_on_ordinary_bail():
 # one provision. Normalising them would push retrieval confidently toward
 # one wrong Act, so no rule may fire.
 AMBIGUOUS = [
-    "someone took my phone, what can I do",   # theft, or police seizure
     "I want to file a complaint",             # BNSS / consumer / civic
     "which court should I go to",             # criminal court or Commission
     "what is my case status",                 # any of the above
@@ -91,6 +90,24 @@ AMBIGUOUS = [
 def test_ambiguous_phrasing_is_left_alone(query):
     assert normalization_terms(query) == [], query
     assert normalize_for_retrieval(query) == query
+
+
+def test_taking_ambiguity_resolves_on_the_subject_not_the_verb():
+    """M7 left "someone took my phone" entirely unexpanded because taking
+    can be theft or a lawful police seizure. M12 narrowed that: the
+    hand-verified eval label (h016 -> bns:303) says a *named non-police
+    subject* taking property is a theft question, and the measured cost of
+    the blanket stand-down was the query sitting outside both retrieval
+    pools. The genuine ambiguity -- the police doing the taking -- is
+    still preserved, and this pins both directions.
+    """
+    assert "theft" in normalize_for_retrieval("someone took my phone, what can I do").lower()
+    for police_phrasing in (
+        "police took my phone",
+        "the police seized my phone during a search",
+        "cops took my phone at the station",
+    ):
+        assert "theft" not in normalize_for_retrieval(police_phrasing).lower(), police_phrasing
 
 
 # --- 4. Queries that must pass through untouched ------------------------

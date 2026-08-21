@@ -639,6 +639,13 @@ def _requests_harmful_assistance(text: str) -> bool:
 _HISTORICAL_FRAME = _compile([
     r"\b(used to|no longer|not any ?more|since then|back then|back in)\b",
     r"\b(years?|months?|weeks?|decades?) ago\b",
+    # "he hit me last year, what are my options" was graded an emergency
+    # because only the "... ago" phrasing counted as past (M12). "last
+    # week" is deliberately NOT here: a week-old assault with the abuser
+    # still around is close enough to live risk that the asymmetric-cost
+    # rule keeps it on the emergency side.
+    r"\blast (year|month)\b",
+    r"\b(a|one) (year|month) (back|earlier)\b",
     r"\bin (19|20)\d{2}\b",
     r"\b(at that time|at the time|in those days|those days)\b",
     r"\bwhen (i|he|she|they) (was|were) (a )?(child|kid|young|small|minor)\b",

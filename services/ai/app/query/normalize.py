@@ -271,12 +271,29 @@ _RULES: list[tuple[re.Pattern[str], str, str, str]] = [
     ),
     # ---------------- Context-gated: special statutes ----------------
     (
-        re.compile(r"\b(\d{1,2}[- ]?year[- ]?old|child|minor|kid|juvenile|teenager|son|daughter)\b"
-                   r"[^.?!]{0,50}\b(steal\w*|theft|crime|offence|arrest\w*|caught|police)\b",
+        re.compile(r"\b(\d{1,2}[- ]?year[- ]?old|child|minor|kid|juvenile|teenager|son|daughter|under 1[678])\b"
+                   r"[^.?!]{0,50}\b(steal\w*|theft|crime|offence|arrest\w*|caught|police)\b"
+                   # Turn-spanning reverse order: a follow-up like "what if
+                   # it is a child?" puts the child signal in a later
+                   # sentence than the arrest/crime signal (M12 f29).
+                   r"|\b(arrest\w*|custody|caught|police|crime|offence|punishment)\b"
+                   r"[\s\S]{0,80}\b(child|minor|juvenile|under 1[678])\b",
                    re.IGNORECASE),
         "child alleged to be in conflict with law juvenile justice board",
         "CONTEXT-GATED",
-        "h025 - fixes wrong-Act (BNS theft -> jj2015); requires a child signal",
+        "h025 - fixes wrong-Act (BNS theft -> jj2015); requires a child signal. "
+        "f29 (context eval) added the reversed turn-spanning branch and 'under 16/17/18'",
+    ),
+    (
+        re.compile(r"\b(child|minor|juvenile|under 1[678]|killer is under)\b[\s\S]{0,80}"
+                   r"\b(murder|rape|heinous|serious (crime|offence))\b"
+                   r"|\b(murder|rape|heinous|serious (crime|offence))\b[\s\S]{0,80}"
+                   r"\b(child|minor|juvenile|under 1[678])\b",
+                   re.IGNORECASE),
+        "heinous offence preliminary assessment juvenile justice board",
+        "CONTEXT-GATED",
+        "f27 (context eval) - 'punishment for murder ... what if the killer is under 18?'; "
+        "probe puts jj2015:15 at rank 2; requires both a child and a grave-offence signal",
     ),
     (
         re.compile(r"\b(cyber|online|computer|hacking|it act|digital)\b[^.?!]{0,40}\b(bail|bailable|offence|charge)\b"
@@ -336,6 +353,78 @@ _RULES: list[tuple[re.Pattern[str], str, str, str]] = [
         "f06 (context eval) - consumer turn + 'what if it happened two years ago?' follow-up; "
         "probe puts cpa2019:69 at rank 2; the phrase 'limitation period' occurs only in "
         "cpa2019 (s.69's own title), and the rule requires an explicit consumer signal",
+    ),
+    # ---------------- M12 failure-cluster rules ----------------
+    # Every rule below was probe-verified against the built index during
+    # M12's taxonomy work; the named query moved into the right Act (and
+    # usually into the top-5) with the expansion, and stayed lost without
+    # it. Same discipline as everything above: discriminating signals,
+    # stand-downs where the plain word is ambiguous.
+    (
+        # Deliberate stand-down: "police took my phone" stays unexpanded
+        # -- theft vs lawful seizure is an ambiguity M7 chose to preserve,
+        # and this rule must not resolve it.
+        re.compile(r"\b(?!.*\b(police|cops?|officer|seized|custody)\b)"
+                   r"(?:someone|somebody|they|he|she|thief|boy|man|guy)\b[^.?!]{0,30}"
+                   r"\b(took|stole|snatched|lifted|pinched|grabbed|made off with|ran off with|walked off with)\b"
+                   r"[^.?!]{0,40}\b(phone|bag|purse|wallet|jewell?ery|cash|money|laptop|cycle|bike|chain|watch|belongings|stuff)\b",
+                   re.IGNORECASE),
+        "theft of movable property",
+        "CONTEXT-GATED",
+        "h016/h189 - citizen theft phrasings share no vocabulary with bns:303-305; "
+        "probe moved h189 from outside both pools to rank 4",
+    ),
+    (
+        re.compile(r"\b(house ?help|maid|servant|domestic worker|cook|driver|watchman|nanny)\b"
+                   r"[^.?!]{0,50}\b(took|stole|ran off|made off|disappeared|vanished|walked off)\b",
+                   re.IGNORECASE),
+        "theft by clerk or servant",
+        "CONTEXT-GATED",
+        "h190 - probe moved the query from outside both pools to rank 5 (bns:306 in top-5)",
+    ),
+    (
+        # Consumer stand-down: an online-purchase scam is a consumer
+        # matter (see the e-commerce rule below), not a BNS cheating one.
+        re.compile(r"\b(?!.*\b(online|website|app|ordered|shopping|delivery)\b)"
+                   r"(scammed|duped|conned|swindled|defrauded)\b"
+                   r"|\b(vanished|disappeared|ran off|absconded)\b[^.?!]{0,30}\b(with (my|our) (money|payment|deposit|advance))\b",
+                   re.IGNORECASE),
+        "cheating dishonestly inducing delivery of property",
+        "CONTEXT-GATED",
+        "h063 - 'paid a builder and he vanished with my money'; probe lifted dense 0.37 -> 0.50 "
+        "and pulled the bns cheating cluster into the top-5",
+    ),
+    (
+        re.compile(r"\b(scammed|cheated|duped|conned|fake|fraud\w*)\b[^.?!]{0,50}"
+                   r"\b(online|website|app|e-?commerce)\b"
+                   r"|\b(online|website|app)\b[^.?!]{0,40}\b(scam\w*|fraud\w*|cheat\w*|fake)\b",
+                   re.IGNORECASE),
+        "unfair trade practice electronic commerce consumer",
+        "CONTEXT-GATED",
+        "h054 - 'I got scammed buying a phone online'; probe moved cpa2019:94 from outside "
+        "both pools to rank 3",
+    ),
+    # Act-name abbreviations, like FIR/NCR/RTI before them: the citizen's
+    # shorthand appears nowhere in the statute's own text.
+    (
+        re.compile(r"\bpwdva\b", re.IGNORECASE),
+        "Protection of Women from Domestic Violence",
+        "HIGH",
+        "h078 - 'PWDVA protection order procedure' answered from bnss:142; the expansion "
+        "makes the whole top-5 pwdva",
+    ),
+    (
+        re.compile(r"\bjj act\b|\bccl\b", re.IGNORECASE),
+        "juvenile justice child in conflict with law",
+        "HIGH",
+        "h079 - 'JJ Act rules for a CCL' retrieved bnss/lsa/constitution noise; the "
+        "expansion makes the whole top-5 jj2015",
+    ),
+    (
+        re.compile(r"\bcwc\b", re.IGNORECASE),
+        "Child Welfare Committee",
+        "HIGH",
+        "h228 - probe moved jj2015:27 from rank >5 to rank 1",
     ),
     # ---------------- Right to Information ----------------
     # Added alongside the RTI Act's ingestion. Measured need: with RTI
@@ -492,19 +581,29 @@ def normalization_terms(query: str) -> list[str]:
 def normalize_for_retrieval(query: str) -> str:
     """Return the text retrieval should search for.
 
-    The raw query is always preserved in full and the statutory
-    vocabulary is appended to it. Nothing is substituted or removed, so
-    a query whose wording is already statutory is returned unchanged and
-    a query this module does not recognise is passed straight through.
+    The raw query is always preserved in full; statutory spellings for
+    misspelled tokens (app.query.spelling) and statutory vocabulary from
+    the rule table are appended to it. Nothing is substituted or removed,
+    so a query whose wording is already statutory is returned unchanged
+    and a query this module does not recognise is passed straight
+    through.
+
+    Spelling corrections are appended before the rules are evaluated, and
+    the rules run over the corrected text -- "punishment 4 theift" must
+    reach any rule keyed on "theft".
 
     The result is for retrieval only. It is never shown to the user, never
     classified by the safety policy, and never reaches answer
     construction.
     """
-    terms = normalization_terms(query)
+    from .spelling import spelling_corrections
+
+    corrections = spelling_corrections(query)
+    corrected = query + " " + " ".join(corrections) if corrections else query
+    terms = normalization_terms(corrected)
     if not terms:
-        return query
-    return query + " " + " ".join(terms)
+        return corrected
+    return corrected + " " + " ".join(terms)
 
 
 def rule_summary() -> list[dict]:
