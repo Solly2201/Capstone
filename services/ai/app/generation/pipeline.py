@@ -80,7 +80,25 @@ DEFAULT_MIN_SCORE_BY_MODE = {
     # specifically, both ~0.45) -- closing that fully would cost real
     # recall (q20 sits at 0.4531) and likely needs a smarter signal
     # than a single global threshold, not a further blanket raise.
-    "hybrid": 0.42,  # gates on the top hit's dense_score, not its RRF score -- see _passes_confidence_gate
+    # 0.41, lowered from 0.42 in M12 after the production-path measurement
+    # the raw-query sweeps could never see: the gate reads the dense score
+    # of the NORMALISED text (handle_legal_query retrieves on
+    # app.query.normalize's output), and on that path the highest score
+    # any should-abstain query in the 362-row labelled pool reaches is
+    # 0.399 -- the 0.42 floor was calibrated against raw-query scores.
+    # Swept on a tune split (control + odd citizen rows) and validated on
+    # held-out even citizen rows: 0.41 recovers gold-top-1 answers with
+    # ZERO new false accepts and ZERO wrong-Act change on both splits.
+    # The old 0.4117 company-registration stress case is now caught by
+    # the topic-relevance guard before the gate (test_pipeline pins the
+    # end-to-end behaviour). A deeper cut was measured and REJECTED: an
+    # agreement branch (BM25 and dense both ranking the same top hit
+    # <=2, dense >= 0.30) bought 5 good answers at 2 new wrong-Act
+    # answers -- both retrieval methods can agree on the same wrong
+    # chunk, so cross-method agreement is not the safety signal it looks
+    # like. Do not re-propose it without a feature that separates
+    # agreeing-right from agreeing-wrong.
+    "hybrid": 0.41,  # gates on the top hit's dense_score, not its RRF score -- see _passes_confidence_gate
 }
 DEFAULT_MIN_SCORE = DEFAULT_MIN_SCORE_BY_MODE["bm25"]  # kept for direct build_legal_answer() callers/tests
 

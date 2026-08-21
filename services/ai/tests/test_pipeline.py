@@ -141,23 +141,34 @@ def test_hybrid_result_abstains_on_low_dense_score_despite_high_fused_rank():
     assert result.reason == "insufficient_evidence"
 
 
-def test_hybrid_abstains_on_out_of_domain_score_that_used_to_pass(monkeypatch):
-    """Regression for a real false-answer found by stress-testing
-    out-of-domain queries against the expanded (1,783-chunk) corpus:
-    "How do I register a company in India?" scored dense=0.4117 --
-    above the old 0.40 hybrid floor -- because a BNSS section about
-    serving a summons "on a company" shares enough vocabulary to look
-    like a semantic match. The floor was raised to 0.42 specifically
-    to close this gap (see DEFAULT_MIN_SCORE_BY_MODE's docstring
-    comment); this pins that exact score to abstaining so it can't
-    silently regress back down.
+def test_hybrid_gate_floor_holds_at_the_measured_abstain_ceiling(monkeypatch):
+    """The hybrid floor is 0.41, chosen in M12 against the production
+    path (retrieval on normalised text), where the highest score any
+    should-abstain query in the 362-row labelled pool reaches is 0.399.
+    This pins both sides of the floor: a score at the measured abstain
+    ceiling must abstain, a score just above the floor must answer.
+
+    History: the original 0.42 floor was pinned here against the
+    "register a company" stress case (dense 0.4117 on the raw query).
+    That case is caught by the topic-relevance guard before the gate
+    today -- test_out_of_domain_company_registration_still_abstains
+    below keeps the end-to-end behaviour pinned -- so the gate-level pin
+    moved to the floor the production-path measurement justifies.
     """
     monkeypatch.delenv("LEGAL_CHAT_MIN_SCORE", raising=False)
-    hybrid_result = {
-        **BNSS_RESULT,
-        "score": 0.0328,
-        "retrieval_mode": "hybrid",
-        "dense_score": 0.4117,
-    }
-    result = build_legal_answer([hybrid_result])
+    at_ceiling = {**BNSS_RESULT, "score": 0.0328, "retrieval_mode": "hybrid", "dense_score": 0.399}
+    assert build_legal_answer([at_ceiling]).abstained is True
+
+    just_above = {**BNSS_RESULT, "score": 0.0328, "retrieval_mode": "hybrid", "dense_score": 0.411}
+    assert build_legal_answer([just_above]).abstained is False
+
+
+def test_out_of_domain_company_registration_still_abstains():
+    """End-to-end pin for the historical 0.4117 false-answer case: the
+    topic-relevance guard refuses company registration before retrieval,
+    so the gate floor's history (0.42 -> 0.41) cannot resurface it."""
+    from app.generation.pipeline import handle_legal_query
+
+    result = handle_legal_query("How do I register a company in India?")
     assert result.abstained is True
+    assert (result.reason or "").startswith("out_of_domain_")
