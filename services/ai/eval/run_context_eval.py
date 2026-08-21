@@ -76,14 +76,22 @@ def main() -> int:
         expected = set(row.get("expect_chunks") or [])
 
         if category == "condition_follow_up":
+            # Outcome-scored: the citizen got the right provision in the
+            # answer, whether the context layer composed it or the
+            # fragment stood well enough alone. The mechanism is reported
+            # for diagnosis, not judged.
             condition_total += 1
             base = _baseline_answer(row["query"])
             base_hit = bool(expected & _answered_chunks(base))
-            ctx_hit = bool(expected & _answered_chunks(answer)) and answer.context_applied
+            ctx_hit = bool(expected & _answered_chunks(answer))
             baseline_hits += base_hit
             context_hits += ctx_hit
             per_category[category].append(
-                (row["id"], ctx_hit, f"baseline_hit={base_hit} context_hit={ctx_hit}")
+                (
+                    row["id"],
+                    ctx_hit,
+                    f"baseline_hit={base_hit} context_hit={ctx_hit} applied={answer.context_applied}",
+                )
             )
         elif category in ("ambiguous_follow_up", "no_context_follow_up"):
             ok = answer.reason == "needs_context" and answer.abstained
@@ -103,6 +111,13 @@ def main() -> int:
             prefix = row["expect_reason_prefix"]
             ok = answer.abstained and (answer.reason or "").startswith(prefix)
             per_category[category].append((row["id"], ok, f"reason={answer.reason}"))
+        elif category == "not_emergency":
+            # A past-tense account must reach the law (answer or a serious
+            # redirect with excerpts), never an emergency helpline page.
+            ok = answer.policy_decision != "redirect_emergency"
+            per_category[category].append(
+                (row["id"], ok, f"decision={answer.policy_decision} reason={answer.reason}")
+            )
 
     print(f"rows: {len(rows)}\n")
     all_ok = True

@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.generation.pipeline import handle_legal_query  # noqa: E402
+from app.query.normalize import normalize_for_retrieval  # noqa: E402
 from app.retrieval.search import search  # noqa: E402
 
 QUERIES_PATH = os.path.join(os.path.dirname(__file__), "queries.jsonl")
@@ -91,14 +92,26 @@ def _ndcg_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
     return dcg / idcg if idcg > 0 else 0.0
 
 
-def evaluate_retrieval(queries: list[dict], mode: str, top_k: int) -> list[QueryResult]:
+def evaluate_retrieval(
+    queries: list[dict], mode: str, top_k: int, production_path: bool = False
+) -> list[QueryResult]:
     """Runs app.retrieval.search directly (bypassing Risk/UPL and the
-    confidence gate, which don't apply to relevance-only queries)."""
+    confidence gate, which don't apply to relevance-only queries).
+
+    With production_path=True the query first passes through
+    app.query.normalize, exactly as handle_legal_query does -- measuring
+    the text a citizen's question actually retrieves on, rather than the
+    raw string. The default stays raw so every historical number in
+    docs/RETRIEVAL_EVALUATION.md remains directly comparable; the
+    production-path figures are reported as their own series, never as a
+    replacement (see M9's "measurement defect worth knowing about").
+    """
     results = []
     for q in queries:
         if q["expect_abstain"]:
             continue  # abstention is evaluated separately via the full pipeline
-        hits = search(q["query"], top_k=top_k, mode=mode)
+        text = normalize_for_retrieval(q["query"]) if production_path else q["query"]
+        hits = search(text, top_k=top_k, mode=mode)
         results.append(
             QueryResult(
                 query_id=q["id"],
@@ -204,6 +217,12 @@ def main() -> None:
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--json", help="Optional path to dump full per-query results as JSON")
     parser.add_argument("--queries", default=QUERIES_PATH, help="Path to a queries.jsonl-format eval set")
+    parser.add_argument(
+        "--production-path",
+        action="store_true",
+        help="Retrieve on app.query.normalize's output (the text production actually searches) "
+        "instead of the raw query. A separate series -- not comparable to the historical raw numbers.",
+    )
     args = parser.parse_args()
 
     queries = load_queries(args.queries)
@@ -211,8 +230,11 @@ def main() -> None:
 
     summary_rows = []
     dump = {}
+    if args.production_path:
+        print("(production-path series: retrieval on normalised text -- "
+              "not comparable to historical raw-query numbers)\n")
     for mode in modes:
-        retrieval_results = evaluate_retrieval(queries, mode, args.top_k)
+        retrieval_results = evaluate_retrieval(queries, mode, args.top_k, args.production_path)
         abstention = evaluate_abstention(queries, mode)
         summary = summarize(mode, retrieval_results, args.top_k)
         summary["abstention_accuracy"] = round(abstention["accuracy"], 4)
