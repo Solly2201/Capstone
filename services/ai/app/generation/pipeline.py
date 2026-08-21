@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from ..query.context import CLARIFICATION_MESSAGE, ConversationContext, resolve_context
 from ..query.normalize import normalize_for_retrieval
 from ..retrieval.search import search as _search
 from ..safety.corpus_coverage import (
@@ -121,6 +122,12 @@ class LegalAnswer:
     # True when the response points at an authority, helpline or legal-aid
     # service rather than at legal text alone.
     authority_guidance: bool = False
+    # Multi-turn context (app.query.context): True when the previous
+    # question was deterministically folded into the retrieval text, and
+    # the exact combined text used -- shown to the user so nothing is
+    # interpreted invisibly.
+    context_applied: bool = False
+    resolved_question: str | None = None
 
 
 def _passes_confidence_gate(results: list[dict]) -> bool:
@@ -172,7 +179,9 @@ def build_legal_answer(results: list[dict]) -> LegalAnswer:
     return LegalAnswer(excerpts=excerpts, sources=sorted(distinct_sources(results)), policy_decision="answered")
 
 
-def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
+def handle_legal_query(
+    question: str, top_k: int = 5, context: ConversationContext | None = None
+) -> LegalAnswer:
     """Full Module 1 entry point: safety policy -> topic guard ->
     corpus-coverage guard -> retrieval -> deterministic answer.
 
@@ -255,7 +264,55 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             authority_guidance=assessment.authority_guidance,
         )
 
+    # Multi-turn context (app.query.context). A standalone question passes
+    # through untouched -- context never overrides explicit new intent. A
+    # follow-up that cannot be resolved safely asks for a restatement
+    # rather than guessing what it refers to.
+    resolution = resolve_context(question, context)
+    if resolution.needs_clarification:
+        return LegalAnswer(
+            message=CLARIFICATION_MESSAGE,
+            abstained=True,
+            reason="needs_context",
+            policy_decision="abstained",
+            severity=assessment.severity,
+        )
+
+    effective_question = resolution.retrieval_question
+
+    # When the previous question was folded in, the combined text is the
+    # question actually being answered -- and the context is
+    # client-supplied, therefore untrusted. Every deterministic guard
+    # re-runs against the combined text, and the stricter outcome wins,
+    # so context can never carry retrieval past a safety decision (e.g. a
+    # first turn about divorce, correctly refused by the coverage guard,
+    # cannot be reached via an innocuous-looking follow-up).
+    if resolution.context_applied:
+        combined_assessment = assess_query(effective_question)
+        if combined_assessment.severity == SEVERITY_HARMFUL_REQUEST:
+            return LegalAnswer(
+                message=combined_assessment.message,
+                abstained=True,
+                reason=f"harmful_request_{combined_assessment.category}",
+                policy_decision="refused",
+                severity=combined_assessment.severity,
+                authority_guidance=combined_assessment.authority_guidance,
+            )
+        if combined_assessment.severity == SEVERITY_EMERGENCY:
+            return LegalAnswer(
+                message=combined_assessment.message,
+                abstained=True,
+                reason=f"risk_{combined_assessment.category}",
+                policy_decision="redirect_emergency",
+                severity=combined_assessment.severity,
+                authority_guidance=combined_assessment.authority_guidance,
+            )
+        if combined_assessment.severity == SEVERITY_SERIOUS and assessment.severity == SEVERITY_NORMAL:
+            assessment = combined_assessment
+
     topic_category = classify_topic(question)
+    if topic_category is None and resolution.context_applied:
+        topic_category = classify_topic(effective_question)
     if topic_category is not None:
         return LegalAnswer(
             message=OUT_OF_DOMAIN_MESSAGE,
@@ -263,9 +320,13 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             reason=f"out_of_domain_{topic_category}",
             policy_decision="abstained",
             severity=assessment.severity,
+            context_applied=resolution.context_applied,
+            resolved_question=effective_question if resolution.context_applied else None,
         )
 
     coverage_category = classify_coverage_gap(question)
+    if coverage_category is None and resolution.context_applied:
+        coverage_category = classify_coverage_gap(effective_question)
     if coverage_category is not None:
         return LegalAnswer(
             message=coverage_message(coverage_category),
@@ -273,6 +334,8 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
             reason=f"not_in_corpus_{coverage_category}",
             policy_decision="abstained",
             severity=assessment.severity,
+            context_applied=resolution.context_applied,
+            resolved_question=effective_question if resolution.context_applied else None,
         )
 
     # Citizen-language normalisation, applied to the retrieval text only.
@@ -285,8 +348,10 @@ def handle_legal_query(question: str, top_k: int = 5) -> LegalAnswer:
     # longer needed: `build_legal_answer` assembles the response from the
     # retrieved chunks themselves, so the normalised text cannot reach the
     # answer, the citations, or the user.
-    results = _search(normalize_for_retrieval(question), top_k=top_k)
+    results = _search(normalize_for_retrieval(effective_question), top_k=top_k)
     answer = build_legal_answer(results)
+    answer.context_applied = resolution.context_applied
+    answer.resolved_question = effective_question if resolution.context_applied else None
 
     if assessment.severity == SEVERITY_SERIOUS:
         return _as_serious_matter(answer, assessment)

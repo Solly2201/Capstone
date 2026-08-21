@@ -277,6 +277,46 @@ describe("LegalAssistantPage", () => {
     expect(screen.queryByText("Go deeper in Learn")).toBeNull();
   });
 
+  it("sends the previous question as context with a follow-up, and shows the combined reading", async () => {
+    mockApi.post.mockResolvedValueOnce({ data: answeredResponse }).mockResolvedValueOnce({
+      data: {
+        ...answeredResponse,
+        context_applied: true,
+        resolved_question: "Can a woman be arrested at night? What if I am a minor?"
+      }
+    });
+
+    renderPage();
+    ask("Can a woman be arrested at night?");
+    await waitFor(() => expect(screen.getByRole("heading", { name: "What the law says" })).toBeTruthy());
+
+    // The first ask carries no context; there is nothing before it.
+    expect(mockApi.post.mock.calls[0][1]).toEqual({ question: "Can a woman be arrested at night?" });
+
+    ask("What if I am a minor?");
+    await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(2));
+
+    expect(mockApi.post.mock.calls[1][1]).toEqual({
+      question: "What if I am a minor?",
+      context: { previous_question: "Can a woman be arrested at night?" }
+    });
+    // The exact combined text is shown, so nothing is interpreted invisibly.
+    await waitFor(() =>
+      expect(screen.getByText(/Read together with your previous question/)).toBeTruthy()
+    );
+    expect(screen.getByText(/Can a woman be arrested at night\? What if I am a minor\?/)).toBeTruthy();
+  });
+
+  it("shows no combined-reading note on an ordinary standalone answer", async () => {
+    mockApi.post.mockResolvedValue({ data: answeredResponse });
+
+    renderPage();
+    ask("Can a woman be arrested at night?");
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "What the law says" })).toBeTruthy());
+    expect(screen.queryByText(/Read together with your previous question/)).toBeNull();
+  });
+
   it("handles an unavailable AI service", async () => {
     mockApi.post.mockRejectedValue({ response: { status: 503, data: { message: "AI service is unreachable." } } });
 

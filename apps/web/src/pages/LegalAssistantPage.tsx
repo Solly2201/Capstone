@@ -46,13 +46,22 @@ export function LegalAssistantPage() {
     event.preventDefault();
     if (!canSubmit) return;
 
+    // The previous question travels with a follow-up so the service can
+    // resolve "what if…" deterministically. The service decides whether
+    // it applies — a standalone question is never dragged back to an old
+    // topic — and reports the exact combined text when it does.
+    const previousQuestion = submittedQuestion;
+
     setStatus("loading");
     setErrorMessage(null);
     setAnswer(null);
     setSubmittedQuestion(trimmed);
 
     try {
-      const response = await api.post<LegalAnswerResponse>("/legal/answer", { question: trimmed });
+      const response = await api.post<LegalAnswerResponse>("/legal/answer", {
+        question: trimmed,
+        ...(previousQuestion ? { context: { previous_question: previousQuestion } } : {})
+      });
       setAnswer(response.data);
       setStatus("done");
     } catch (error) {
@@ -154,6 +163,13 @@ function AnswerPanel({ answer, question }: { answer: LegalAnswerResponse; questi
     <div className="mt-10">
       <p className="text-xs font-bold uppercase tracking-wide text-clay">You asked</p>
       <p className="mt-2 text-sm leading-6 text-ink/80">{question}</p>
+
+      {answer.context_applied && answer.resolved_question && (
+        <p className="mt-3 rounded-lg border border-ink/10 bg-white/50 px-4 py-3 text-xs leading-5 text-ink/70">
+          <span className="font-bold uppercase tracking-wide text-clay">Read together with your previous question: </span>
+          {answer.resolved_question}
+        </p>
+      )}
 
       {/* Non-answer paths: the backend's own message is shown verbatim. */}
       {showPolicyMessage && <PolicyMessage answer={answer} hasSupportingLaw={showExcerpts} />}

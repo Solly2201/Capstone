@@ -26,6 +26,15 @@ legalRouter.post("/answer", answerRateLimiter, async (request, response) => {
     return;
   }
 
+  // Multi-turn context: the previous question, passed through verbatim.
+  // The AI service treats it as untrusted and re-runs every guard over
+  // the combined text, so the proxy only checks the shape.
+  const previousQuestion = request.body?.context?.previous_question;
+  const context =
+    typeof previousQuestion === "string" && previousQuestion.length >= 2
+      ? { previous_question: previousQuestion.slice(0, 2000) }
+      : undefined;
+
   try {
     // Bounded, because node's fetch is not. A refused connection throws
     // immediately and was already handled; a service that accepts the
@@ -34,7 +43,7 @@ legalRouter.post("/answer", answerRateLimiter, async (request, response) => {
     const aiResponse = await fetch(`${env.AI_SERVICE_URL}/legal/answer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, ...(context ? { context } : {}) }),
       signal: AbortSignal.timeout(env.AI_SERVICE_TIMEOUT_MS)
     });
     const body = await aiResponse.json().catch(() => ({ message: "AI service returned a non-JSON response." }));

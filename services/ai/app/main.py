@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .generation.disclaimer import DISCLAIMER_TEXT, DISCLAIMER_VERSION
 from .generation.pipeline import handle_legal_query
+from .query.context import ConversationContext
 from .ingestion.sources import APPROVED_SOURCES
 from .retrieval.search import get_section, search
 
@@ -185,8 +186,17 @@ def get_section_detail(source_id: str, unit_number: str) -> SectionDetail:
 # acceptance at registration.
 
 
+class LegalQueryContext(BaseModel):
+    """The previous exchange, sent back by the client. Untrusted input:
+    the pipeline re-runs every deterministic guard over the combined
+    text, so context cannot carry retrieval past a safety decision."""
+
+    previous_question: str = Field(..., min_length=2, max_length=2000)
+
+
 class LegalQueryRequest(BaseModel):
     question: str = Field(..., min_length=2, max_length=2000)
+    context: LegalQueryContext | None = None
 
 
 class LegalExcerpt(BaseModel):
@@ -213,12 +223,22 @@ class LegalAnswerResponse(BaseModel):
     # frame a redirect without parsing the message string.
     severity: str
     authority_guidance: bool
+    # Multi-turn context: True when the previous question was folded into
+    # retrieval, with the exact combined text -- shown to the user so no
+    # interpretation happens invisibly.
+    context_applied: bool = False
+    resolved_question: str | None = None
 
 
 @app.post("/legal/answer", response_model=LegalAnswerResponse)
 def legal_answer(payload: LegalQueryRequest) -> LegalAnswerResponse:
+    conversation = (
+        ConversationContext(previous_question=payload.context.previous_question)
+        if payload.context
+        else None
+    )
     try:
-        result = handle_legal_query(payload.question)
+        result = handle_legal_query(payload.question, context=conversation)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -246,4 +266,6 @@ def legal_answer(payload: LegalQueryRequest) -> LegalAnswerResponse:
         disclaimer_text=DISCLAIMER_TEXT,
         severity=result.severity,
         authority_guidance=result.authority_guidance,
+        context_applied=result.context_applied,
+        resolved_question=result.resolved_question,
     )

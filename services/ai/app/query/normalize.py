@@ -310,6 +310,33 @@ _RULES: list[tuple[re.Pattern[str], str, str, str]] = [
         "CONTEXT-GATED",
         "h024 - requires a domestic-relationship signal to reach pwdva",
     ),
+    # ---------------- Multi-turn composition ----------------
+    # The context layer (app.query.context) concatenates a follow-up onto
+    # the previous question, so the discriminating signals sit in
+    # DIFFERENT sentences -- these two rules deliberately use [\s\S]
+    # windows instead of the sentence-bounded [^.?!] the rest of this
+    # file uses, because a turn boundary is not a topic boundary.
+    (
+        re.compile(r"\bprotection order\b[\s\S]{0,80}\b(break\w*|broke|breach\w*|violat\w*|disobey\w*|ignor\w*)\b"
+                   r"|\b(break\w*|broke|breach\w*|violat\w*|disobey\w*)\b[\s\S]{0,40}\bprotection order\b",
+                   re.IGNORECASE),
+        "penalty for breach of protection order",
+        "CONTEXT-GATED",
+        "f08 (context eval) - 'protection order' turn + 'what if he breaks it?' follow-up; "
+        "probe puts pwdva:31 at rank 1; 'protection order' occurs only in pwdva (13 chunks), "
+        "so the expansion cannot fire toward any other Act",
+    ),
+    (
+        re.compile(r"\b(consumer complaint|consumer court|consumer commission|defective|refund|money back|product liability)\b"
+                   r"[\s\S]{0,120}\b(years? ago|time limit|too late|deadline|last year|two years|2 years)\b"
+                   r"|\b(years? ago|too late|time limit)\b[\s\S]{0,60}\b(consumer complaint|defective|refund)\b",
+                   re.IGNORECASE),
+        "limitation period",
+        "CONTEXT-GATED",
+        "f06 (context eval) - consumer turn + 'what if it happened two years ago?' follow-up; "
+        "probe puts cpa2019:69 at rank 2; the phrase 'limitation period' occurs only in "
+        "cpa2019 (s.69's own title), and the rule requires an explicit consumer signal",
+    ),
     # ---------------- Right to Information ----------------
     # Added alongside the RTI Act's ingestion. Measured need: with RTI
     # in the corpus but no rules here, 20 RTI citizen-language probes
